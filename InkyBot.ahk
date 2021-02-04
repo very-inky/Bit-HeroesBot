@@ -10,12 +10,12 @@ tg=0
 p=0
 ; ======================Setting timers===========================
 
-/*
 
 
-*/
+
 ; ======================User Config==============================
-;RaidTier = 7
+RaidTier = 3
+RaidDifficulty = 3
 ;AutoUse = true
 ;Experimental
 
@@ -23,20 +23,22 @@ p=0
 ;username = 
 ;password = 
 AutoLogin = false
-
+/*
+*/
 ;=======================Init=====================================
 Run https://www.kongregate.com/games/juppiomenz/bit-heroes
 Init:
-loop, 11
+loop
 {
-Sleep 800
 ;Checking for login
-Imagesearch UnityLoadingX,UnityLoadingY,0,0,%A_ScreenWidth%,%A_ScreenHeight%,cueUnityLoading.png
+ImageSearch UnityLoadingX,UnityLoadingY,0,0,%A_ScreenWidth%,%A_ScreenHeight%,cueUnityLoading.png
 sleep 20
 If (errorlevel = 0)
 	{
 Goto GameStartCheck
 	}
+}
+/*
 Imagesearch LoggedOutX,LoggedOutY,0,0,%A_ScreenWidth%,%A_ScreenHeight%,cueKongloggedout.png
 sleep 20
 If (errorlevel = 0)
@@ -50,12 +52,14 @@ If (errorlevel = 0)
 goto login
 	}
 }
+Comment block duct tape, if you remove this the script will not make it to GameStartCheck =(
+*/
 Msgbox this should not display
 ;
 Login:
 If (%AutoLogin% = true) ;THIS FUNCTION IS NOT FINISHED YET, its close!
 {
-sleep 3000
+sleep, 3000
 ImageSearch AutoLoginX,AutoLoginY,0,0,%A_ScreenWidth%,%A_ScreenHeight%,cueKongloggedout1.png ;Uhhhhh
 	if (errorlevel = 0)
 	{
@@ -81,26 +85,30 @@ exitapp
 
 
 GameStartCheck:
+Msgbox made it to gamestart check
 ;Checking to see if you loaded into the game by looking for the daily login reward or the close button on the news window.
-Loop, 22
+Loop
 {
-sleep, 3020
-;need to change over from current close.png
 ImageSearch GameCheckX,GameCheckY,0,0,%A_ScreenWidth%,%A_ScreenHeight%,CueClose.png
-	If (errorlevel = 0) {
+sleep 80
+	If (errorlevel = 0) 
+	{
 mouseclick,left,%GameCheckX%,%GameCheckY%,1,12
 disconnected = false
 goto Main
 	}
-ImageSearch,%claimX%,%claimY%,0,0,%A_ScreenWidth%,%A_ScreenHeight%,cueClaimDaily.png
-      If (errorlevel = 0) {
-mouseclick,left,%claimx%,%claimy%,1,12
+ImageSearch,claimX,claimY,0,0,%A_ScreenWidth%,%A_ScreenHeight%,cueClaimDaily.png
+sleep 80
+    If (errorlevel = 0)
+	{
+mouseclick,left,%claimX%,%claimY%,1,12
 Disconnected = false
 Goto Main
 	}
 }
 ;disconnect failsafe in case logs in to kong but doesnt make it to the news or daily reward screen for cues.
 ImageSearch ReconnectX,ReconnectY,0,0,%A_ScreenWidth%,%A_ScreenHeight%,cueReconnect.png
+sleep 80
 	IF (errorlevel = 0) {
 	disconnected = true
 	MouseClick,left,%ReconnectX%,%ReconnectY%,1,12
@@ -117,8 +125,9 @@ Exitapp
 Main:
 Loop
 {
-AutoReconnect:
+AutoReconnect: ;redundant Autoreconnect and idle checks, who cares
 	ImageSearch ReconnectX,ReconnectY,0,0,%A_ScreenWidth%,%A_ScreenHeight%,cueReconnect.png
+	sleep 80
 	IF (errorlevel = 0) 
 	{
 	disconnected = true
@@ -127,9 +136,18 @@ AutoReconnect:
 	}
 CheckForIdle:
 	ImageSearch IdleX,IdleY,0,0,%A_ScreenWidth%,%A_ScreenHeight%,cueIdle.png
+	sleep 80
 	IF (errorlevel = 0) 
 	{
 	MouseClick,left,%IdleX%,%IdleY%,1,12
+	}
+CloseFishingBait:
+Sleep 1000
+	ImageSearch RedCloseX,RedCloseY,0,0,%A_ScreenWidth%,%A_ScreenHeight%,cueXclose.png
+	sleep 80
+	If (errorlevel = 0)
+	{
+	MouseClick,left,%RedCloseX%,%RedCloseY%,1,12
 	}
 ;================================================================
 ;Main:
@@ -143,21 +161,47 @@ goto queueraids
 	}
 If (tg = 0)
 	{
-;goto queueTG ;QueueTG code needs to determine/differentiate whether the current event is trials or gauntlet. 
+;goto queueTG ;this code needs to determine/differentiate whether the current event is trials or gauntlet. 
 	}
 
 Sleep 18000
 }
-Return
+
 ;==================Raid start script=============================
 Queueraids:
 ;RaidTier difficulty NEEDS to be defined in the config portion or this script will NOT know which raid to run :(
-ImageSearch RaidButtonX,RaidButtonY,0,0,%A_ScreenWidth%,%A_ScreenHeight%,cueRaidbutton.png
-;COMMENTED BECAUSE IT WILL REPORT MISSING SQUIGGLE BRACKET SINCE ITS WIP If (errorlevel = 0) { ;
-mouseclick,left,%RaidButtonX%,%RaidButtonY%,1,12
+;Selecting raid from the screen
+ImageSearch RaidButtonX,RaidButtonY,150,150,%A_ScreenWidth%,%A_ScreenHeight%,cueRaidButton.bmp
+sleep 120
+	If (errorlevel = 0)
+	{
+	mouseclick,left,%RaidButtonX%,%RaidButtonY%,1,12
+	sleep 400
+	goto RaidSelector
+	}
+		Else If (errorlevel = 1)
+		{
+		goto main
+		}
+;Figuring out which raid is on screen
+RaidSelector:
+sleep 100
+	ImageSearch WhichRaidX,WhichRaidY,0,0,%A_ScreenWidth%,%A_ScreenHeight%,cueRaidT3.png
+	sleep 800
+If (errorlevel = 0)
+{
+msgbox CORRECT RAID FOUND! HOOORAYYYY;Raid was found, starting difficulty and team selection part here
+}
+If (errorlevel = 1) ;This portion is if the users RaidTier variable did not correspond with the raid that is displayed when Raid menu is opened, just means we need to search until we find that one!
+{
+	msgbox Trying selector to find raid .%raidtier%.
+	ImageSearch RaidMoveX,RaidMoveY,0,0,%A_ScreenWidth%,%A_ScreenHeight%,cueRaidMoveR.png
+	sleep 80
+	mouseclick,left,%RaidMoveX%,%RaidMoveY%,1,12
+	sleep 900
+	goto RaidSelector
+}
 Sleep 3000
-;Following line SHOULD be ImageSearch RaidTierX,RaidTierY,0,0,%A_ScreenWidth%,%A_ScreenHeight%,cueRaidT%RaidTier%.png
-
 
 
 pause::
@@ -166,7 +210,7 @@ Pause
 }
 
 ;===Debug for dumb bois
-^r::reload
+
 
 
 

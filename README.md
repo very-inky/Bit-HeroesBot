@@ -7,4 +7,7 @@ The bot will automatically detect when it is out of shards and can no longer run
 Raid selector support is believed to be good!
 
 
-TODO:Raid main loop needs testing, and need to add looped reconnect checks.
+TODO:Raid main should be good but need to add looped reconnect checks.
+Next up is PVP functionality.
+
+currently most of the script is disabled with commenting and we are just testing using a hotkey to check each portion as we go. Feel free to contribute, look around or tweak your own fork.

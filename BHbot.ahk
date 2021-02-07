@@ -3138,6 +3138,21 @@ goto teamclose
 
 
 pvpplay:
+/* figured out that during scripting how to click a pre determined button if there are multiple options. Previously the script had been
+just looking for one option. During the PVP opponent selection screen there will be multiple of the same button and we 
+are trying to let the user tell the bot which to hit. To do that we perform our regular search
+Text:="|<>*198$70.30000EA00U00Q01010k0W001M0404302800BX6swEASQXDAmAN6N0mAWNWGAlYEbzMG/4BMH6H3EBV8sTpzgNAB0q4Xn046lYEY3MG9Y0k96FaEAX8WMm0rtnl0lsuAy00000000000000000000000000000000000M"
+
+ if (ok:=FindText(50-150000, 527-150000, 50+150000, 527+150000, 0, 0, Text)) ;This will need to be replaced because this is test code that doesnt search for anything game related
+ {
+   CoordMode, Mouse
+   X:=ok.1.x, Y:=ok.1.y, Comment:=ok.1.id 
+   ;Change the .1 after the Variable, in this case its ok.1 to whichever one of them you want to hit. So if there is Five fight buttons(five PVP opponents)
+   and you want to battle PVP opponent Number 2 you could do
+   X:=ok.2.x, Y:=ok.2.y           realistically you may want to use X:=ok.%pvpopponent%.x Y:=ok.%pvpopponent%.y so user config picks which opponent to fight
+   Click, %X%, %Y%
+ }
+ */
 return
 
 

@@ -1,4 +1,5 @@
-﻿;User config
+﻿
+;User config
 RaidTier = 3
 RaidDifficulty = 3
 
@@ -394,7 +395,8 @@ PicFind(arr, in, info, index, err1, err0, dir
     x:=pos[2*A_Index-1], y:=pos[2*A_Index]
     if (!JoinText)
       arr.Push( {1:x+=in.zx, 2:y+=in.zy, 3:w, 4:h
-      , x:x+w//2, y:y+h//2, id:comment} )
+    
+  , x:x+w//2, y:y+h//2, id:comment} )
     else
     {
       if (index=1)
@@ -1079,6 +1081,9 @@ Class Thread
       oExec:=shell.Exec("""" Ahk """ /f * " args)
       oExec.StdIn.Write(s)
       oExec.StdIn.Close(), pid:=oExec.ProcessID
+
+
+
     }
     Catch
     {
@@ -2247,6 +2252,7 @@ Gui(cmd, arg1:="")
     GuiControlGet, Modify
     return
   Case "MultColor":
+
     GuiControlGet, MultColor
     Result:=""
     ToolTip
@@ -2692,6 +2698,16 @@ Sleep 150
 ;Maybe Main: label here
 ;if raidcheck = 0
 ;{
+Goto raidscripting
+;}
+;Else if pvpcheck = 0
+{
+Goto pvpscripting
+}
+;Else if 
+
+
+raidscripting:
 Text:="|<>0xFFFFFF@1.00$23.S3kaW8F94EWG8V4bVy9924GU" ; Raid Button
 
  if (ok:=FindText(756-150000, 791-150000, 756+150000, 791+150000, 0, 0, Text))
@@ -2702,8 +2718,6 @@ Text:="|<>0xFFFFFF@1.00$23.S3kaW8F94EWG8V4bVy9924GU" ; Raid Button
 Sleep 2000
 Goto raid%raidtier%check
  }
-;}
-;else
 ;
 ;============Raid Functionality==================================
 Raid1Check:
@@ -2737,7 +2751,7 @@ Goto raidselector
 }
  
 Raid3Check:
-Text:="|<>0xF4C91E@1.00$63.00000000003XVUDs1z0zsQQA3z0Ds7zXXVUsC71ksCQQA61ksC70nXVUkC71ks6QQA61ksC70nXVUkC71ks6QQA61ksC70nXVUkC71ks6QQA61ksC70nXVUkC71ks6QQA61ksC70nzzUzy7zkzy7zk1z0Ds7z0zy0Ds1z0zsU" ; Woodbeard’s Booty
+Text:="|<>0xF4C91E@1.00$63.00000000003XVUDs1z0zsQQA3z0Ds7zXXVUsC71ksCQQA61ksC70nXVUkC71ks6QQA61ksC70nXVUkC71ks6QQA61ksC70nXVUkC71ks6QQA61ksC70nXVUkC71ks6QQA61ksC70nzzUzy7zkzy7zk1z0Ds7z0zy0Ds1z0zsU" ; Woodbeard's Booty
 
  if (ok:=FindText(962-150000, 800-150000, 962+150000, 800+150000, 0, 0, Text))
  {
@@ -2910,6 +2924,7 @@ If (%AutoBestTeam% = true)
 Text:="|<>0xFFFFFF@1.00$71.0000000000000000000000000000000000000000000000000000000000007w3UsTzUTk00Ts71kzz1zU01kQC3U7U71k030sQ70C0A3U061ksC0Q0M700C3VkQ0s0kC00Tz3Us1k1UQ00zy71k3U30s01kQC3U7061k030sQ70C0A3U061ksC0Q0M700A3VkQ0s0kC00M73zs1k1zw00kC1z03U0zU01UQ3y0301z0000000000000000000000000000000000000000000000000000000000001"
 
  if (ok:=FindText(968-150000, 898-150000, 968+150000, 898+150000, 0, 0, Text))
+
  {
    CoordMode, Mouse
    X:=ok.1.x, Y:=ok.1.y, Comment:=ok.1.id
@@ -3051,6 +3066,7 @@ Text:="|<>0xFFFFFF@1.00$71.000000000000000000000000000000000000Dz1k00Ts0zw0Ty3U0
 return
 Home::
 ;================PVP Functionality===============================
+pvpscripting:
 Text:="|<>0xFFFFFF@1.00$29.03nk007bU003w000000000000w8Hs14Ea828V8E4F2MUD24y0E4l00UC2010M41"
 ;hits PVP button from main
  if (ok:=FindText(757-150000, 571-150000, 757+150000, 571+150000, 0, 0, Text))
@@ -3071,7 +3087,7 @@ else
 pvpselector: ;One time check for missing team member on PVP team
 if (%pvpteam% = 1)
 {
-goto pvpplay
+goto pvpdifficultyselect
 }
  else
 {
@@ -3104,9 +3120,18 @@ Text:="|<>0xFFFFFF@1.00$71.00000000000000000000000000000000000000000000000000000
 else
 {
 pvpteam = 1
-goto pvpplay
-}
-
+Text:="|<>0xFFFFFF@1.00$71.0000000000000000000000000000000000000000000000000000000000007w0zU7w0Tw30Ts1z0Ds0zs63zwDzVzwDzkw70sQ73UMQ01kC1ksC70ks03UQ3Vk0C01k070zz3U0Q03z0D1zy700s07y0S3zwC01k0Ds0w70sQ03U0Q01kC1ksC70ks03UQ3VkQC1Vk070s73zsTz3zwC1kC1z0Ds0zsQ3UQ3y0Tk1zks00000000000000000000000000000000000000000000000000000000001"
+;This is hitting Accept button as deemed by no 'add' button found for a missing party member, then sending you to pvpdifficultyselect to select ticket cost
+ if (ok:=FindText(1226-150000, 996-150000, 1226+150000, 996+150000, 0, 0, Text))
+ {
+   CoordMode, Mouse
+   X:=ok.1.x, Y:=ok.1.y, Comment:=ok.1.id
+   Click, %X%, %Y%
+   sleep 800
+ goto pvpdifficultyselect
+ }
+ }
+Msgbox this should not display
 ;if missing a team member pvp
 pvpautoteam:
 sleep 60
@@ -3128,7 +3153,7 @@ Text:="|<>0xFFFFFF@1.00$71.00000000000000000000000000000000000000000000000000000
    Click, %X%, %Y%
    Sleep 1900
    pvpteam = 1
-   goto pvpplay
+   goto pvpdifficultyselect
  }
  
 else
@@ -3137,22 +3162,79 @@ goto teamclose
 }
 
 
-pvpplay:
-/* figured out that during scripting how to click a pre determined button if there are multiple options. Previously the script had been
-just looking for one option. During the PVP opponent selection screen there will be multiple of the same button and we 
-are trying to let the user tell the bot which to hit. To do that we perform our regular search
-Text:="|<>*198$70.30000EA00U00Q01010k0W001M0404302800BX6swEASQXDAmAN6N0mAWNWGAlYEbzMG/4BMH6H3EBV8sTpzgNAB0q4Xn046lYEY3MG9Y0k96FaEAX8WMm0rtnl0lsuAy00000000000000000000000000000000000M"
+pvpdifficultyselect:
+goto pvpdifficulty%pvpdifficulty%
+;
+pvpdifficulty5:
+;check for a pre set ticket cost 5
+Text:="|<>0xFFFFFF@0.36$44.k000000A0000000000000000000000000000000003zw00000zz00000Dzn00003zwk0000w0A0000D03s0003zky0000zwDU0003znz0000zwzk0000DDw000Dzks0003zwC0000zw3U000Dz00000000000000000000000000000000000008"
 
- if (ok:=FindText(50-150000, 527-150000, 50+150000, 527+150000, 0, 0, Text)) ;This will need to be replaced because this is test code that doesnt search for anything game related
+ if (ok:=FindText(1241-150000, 734-150000, 1241+150000, 734+150000, 0, 0, Text))
  {
-   CoordMode, Mouse
-   X:=ok.1.x, Y:=ok.1.y, Comment:=ok.1.id 
-   ;Change the .1 after the Variable, in this case its ok.1 to whichever one of them you want to hit. So if there is Five fight buttons(five PVP opponents)
-   and you want to battle PVP opponent Number 2 you could do
-   X:=ok.2.x, Y:=ok.2.y           realistically you may want to use X:=ok.%pvpopponent%.x Y:=ok.%pvpopponent%.y so user config picks which opponent to fight
-   Click, %X%, %Y%
+   goto pvpplay
  }
- */
+else
+{
+;opening cost selector menu
+Text:="|<>0xFFFFFF@1.00$20.000000000000000000000000000Tzw7zz1zzk3zU0zs0Dy00Q007001k00Q00000000000U"
+
+	if (ok:=FindText(1314-150000, 731-150000, 1314+150000, 731+150000, 0, 0, Text))
+	{
+   CoordMode, Mouse
+   X:=ok.1.x, Y:=ok.1.y, Comment:=ok.1.id
+   Click, %X%, %Y%
+   sleep 900
+   Text:="|<>0xFFFFFF@1.00$41.000000000000000000000000000000TzU0000zz00001zy00003U000007000000C000000Tw00000Ds00000Ty000000Q000000s000001k0000TzU0000zs00001zk00000000000000000000000000000E"
+
+		if (ok:=FindText(1106-150000, 927-150000, 1106+150000, 927+150000, 0, 0, Text))
+		{
+		CoordMode, Mouse
+		X:=ok.1.x, Y:=ok.1.y, Comment:=ok.1.id
+		Click, %X%, %Y%
+		sleep 1000
+		goto pvpplay
+		}
+	}
+}
+
+
+
+
+
+pvpdifficulty4:
+;check for a pre set ticket cost of 4
+Text:="|<>0xFFFFFF@0.36$71.0s00000000001k0000000000Q00000000000s00000000001k0000000000Q00000D3k000s00000S7U001k00000wD00003U0001sS0000700003kw0000C00007Vs0003zU000Dzk0007z0000TzU000Dy0000Dz00003zU000Ty00007z00000w0000Dy00001s00003U00003k00007000007U0000C00000D000000000000000000000000000000000000000000000000000000000000001"
+
+ if (ok:=FindText(1247-150000, 734-150000, 1247+150000, 734+150000, 0, 0, Text))
+ {
+goto pvpplay
+ }
+else
+{
+;opens cost selector menu
+Text:="|<>0xFFFFFF@1.00$20.000000000000000000000000000Tzw7zz1zzk3zU0zs0Dy00Q007001k00Q00000000000U"
+
+	if (ok:=FindText(1314-150000, 731-150000, 1314+150000, 731+150000, 0, 0, Text))
+	{
+   CoordMode, Mouse
+   X:=ok.1.x, Y:=ok.1.y, Comment:=ok.1.id
+   Click, %X%, %Y%
+   sleep 900
+   Text:="|<>0xFFFFFF@1.00$44.000000000000000000000000C1k00003UQ00000s700000C1k00003UQ00000s700000Dzk00000zw00000Dz0000001k000000Q00000070000001k000000Q00000070000000000000000000000000U"
+
+		if (ok:=FindText(1111-150000, 867-150000, 1111+150000, 867+150000, 0, 0, Text))
+		{
+		CoordMode, Mouse
+   X:=ok.1.x, Y:=ok.1.y, Comment:=ok.1.id
+   Click, %X%, %Y%
+   sleep 1000
+   goto pvpplay
+		}
+	}
+}
+;Missing PVP difficulties 1-3
+
+pvpplay:
 return
 
 
@@ -3203,11 +3285,76 @@ Else
 }
 }
 
+End::
+Fishingstart:
+ ; Clicks the fishing event icon 
+Text:="|<>0xFFFFFF@1.00$48.D4D493kSk4E4948UU4E4948Uk4E4N48Uw4C7t48aU414948WU414948WU4S4948QU4S4948QU"
 
+ if (ok:=FindText(1482-150000, 871-150000, 1482+150000, 871+150000, 0, 0, Text))
+ {
+   CoordMode, Mouse
+   X:=ok.1.x, Y:=ok.1.y, Comment:=ok.1.id
+   Click, %X%, %Y%
+   Sleep 750
+ }
 
+Text:="|<>0xFFFFFF@1.00$71.000000000000000000000000000000000000000000000000000000000000Tw3U07w1UQ00zs700Ds30s01zwC01zy61k030sQ03UQA3U061ks070sM700A3Vk0C1kkC00Tz3U0TzVzw00zs700zz0zU01zkC01zy1z00300Q03UQ0s00600s070s1k00A01k0C1k3U00M03zsQ3U7000k01zks70C001U03zVkC0Q0000000000000000000000000000000000000000000000000000000000001" 
+; Clicks play
+ if (ok:=FindText(1046-150000, 752-150000, 1046+150000, 752+150000, 0, 0, Text))
+ {
+   CoordMode, Mouse
+   X:=ok.1.x, Y:=ok.1.y, Comment:=ok.1.id
+   Click, %X%, %Y%
+   Sleep 750
+ }
 
+Loop
+{
+Text:="|<>0xFFFFFF@1.00$71.000000000000000000000000000000000000000000000001zkzz0zU7w3zXzVzy1z0Ds7zTz3zwDzVzwDys00A0Q73UM0lk00M0sC70k1XU00k1kQC1U37z01U3zsTz063y0307zkzs0A7z060DzVzk0M060A0Q73XU0k0A0M0sC77k1U0M0k1kQC1U37zk1U3UsQ306Dy03071ks60ATw060C3VkA0M00000000000000000000000000000000000000000000000000000000000000000000001"
+; Clicks start
+ if (ok:=FindText(1118-150000, 906-150000, 1118+150000, 906+150000, 0, 0, Text))
+ {
+   Sleep 800
+   CoordMode, Mouse
+   X:=ok.1.x, Y:=ok.1.y, Comment:=ok.1.id
+    Click, %X%, %Y%
+	goto, fishingrunning
+ }
+}
+ 
+Fishingrunning:
+ Loop
+ {
+Text:="|<>0xFFFFFF@1.00$71.000000000000000000000000000000000000000000000000Tw1z0Dy7zk00zs3y0TwDzU07zkTz3zsTz00C00kC7003U00Q01UQC007000s030sQ00C001k07zkzs0Q003U0DzUTk0s00700Tz0zs1k00C00kC01k3U00Q01UQ03U7000s030s070C001zw61kzy0Q000zsA3Vzk0s001zkM73zU1k0000000000000000000000000000000000000000000000000000000000000000000000001"
+;Cast button detect
+ if (ok:=FindText(1124-150000, 906-150000, 1124+150000, 906+150000, 0, 0, Text))
+ {
+   CoordMode, Mouse
+   X:=ok.1.x, Y:=ok.1.y, Comment:=ok.1.id
+    Sleep 650 ; Epic rod - Seems to consistently hit 48-52 most of the time
+    Click, %X%, %Y%
+	goto, fishcatch
+ }
+}
+
+fishcatch: ; DOES NOT WORK PROPERLY YET
+Text:="|<>0x4EFF00@1.00$36.000000000000000000000000A1y0DkA1y0DkADzUzyAC1UkCAC1UkCAC1UkCAC1UkCAC1UkCAC1UkCAC1UkCAC1UkCAC1UkCADzUzyA1y0DsA1y0Dk000000000000000000000000000000000000U" ; Looking for 100%
+ 
+ if (ok:=FindText(1419-150000, 824-150000, 1419+150000, 824+150000, 0, 0, Text))
+ {
+  Text.="|<>0xFFFFFF@1.00$71.000000000000000000000000000000000000000000000001zk7w3zs7w3U3zUDs7zkDs70Tz3zwDzVzwC0s070s1k3UMQ1k0C1k3U70ks3U0Q3U70C01k700zz0C0Q03zi01zy0Q0s07zQ03zw0s1k0Dys070s1k3U0Q1k0C1k3U70ks3U0Q3U70C1Vk7zks70C0Tz3U3zVkC0Q0Ds707z3UQ0s0TkC000000000000000000000000000000000000000000000000000000000000000000000001"
+ ; Catch Button
+ if (ok:=FindText(1419-150000, 824-150000, 1419+150000, 824+150000, 0, 0, Text))
+ {
+   CoordMode, Mouse
+   X:=ok.1.x, Y:=ok.1.y, Comment:=ok.1.id
+    Click, %X%, %Y%
+ }
+ }
+
+ for i,v in ok
+   if (i<=2)
+     FindText.MouseTip(ok[i].x, ok[i].y)
 ;====================================END====================================
 
 ^i::Reload
-
-

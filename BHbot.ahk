@@ -2617,21 +2617,20 @@ Bind4      = BindWindow3 = Bind the window and Use PrintWindow(,,3) to get the i
 Loop
 {
 sleep 120
- t1:=A_TickCount, X:=Y:=""
 
 Text:="|<>0xFFFFFF@1.00$71.00007zzzzzzk0003zzzzzzzU000zzzzzzzz000Tzzzzzzzy001zzzzzzzzy003zzzzzzzzw00Dzzzzzzzzs00Tzzzzzzzzs01zzzzzrzzzk07zzzzsDzzzU0Dzzzw0Tzzz00zzzz01zzzz01zzzU07zzzy07zzk00Dzzzw0Dzs000zzzzs0zw0001zzDzkTy00007zyTzzz00000Dzszzzk00000zzVzzzU00003zz1zzy000007zw3zzs00000Tzs7zzU00000zzU7zy000003zy0Dzs000007zw0Tz"
 
 	if (ok:=FindText(1127-150000, 551-150000, 1127+150000, 551+150000, 0, 0, Text))
 	{
-;Goto checklogin
+	Goto checklogin
 	}
 }
-Msgbox can't find game element
+
 
 
 
 ;===========================CLAIM AND NEWS CLOSE============================
-
+checklogin:
 /*
 Text:="|<>0xFFFFFF@1.00$71.00000000000000000000000000000000000000000000000000000000000000000000000Dz3007w3UTz0Ty600Ds70zz3U0A01kQC773b00M03UsQCC7C00k071ksQQCQ01U0C3VkssQs0300Tz3Vlktk0600zy73XVnU0A01kQC773b00M03UsQCC7C00k071ksQQCQ01U0C3VkssQDz1zsQ73VlksTy1zksC73XVk00000000000000000000000000000000000000000000000000000000001"
 ;claim button
@@ -2641,18 +2640,13 @@ Text:="|<>0xFFFFFF@1.00$71.00000000000000000000000000000000000000000000000000000
    X:=ok.1.x, Y:=ok.1.y, Comment:=ok.1.id
     Click, %X%, %Y%
  }
-
-
- for i,v in ok
-   if (i<=2)
-     FindText.MouseTip(ok[i].x, ok[i].y)
-	 
-	 
+ 
 
 Loop, 10
 {
-Text:="|<>0xFFFFFF@1.00$71.0000000000000000000000000000s3U000000001s70000000003kC0000000007UQ000000000D0s000000000Tzk000000000Dy0000000000Dw0000000000Ts0000000000zk0000000001zU0000000003z0000000000zzU000000001s70000000003kC0000000007UQ000000000D0s000000000Q1k0000000000000000000000000000000000000000000000000000000000000001"   ;X button twice for closing news and items rewards.
-
+Sleep 800
+Text:="|<>0xFFFFFF@1.00$71.0000000000000000000000000000s3U000000001s70000000003kC0000000007UQ000000000D0s000000000Tzk000000000Dy0000000000Dw0000000000Ts0000000000zk0000000001zU0000000003z0000000000zzU000000001s70000000003kC0000000007UQ000000000D0s000000000Q1k0000000000000000000000000000000000000000000000000000000000000001"
+;X button for closing news and item/claim reward screens and bait.
  if (ok:=FindText(1313-150000, 445-150000, 1313+150000, 445+150000, 0, 0, Text))
  {
    CoordMode, Mouse
@@ -2661,16 +2655,11 @@ Text:="|<>0xFFFFFF@1.00$71.0000000000000000000000000000s3U000000001s70000000003k
  }
 
 
- for i,v in ok
-   if (i<=2)
-     FindText.MouseTip(ok[i].x, ok[i].y)
-}
-
  
 
 
-Text:="|<>0x7B5E33@1.00$10.NVa0003UC0y3sC7sTsDUy3sDyzu080zXyC0s000002" ; Bounty Board
-
+Text:="|<>0x7B5E33@1.00$10.NVa0003UC0y3sC7sTsDUy3sDyzu080zXyC0s000002" 
+; Bounty Board
  if (ok:=FindText(858-150000, 876-150000, 858+150000, 876+150000, 0, 0, Text))
  {
    CoordMode, Mouse
@@ -2679,14 +2668,8 @@ Text:="|<>0x7B5E33@1.00$10.NVa0003UC0y3sC7sTsDUy3sDyzu080zXyC0s000002" ; Bounty 
  }
 
 
- for i,v in ok
-   if (i<=2)
-     FindText.MouseTip(ok[i].x, ok[i].y)
-
-
-
-Text:="|<>0xFFFFFF@1.00$71.0000000000000000000000000000000000000000000000000000000000000000000000003007w0zUDzU0600Ds1zUTz00A01sQD3k7U00M03UsQ3U7000k071ks70C001U0C3VkC0Q00300Q73UQ0s00600sC70s1k00A01kQC1k3U00M03UsQ3U7000k071ks70C001U0C3VkC0Q003zsTz3zw0s001zkDs1z01k003zUTk3y03U000000000000000000000000000000000000000000000001" ; Bounty board Loot button click script
-
+Text:="|<>0xFFFFFF@1.00$71.0000000000000000000000000000000000000000000000000000000000000000000000003007w0zUDzU0600Ds1zUTz00A01sQD3k7U00M03UsQ3U7000k071ks70C001U0C3VkC0Q00300Q73UQ0s00600sC70s1k00A01kQC1k3U00M03UsQ3U7000k071ks70C001U0C3VkC0Q003zsTz3zw0s001zkDs1z01k003zUTk3y03U000000000000000000000000000000000000000000000001" 
+; Bounty board Loot button click script
  if (ok:=FindText(1262-150000, 586-150000, 1262+150000, 586+150000, 0, 0, Text))
  {
 Sleep 150
@@ -2696,14 +2679,14 @@ Sleep 150
  }
 */
 
-;Maybe Main: label here
+;Maybe MainLoop: label here
 ;if raidcheck = 0
-;{
-Goto raidscripting
-;}
+{
+;Goto raidscripting
+}
 ;Else if pvpcheck = 0
 {
-Goto pvpscripting
+;Goto pvpscripting
 }
 ;Else if 
 
@@ -2719,6 +2702,18 @@ Text:="|<>0xFFFFFF@1.00$23.S3kaW8F94EWG8V4bVy9924GU" ; Raid Button
 Sleep 2000
 Goto raid%raidtier%check
  }
+ Else
+ {
+ raidcheck = 1
+ settimer, raidcheckRESET, 300000
+ Sleep 10
+ goto ;mainloop
+ }
+ 
+ 
+raidcheckreset:
+raidcheck = 0
+return
 ;
 ;============Raid Functionality==================================
 Raid1Check:
@@ -2988,10 +2983,7 @@ Text:="|<>0xFFFFFF@0.92$71.000000000000000000000000000000000000000000000000000C3
 Sleep 800
 Goto teamclose
  }
-Else
-{
 
-}
 
 raidrunning:
 ;perform check to see if the player is not Autoing at raid start
@@ -3080,7 +3072,7 @@ Text:="|<>0xFFFFFF@1.00$29.03nk007bU003w000000000000w8Hs14Ea828V8E4F2MUD24y0E4l0
  }
 else
 {
-;goto Main
+goto checklogin
 }
 
 
@@ -3235,7 +3227,6 @@ Text:="|<>0xFFFFFF@1.00$20.000000000000000000000000000Tzw7zz1zzk3zU0zs0Dy00Q0070
 		}
 	}
 }
-;Missing PVP difficulties 1-3
 pvpdifficulty3:
 ;check for a pre set ticket cost of 3
 Text:="|<>0xFFFFFF@0.85$71.000000000000000000000000000000000000000000000000000007z0000000000Dy00001k00000700003U00000C00007000000Q0001zk0000Ds0003zU0000Tk0007z00000zU0001zk0000700003zU0000C00007z00000Q00001k0003zs00003U0007z0000070000Dw000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"
@@ -3280,13 +3271,42 @@ Text:="|<>0xFFFFFF@1.00$71.00000000000000000000000000000000000000000000000000000
    X:=ok.1.x, Y:=ok.1.y, Comment:=ok.1.id
    Click, %X%, %Y% ;Need to implement PVP ticket check
    Sleep 2900
-   Goto PVPOpponentSelect
+   Goto TicketCheck
  }
  Else
  {
  msgbox Couldn't find PvpPlay button? Bot hangs at line 3289
  }
 return
+
+
+
+TicketCheck:
+Text:="|<>0xFFFFFF@0.92$71.7U7U0000zw0wD0D00001zs1sS0S00003zk3kw0w0000zzw7Vs1s0001zzsD3k3k0003k7kS7U7U0007UDUwD0D0000D0T1sT0y0000S0y3kzzw0000w1w7lzzs0001s3sDXzzk0003k7kT7zzU0007UDUyD0D0000D0T1sS0S0000S0y3kw0w0000w1w7Vs1s0001s3sD3k3k0003zzkS7U7U0007zzUwD0D00001zs1sS0S00003zk3k00000000000000000000000000000000000000000000001"
+;I think  this checks for the word purchase on screen
+ if (ok:=FindText(1119-150000, 688-150000, 1119+150000, 688+150000, 0, 0, Text))
+ {
+Goto PVPCancelled
+ }
+Else
+{
+Goto PVPOpponentSelect
+}
+
+PVPCancelled:
+;sets a var to not check PVP for the time being
+;declines purchase prompt
+PVPcheck = 1
+Text:="|<>0xFFFFFF@0.92$71.000000000000000000000000000000000000000000000000000C3UTs0000000Q70zk0000000yC7zs0000001wQC1k0000003zsQ3U0000007zks70000000DzVkC0000000QT3UQ0000000sy70s0000001kQC1k0000003UsQ3U00000071ks70000000C3VsS0000000Q70zk0000000sC1zU00000000000000000000000000000000000000000000000000000000000000000000000001"
+
+ if (ok:=FindText(1186-150000, 890-150000, 1186+150000, 890+150000, 0, 0, Text))
+ {
+   CoordMode, Mouse
+   X:=ok.1.x, Y:=ok.1.y, Comment:=ok.1.id
+   Click, %X%, %Y%
+Sleep 800
+Goto teamclose
+ }
 
 PVPOpponentSelect:
 ;Searching For FIGHT button and then referencing PVPOpponent variable as to which one to hit.
@@ -3297,7 +3317,7 @@ Text:="|<>0xFFFFFF@1.00$59.00000000000000000000000000000000000000000000000000zVU
  if (ok:=FindText(1323-150000, 736-150000, 1323+150000, 736+150000, 0, 0, Text))
  {
    CoordMode, Mouse
-   X:=ok[pvpopponent].x, Y:=ok[pvpopponent].y, Comment:=ok.1.id
+   X:=ok[pvpopponent].x, Y:=ok[pvpopponent].y, Comment:=ok.1.id ;Variable specific PVP opponent selection. Big brain!
    Click, %X%, %Y%
    Sleep 1000
  }
@@ -3324,8 +3344,8 @@ Text:="|<>0xFFFFFF@0.49$37.0000000000000000000000000000000000000000000007y00003z
    X:=ok.1.x, Y:=ok.1.y, Comment:=ok.1.id
    Click, %X%, %Y%
  }
-	Loop
-	{
+Loop
+{
 	Sleep 900
 		;Check for defeated screen
 		Text:="|<>0xFFFFFF@1.00$73.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000zUs00Dw0Ty0TzkQ007y0DzUDzsC007z07zkDzw700DzsDzsTw03U07UQ700C001k03kC3U07000s01s71k03U00Q00w3Uzw1zU0C00S1k7y0zk0700D0s3z0Ts03U07UQ1zwDw01k03kC00S7000s01s700D3U00Q00w3U07VkDsDzsTzkTzkzzw1zw3zUDz07zy0zy0zk7zU1zz0Tz0Ts3zk0z00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"
@@ -3339,7 +3359,8 @@ Text:="|<>0xFFFFFF@0.49$37.0000000000000000000000000000000000000000000007y00003z
    goto pvpplay
  }
 	;Check for victory screen and hit close button
-	 if (ok:=FindText(1123-150000, 978-150000, 1123+150000, 978+150000, 0, 0, Text))
+Text:="|<>0xFFFFFF@1.00$71.00000000000000000000000000000000000000000000000000000000000TwC00Ds1zk7zzsQ00Tk3zUDzzks03zsTz3zy01k071ks070403U0C3Vk0C080700Q73U0Q0E0C00sC7z0zkU0Q01kQ3y1zV00s03Us7z3z201k071k0670403U0C3U0AC080700Q700MQ0TwDzkzy7zkzzzs3zUTkDy0Dzzk7z0zUTw0Tw00000000000000000000000000000000000000000000000000000000001"
+if (ok:=FindText(1001-150000, 988-150000, 1001+150000, 988+150000, 0, 0, Text))
  {
    CoordMode, Mouse
    X:=ok.1.x, Y:=ok.1.y, Comment:=ok.1.id
@@ -3356,8 +3377,6 @@ Text:="|<>0xFFFFFF@0.49$37.0000000000000000000000000000000000000000000007y00003z
 Teamclose:
 Loop,4 
 {
-; #Include <FindText>
-
 
 Text:="|<>0xFFFFFF@1.00$17.000000s3Vs73kC7UQD0sTzkDy0Dw0Ts0zk1zU7z0zzVs73kC7UQD0sQ1k004"
 
@@ -3366,20 +3385,16 @@ Text:="|<>0xFFFFFF@1.00$17.000000s3Vs73kC7UQD0sTzkDy0Dw0Ts0zk1zU7z0zzVs73kC7UQD0
    CoordMode, Mouse
    X:=ok.1.x, Y:=ok.1.y, Comment:=ok.1.id
    Click, %X%, %Y%
-   goto, raidclose
+   goto, menusclose
  }
-
-Else
-{
-;Goto main
 }
+Goto menusclose
 
- }
 
-Raidclose:
-Loop
+menusclose:
+Loop, 8
 {
-Sleep 100
+Sleep 150
 Text:="|<>0xFFFFFF@1.00$14.0070xkDQ3r0xkDTzVzUTs7y1zUTs7z7UxkDQ3r0xkD00002"
 
  if (ok:=FindText(1426-150000, 404-150000, 1426+150000, 404+150000, 0, 0, Text))
@@ -3387,14 +3402,11 @@ Text:="|<>0xFFFFFF@1.00$14.0070xkDQ3r0xkDTzVzUTs7y1zUTs7z7UxkDQ3r0xkD00002"
    CoordMode, Mouse
    X:=ok.1.x, Y:=ok.1.y, Comment:=ok.1.id
     Click, %X%, %Y%
-	goto Raidclose
+	Sleep 900
+	goto mainloop
  }
-Else
-{
-;goto Main
-
 }
-}
+Goto mainloop
 ;Fishing is sorta fucked and I can't find a good way to accomplish what I want with it.
 End::
 Fishingstart:

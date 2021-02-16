@@ -12,6 +12,10 @@ This is where you can go if you would like to ask questions or keep up to date w
 
 COMPLETED (?) need tested:
 AUTO RECONNECT
+
 AUTO CONSUME MINOR BOOSTS
+  
 RAID FUNCTIONALITY <= R7 (T10)
+  
+  
 PVP FUNCTIONALITY

@@ -1,4 +1,5 @@
-﻿;This will likely be the Init or start file for the bot.
+﻿;This will likely be the Init or start file for the bot if you desire auto-reconnect functionality. Please mind if you intend to run the .ahk noncompiled script version of the main, then you need to
+ ;change any references to BHBot.exe at the bottom of this script, as there are run and process,close commands that were intended for the compiled executable
 
 FindText(args*)
 {

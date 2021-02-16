@@ -1,4 +1,10 @@
 ﻿
+/*the release versions of BHBot were intended to be compiled into .exe that already include an AHK runtime so no need to install autohotkey for the end user, just run the .exe and the AHK script would work. However once compiled the current config settings wouldn't be able to be changed by users.
+Will probably need to a
+#INCLUDE config.cfg
+at the top to remedy this
+*/
+
 ;User config
 RaidTier = 3
 RaidDifficulty = 3

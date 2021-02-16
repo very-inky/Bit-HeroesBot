@@ -6,6 +6,12 @@ Most of the functionality of this script has been disabled as not to autorun and
 
 
 TODO:
-Implement auto disconnect, found a way to do it without looping it in main I think, need to start world boss functionality as well.
+World Boss functionality. 
 http://discord.gg/wEvJ8cmcYf
 This is where you can go if you would like to ask questions or keep up to date with the project
+
+COMPLETED (?) need tested:
+AUTO RECONNECT
+AUTO CONSUME MINOR BOOSTS
+RAID FUNCTIONALITY <= R7 (T10)
+PVP FUNCTIONALITY

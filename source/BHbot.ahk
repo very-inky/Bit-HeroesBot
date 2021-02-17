@@ -1,11 +1,25 @@
 ﻿
-/*the release versions of BHBot were intended to be compiled into .exe that already include an AHK runtime so no need to install autohotkey for the end user, just run the .exe and the AHK script would work. However once compiled the current config settings wouldn't be able to be changed by users.
-Will probably need to a
-#INCLUDE config.cfg
-at the top to remedy this
+/* The compiled version of the bot will not allow you to edit the config here within the script
+Is this a viable solution, just referencing a config file that is a clone of the user config here
+only ran if script knows its compiled?
+
+Why not try this!
+if (A_IsCompiled = 1) 
+{
+goto Includeconfigfile
+}
+
+else goto ahkconfig
+
+Includeconfigfile:
+#Include config.cfg
+goto scriptedvars
+
+Need to add a config.cfg file to the scripts working directory so users running the compiled version can still have config, as .exe will not be editable
+
 */
 
-;User config
+;ahkconfig:
 RaidTier = 3
 RaidDifficulty = 3
 
@@ -20,9 +34,8 @@ AutoBestTeam = true
 
 
 
-
-;Dont change these variables!
-;Not configurable!
+scriptedvars:
+;Dont change these variables unless you know what you're doing!!
 Raidcheck = 0
 Pvpcheck = 0
 pvpteam = 0

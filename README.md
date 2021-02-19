@@ -5,17 +5,16 @@ THIS SCRIPT IS ACTIVELY BEING DEVELOPED
 Most of the functionality of this script has been disabled as not to autorun and hotkeys have been bound to test things as needed. THIS IS NOT A RELEASE!!!!
 
 
-TODO:
+Currently Working on:
 World Boss functionality. 
 http://discord.gg/wEvJ8cmcYf
 This is where you can go if you would like to ask questions or keep up to date with the project
 
 COMPLETED (?) need tested:
-AUTO RECONNECT
+AUTO RECONNECT via listener.ahk
 
 AUTO CONSUME MINOR BOOSTS
   
 RAID FUNCTIONALITY <= R7 (T10)
-  
   
 PVP FUNCTIONALITY

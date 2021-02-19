@@ -13,7 +13,7 @@ else goto ahkconfig
 
 Includeconfigfile:
 #Include config.cfg
-goto scriptedvars
+goto finishDvars
 
 Need to add a config.cfg file to the scripts working directory so users running the compiled version can still have config, as .exe will not be editable
 
@@ -23,28 +23,33 @@ Need to add a config.cfg file to the scripts working directory so users running 
 RaidTier = 3
 RaidDifficulty = 3
 
-pvpstrip = true
+pvpstrip = false ;This isn't finished
 pvpstripitems = ;literally have no idea how to implement this?!!!!
 pvpdifficulty = 5
 ;PVP difficulties 3, 4, and 5 are supported
 pvpopponent = 1
-;
+
 AutoUse = true
 AutoBestTeam = true
 
+;------
+worldbossdifficulty = 3
+whichworldboss = 1
+;define which worldboss to fight. 1 is Orlag clan, 2 is Netherworld, 3 for Melvin Factory, 4 for 3XT3RMIN4TION
 
 
-scriptedvars:
+setDvars:
 ;Dont change these variables unless you know what you're doing!!
 Raidcheck = 0
 Pvpcheck = 0
 pvpteam = 0
 Energycheck = 0
-Worldboss = 0
-Trialgauntlet = 0
+Worldbosscheck = 0
+TrialGauntletcheck = 0
 bountiescheck = 0
+wbsolofarm = true ;unfinished, don't change
 
-
+finishDvars:
 
 
 ;===== Copy The Following Functions To Your Own Code Just once =====
@@ -2635,14 +2640,17 @@ Bind4      = BindWindow3 = Bind the window and Use PrintWindow(,,3) to get the i
 ;Checking for Game element based off unity loading symbol
 Loop
 {
-sleep 120
+sleep 100
 
-Text:="|<>0xFFFFFF@1.00$71.00007zzzzzzk0003zzzzzzzU000zzzzzzzz000Tzzzzzzzy001zzzzzzzzy003zzzzzzzzw00Dzzzzzzzzs00Tzzzzzzzzs01zzzzzrzzzk07zzzzsDzzzU0Dzzzw0Tzzz00zzzz01zzzz01zzzU07zzzy07zzk00Dzzzw0Dzs000zzzzs0zw0001zzDzkTy00007zyTzzz00000Dzszzzk00000zzVzzzU00003zz1zzy000007zw3zzs00000Tzs7zzU00000zzU7zy000003zy0Dzs000007zw0Tz"
+Text:="|<>0xFFFFFF@1.00$101.000000Tzzzzzzw000000007zzzzzzzs00000003zzzzzzzzk0000000Dzzzzzzzzk0000000TzzzzzzzzU0000001zzzzzzzzz00000003zzzzzzzzz0000000Dzzzzyzzzy0000000zzzzz1zzzw0000001zzzzU3zzzs0000007zzzs0Dzzzs000000Dzzw00zzzzk000000zzy001zzzzU000001zz0007zzzz0000007zU000Dztzz000003zk0000zznzy000Dzzs00001zz7zw000zzy000007zwDzw003zzw00000TzsDzs00Dzzk00000zzUTzk00zzz000003zz0zzU03zzw000007zw0zzU0Dzzk00000Tzk1zz00Tzz000000zzU3zy00zzw000003zy07zw01zzk00000Dzw07zw03zz000000Tzk0Dzs07zw000001zzU0Tzk0Dzk000003zy00zzU0Tz000000Dzs00zzU0zw000000Tzk01zz01zk000001zz003zy03z0000007zy003zy07w000000Dzs007zw0Dk000000zzU00Dzs0T0000001zz000Tzk0w0000007zw000Tzk1k000000Dzs000zzU30000000zzU001zz040000003zz0001zy000000007zw0003zs00000000Tzk0007zU00000000zzU000Dz000000003zy0000Dw000000007zw0000Ts00000000Tzk0000zU0DzzzzzzzzU0001y00Tzzzzzzzy00001w00zzzzzzzzs00003k01zzzzzzzzk00007U03zzzzzzzz000006007zzzzzzzy00000A00Dzzzzzzzw00000M00Tzzzzzzzw00001s00zzzzzzzzs00003k01zzzzzzzzs00007k03zzzzzzzzs0000Dk00000000Tzk0000zU00000000zzk0001zU00000000zzU0003z000000000zzU000Dz000000001zz0000Tz000000001zz0000zy040000003zz0001zy0A0000003zy0007zw0Q0000007zy000Dzs0w0000007zw000TzU1w0000007zw001zz03w000000Dzs003zy07w000000Dzs007zw0Dw000000Tzs00Dzk0Tw000000Tzk00zzU0zw000000Tzk01zz01zw000000zzU03zy03zw000000zzU07zs07zw000001zz00Tzk0Dzw000001zz00zzU0Tzw000003zz01zy00zzw000003zy07zw01zzw000003zy0Dzs03zzw000007zw0Tzk03zzw000007zw0zz003zzw00000Dzw3zy003zzs00000Dzs7zw003zzs00000TzsDzs003zzs00000TzkTzU003zzy00000Tzlzz000000Tk0000zzXzy000000Ty0000zzbzs000000zzk001zzzzk000000zzy001zzzzU000001zzzk01zzzz0000001zzzy03zzzw0000001zzzzk3zzzs0000003zzzzy7zzzk0000003zzzzzzzzzU0000007zzzzzzzzy00000007zzzzzzzzw0000000Dzzzzzzzzs0000000DzzzzzzzzU0000000Dzzzzzzzz000E"
 
-	if (ok:=FindText(1127-150000, 551-150000, 1127+150000, 551+150000, 0, 0, Text))
-	{
-	Goto checklogin
-	}
+ if (ok:=FindText(1128-150000, 640-150000, 1128+150000, 640+150000, 0, 0, Text))
+ {
+   CoordMode, Mouse
+   X:=ok.1.x, Y:=ok.1.y, Comment:=ok.1.id
+   Click, %X%, %Y% ;This click is necessary because if you dont click the game window, the checklogin script with the send escape keys wont work.
+   goto checklogin
+ }
 }
 
 
@@ -2651,31 +2659,18 @@ Text:="|<>0xFFFFFF@1.00$71.00007zzzzzzk0003zzzzzzzU000zzzzzzzz000Tzzzzzzzy001zzz
 ;===========================CLAIM AND NEWS CLOSE============================
 checklogin:
 /*
-Text:="|<>0xFFFFFF@1.00$71.00000000000000000000000000000000000000000000000000000000000000000000000Dz3007w3UTz0Ty600Ds70zz3U0A01kQC773b00M03UsQCC7C00k071ksQQCQ01U0C3VkssQs0300Tz3Vlktk0600zy73XVnU0A01kQC773b00M03UsQCC7C00k071ksQQCQ01U0C3VkssQDz1zsQ73VlksTy1zksC73XVk00000000000000000000000000000000000000000000000000000000001"
-;claim button
- if (ok:=FindText(1121-150000, 750-150000, 1121+150000, 750+150000, 0, 0, Text))
- {
-   CoordMode, Mouse
-   X:=ok.1.x, Y:=ok.1.y, Comment:=ok.1.id
-    Click, %X%, %Y%
- }
- 
 
+;Updated the method for rewards claims and fish bait claim that isn't dogshit
 Loop, 10
 {
-Sleep 800
-Text:="|<>0xFFFFFF@1.00$71.0000000000000000000000000000s3U000000001s70000000003kC0000000007UQ000000000D0s000000000Tzk000000000Dy0000000000Dw0000000000Ts0000000000zk0000000001zU0000000003z0000000000zzU000000001s70000000003kC0000000007UQ000000000D0s000000000Q1k0000000000000000000000000000000000000000000000000000000000000001"
-;X button for closing news and item/claim reward screens and bait.
- if (ok:=FindText(1313-150000, 445-150000, 1313+150000, 445+150000, 0, 0, Text))
- {
-   CoordMode, Mouse
-   X:=ok.1.x, Y:=ok.1.y, Comment:=ok.1.id
-    Click, %X%, %Y%
- }
+Send {esc}
+Sleep 900
+}
 
 
- 
 
+Bounty check is NOT good yet, it looks for bounty board, but only checks ONE time for a LOOT button to claim, and probably won't close the menu from the item claim
+Soo probably Loop the check for loot button, add scripting to close after the click to claim and then an else statement to carry on when no more loots
 if bountiescheck = 0
 {
 Text:="|<>0x7B5E33@1.00$10.NVa0003UC0y3sC7sTsDUy3sDyzu080zXyC0s000002" 
@@ -2701,11 +2696,11 @@ Sleep 150
 
 */
 ;Auto Use
-Home::
+
 if AutoUse = true
 {
 Text:="|<>0x393A3B@1.00$25.0s003U001k000s000U000E000800003s001w000y003z001zU00zk00zs00Tw00Dy00zz00TzU000000000000000000000000000000E"
-;lower left check
+;lower left check that opens the character menu
  if (ok:=FindText(804-150000, 954-150000, 804+150000, 954+150000, 0, 0, Text))
  {
    CoordMode, Mouse
@@ -2855,7 +2850,7 @@ send {esc}
 ;goto mainloop
 
 
-;Maybe MainLoop: label here
+mainloop:
 ;if raidcheck = 0
 {
 ;Goto raidscripting
@@ -2864,7 +2859,11 @@ send {esc}
 {
 ;Goto pvpscripting
 }
-;Else if 
+;Else if worldbosscheck = 0
+{
+;goto worldbossscripting
+}
+;else if
 
 
 raidscripting:
@@ -2985,7 +2984,7 @@ Text:="|<>0xC054FF@1.00$71.00000000000000000000000000000000000000000000000000000
  }
 Else
 {
-Msgbox Raids > raid 7 support is not coded yet
+goto raidselector
 }
 
 
@@ -3145,10 +3144,10 @@ Goto raidrunning
 }
 
 
-Raidcancelled: ;sets a var to not check raids for the time being
+Raidcancelled: ;sets a var to not check raids for the time being and sets timer to manually reset the raidcheck variable back
 ;declines shard purchase prompt
 Raidcheck = 1
-
+settimer, raidcheckRESET, 2100000 ;35Mins
 Text:="|<>0xFFFFFF@0.92$71.000000000000000000000000000000000000000000000000000C3UTs0000000Q70zk0000000yC7zs0000001wQC1k0000003zsQ3U0000007zks70000000DzVkC0000000QT3UQ0000000sy70s0000001kQC1k0000003UsQ3U00000071ks70000000C3VsS0000000Q70zk0000000sC1zU00000000000000000000000000000000000000000000000000000000000000000000000001"
 
  if (ok:=FindText(1186-150000, 890-150000, 1186+150000, 890+150000, 0, 0, Text))
@@ -3246,10 +3245,13 @@ Text:="|<>0xFFFFFF@1.00$29.03nk007bU003w000000000000w8Hs14Ea828V8E4F2MUD24y0E4l0
    goto pvpselector
  }
 else
-{
-goto checklogin
-}
-
+ {
+ pvpcheck = 1
+ settimer, pvpcheckRESET, 300000
+ Sleep 10
+; goto mainloop
+ }
+ 
 
 
 pvpselector: ;One time check for missing team member on PVP team
@@ -3434,7 +3436,7 @@ Text:="|<>0xFFFFFF@0.85$32.000000000000000000000000000000000000001zzk00Tzw007zz0
  }
 }
 
-
+;PVP difficulties 1 and 2 are NOT supported, maybe if there is a justifiable reason to add them I will
 
 pvpplay:
 ;Finding PLAY button for PVP menu
@@ -3472,6 +3474,7 @@ PVPCancelled:
 ;sets a var to not check PVP for the time being
 ;declines purchase prompt
 PVPcheck = 1
+settimer, pvpcheckreset, 1200000 ;20 mins
 Text:="|<>0xFFFFFF@0.92$71.000000000000000000000000000000000000000000000000000C3UTs0000000Q70zk0000000yC7zs0000001wQC1k0000003zsQ3U0000007zks70000000DzVkC0000000QT3UQ0000000sy70s0000001kQC1k0000003UsQ3U00000071ks70000000C3VsS0000000Q70zk0000000sC1zU00000000000000000000000000000000000000000000000000000000000000000000000001"
 
  if (ok:=FindText(1186-150000, 890-150000, 1186+150000, 890+150000, 0, 0, Text))
@@ -3482,6 +3485,11 @@ Text:="|<>0xFFFFFF@0.92$71.000000000000000000000000000000000000000000000000000C3
 Sleep 800
 Goto teamclose
  }
+
+pvpcheckreset:
+pvpcheck = 0
+return
+
 
 PVPOpponentSelect:
 ;Searching For FIGHT button and then referencing PVPOpponent variable as to which one to hit.
@@ -3544,7 +3552,86 @@ if (ok:=FindText(1001-150000, 988-150000, 1001+150000, 988+150000, 0, 0, Text))
    goto Pvpplay
  }
  }
+Home::
+worldbossscripting:
+;check for world boss button on main menu
+Text:="|<>0xFFFFF3@0.93$67.A0wnk000wnk60SNs000SNsA0nA3000AnA60Na1U006Na00n0n0000n300NUNU000NVU0Ak3k000D0k06M1s0007UM00k0000000A00M000000063000000000A1U0000000060k03003k0030M01U01s001U300k00Dk00k1U0M007s00M0k0A003z00A0M06001zU060A00k0zzw0w0600M0Tzy0S030030Dzw0A01U01U7zy0603000nDzz0301U00NbzzU1U0k000Dzz00k0M0007zzU0M000003zzz00000001zzzU000000zDzzk000000Tbzzs000000A3zw000000061zy000000033zz30000001VzzVU0000000Dzk000000007zs0000000DzkDw0000007zs7y0000000zwnw0000000TyNy00000003zzzk0000001zzzs0000000zzzk0000000Tzzs0000000AnD000000006NbU000000000000000000000000000000000000000000000000000000000004"
+ if (ok:=FindText(762-150000, 636-150000, 762+150000, 636+150000, 0, 0, Text))
+ {
+   CoordMode, Mouse
+   X:=ok.1.x, Y:=ok.1.y, Comment:=ok.1.id
+   Click, %X%, %Y%
+   sleep 800
+   goto worldbosspassthrough
+ }
+else
+ {
+ worldbosscheck = 1
+ settimer, worldbosscheckRESET, 300000
+ Sleep 10
+; goto mainloop
+ }
 
+worldbosspassthrough:
+;check for summon button to clear the lobbies menu
+Text:="|<>0xFFFFFF@0.93$69.000000000000000000000000000000000000000000000000000000000000000000000z3Us7zs1zw0zsQ70zz0DzU7z3UsTzy7zz3s0Q73VVksssQ03UsQAC7773U0Q73VVksssQw3UsQAC7773bUQ73VVksssQz3UsQAC7773UsQ73VVksssQ73UsQAC7773UsQ73VVksssQz3zsQAC7773zU7w3VVksss7w0zUQAC7770s0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000U"
+ if (ok:=FindText(574-150000, 851-150000, 574+150000, 851+150000, 0, 0, Text))
+ {
+   CoordMode, Mouse
+   X:=ok.1.x, Y:=ok.1.y, Comment:=ok.1.id
+   Click, %X%, %Y%
+   Sleep 900
+   goto worldbosswipcheck
+ }
+
+worldbosswipcheck:
+if wbsolofarm = true ;unfinished
+	{
+	goto worldboss%whichworldboss%detection ;duh, references that var to go to the correct label
+	}
+
+else
+{
+msgbox config option wbsolofarm = false is not finished yet. Right now WB functionality is intended for farming familiar mats and gem drops by setting that to true.
+goto teamclose
+}
+;
+worldbosscheckreset:
+worldbosscheck = 0
+return
+
+
+
+worldboss1detection:
+;Orlag clan selection script
+;This checks for the yellow ORLAG letters on screen
+Text:="|<>0xFFFF00@0.99$69.00000000000000000000000000000000000000000000000zU7w1U03y0M7w0zkA00Tk33UsS7VU0C3VsQ73UQA01kQC3UsQ3VU0C3VkQ73UQA01kQC3UsTz1U0DzVkQ73zUA01zwC3UsTw1U0DzVkQ73VkA01kQC3UsQDVU0C3VkQ73UQA01kQC3zsQ3VzwC3Vs7w3UQ3zVkQ30zUQ3UTwC3UM000000000000000000000000000000000000000000000000000000000000000000004"
+ if (ok:=FindText(322-150000, 757-150000, 322+150000, 757+150000, 0, 0, Text))
+{
+	;if found we will hit summon and proceed
+		Text:="|<>0xFFFFFF@0.99$69.000000000000000000000000000000000000000000000000000000000000000000000000000000000TsQ70zw0zy07z3UsDzkDzk1U0Q73773XXXA03UsMMMQQQNU0Q73333XXXDw3UsMMMQQQMTUQ73333XXX3z3UsMMMQQQM0MQ73333XXX033UsMMMQQQM0MQ73333XXXDz3zsMMMQQQNzU7w3333XXUDw0zUMMMQQQ000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000U"
+
+				if (ok:=FindText(610-150000, 770-150000, 610+150000, 770+150000, 0, 0, Text))
+				{
+				CoordMode, Mouse
+				X:=ok.1.x, Y:=ok.1.y, Comment:=ok.1.id
+				Click, %X%, %Y%
+				goto worldbossdoublecheck
+				}
+}
+else
+{
+;hits the yellow scroll arrow and recheck for orlag
+Text:="|<>0xF8F477@0.93$23.03U007s00Dk00TU077s0CDk0QTU0z7s1yDk3wTU7zz0Dzy0Tzw0zz01zy03zw07z00Dy00Tw00z001y003w00700E"
+ if (ok:=FindText(725-150000, 689-150000, 725+150000, 689+150000, 0, 0, Text))
+ {
+   CoordMode, Mouse
+   X:=ok.1.x, Y:=ok.1.y, Comment:=ok.1.id
+   Click, %X%, %Y%
+   sleep 800
+   goto worldboss1detection
+ }
+}
 
 
 

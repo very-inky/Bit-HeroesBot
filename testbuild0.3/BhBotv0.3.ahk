@@ -10,8 +10,10 @@ msgbox It is highly encouraged to report any bugs, broken features or issues via
 msgbox Lastly, make sure you have the config.cfg and game options configured as specified, or else the bot will hang! Use Ctrl+i keys (ctrl i) to force close the bot at any time
 goto Includeconfigfile
 }
-else goto ahkconfig
-
+else
+{ 
+goto ahkconfig
+}
 Includeconfigfile:
 #Include config.cfg
 goto finishDvars

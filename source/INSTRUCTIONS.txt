@@ -1,0 +1,12 @@
+Hi! To start the bot for users that don't have AutoHotkey installed run startbot.exe
+
+This bot is only confirmed to work on the Kongregate Unity port of BH.
+
+Please make sure to set these settings in your Bit Heroes game or else the Bot will hang:
+Disable Auto Pilot on Death: false
+Ignore Boss: false
+Ignore Shrines: false
+Auto Pilot: true
+Auto-Persuage with Gold: Set every option here to true
+Decline Merchants: Set every option here to true
+Decline Treasures: True

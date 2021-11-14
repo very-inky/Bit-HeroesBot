@@ -2887,6 +2887,8 @@ goto teamclose
 ;sleep x
 ;goto teamclose
 ;so the bot can properly idle and wait for the variables to get reset
+
+
 raidscripting:
 Text:="|<>0xFFFFFF@1.00$23.S3kaW8F94EWG8V4bVy9924GU" ; Raid Button
 sleep 30

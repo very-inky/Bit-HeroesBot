@@ -1,13 +1,18 @@
-﻿;─────────────────────────────────────────────;
+;CURRENTLY ONLY WORKS ON 4k RESOLUTION AND 150% ZOOM BROWSER
+;we can search multiple strings at once. pipe separates, example
+;Text:="|<>FFFFFF-0.90$99.000000000000000000Ts7UQ1zs7zkzzU003z0w3UDz0zy7zw001zy7UQDzsTzkzzU00C1kw3Vs03k00C0001kC7UQD00S001k000C1kw3Vs03k00C0001kC7UQD0AS001k000C1kw3VzVXzs0C0001kC7UQDwA7z01k000C1kw3VzVUzy0C0001kC7UQD0001k1k000C7kw3Vs000C0C0001ky7UQD0001k1k000CDkw7Vs000S0C0001zy7zwDzsTzk1k0003zk7y0Dz3zs0C0000Ty0zk1zsTz01k0000000000000000004|<>FFFFFF-0.90$75.0zyC3XzszyDzU71lkQQ0700700sCC3XU0s00s071lkQQ1b00700sCC3XyAzs0s071lkQTlVz0700sCC3Xk00C0s071lkQQ001k700syC3XU00C0s077lkQQ001k700Dy3y0zszs0s4"
+;with one string enclosed in quotes, separated by that pipe in the middle, we can search for the same element among different resolutions
+;or use variable of current screen size for what text to look for? Gross.
+;─────────────────────────────────────────────;
 ; Bit Heroes Bot – Multi-State Logic Skeleton  ;
 ; (All actions have a 20-minute cooldown)       ;
 ;─────────────────────────────────────────────;
+SetBatchLines, -1
 #Include FindText.ahk
 #Persistent
 #SingleInstance Force
 
 ;------------- User Configurations -------------
-; Enable/Disable each action as desired.
 actionConfig := {}  ; Associative array for user settings.
 actionConfig["Quest"]      := True
 actionConfig["PVP"]        := True
@@ -22,29 +27,28 @@ actionOrder := ["Quest", "PVP", "WorldBoss", "Raid", "Trials", "Expedition", "Ga
 currentActionIndex := 1
 
 ;------------- Global Variables -------------
-actionCooldown := 1200000          ; 20 minutes in milliseconds.
-lastActionTime := {}               ; Track last execution time for each action.
-; Initialize cooldown timestamps for all actions.
+actionCooldown := 1200000          ; 20 minutes (in ms).
+lastActionTime := {}               ; Track last execution time per action.
 for index, act in actionOrder {
     lastActionTime[act] := 0
 }
 
-; Bot state management:
-; "NotLoggedIn"  – waiting for a stable main-screen indicator,
-; "HandlingPopups" – closing interfering popups,
-; "NormalOperation" – rotating through actions,
-; "Paused" – bot is paused.
+;------------- Bot State Management -------------
+; States:
+; "NotLoggedIn"   – Waiting for the quest icon.
+; "HandlingPopups"– Pop-ups are present; clear them.
+; "NormalOperation" – Rotating through actions.
+; "Paused"        – Bot is paused.
 gameState := "NotLoggedIn"
 
-; Log startup.
 DebugLog("Script started. Initial gameState = NotLoggedIn.")
 
-; Set a timer to run the main bot loop every 1000 ms.
+; Set timer to run main bot loop every 1000 ms.
 SetTimer, BotMain, 1000
 Return
 
 ;─────────────────────────────────────────────;
-; BotMain – Main Loop: State Transitions & Action Dispatch  ;
+; BotMain – Main Loop: State Transitions & Action Dispatch
 ;─────────────────────────────────────────────;
 BotMain:
 {
@@ -52,41 +56,34 @@ BotMain:
         Return
 
     ;---------------------------------------------------------
-    ; STATE: NotLoggedIn – Wait for the main screen "anchor".
+    ; STATE: NotLoggedIn – Check for the quest icon.
     ;---------------------------------------------------------
     if (gameState = "NotLoggedIn") {
-        DebugLog("State: NotLoggedIn – Checking for main screen anchor.")
+        DebugLog("NotLoggedIn: Checking for quest icon...")
         if (IsMainScreenAnchorDetected()) {
-            DebugLog("Main screen anchor detected. Transitioning to HandlingPopups.")
-            gameState := "HandlingPopups"
+            DebugLog("Quest icon detected. Transitioning to NormalOperation.")
+            gameState := "NormalOperation"
         } else {
-            DebugLog("Main screen anchor not detected. Remaining in NotLoggedIn.")
+            DebugLog("Quest icon not detected. Transitioning to HandlingPopups.")
+            gameState := "HandlingPopups"
         }
         Return
     }
-
+    
     ;---------------------------------------------------------
-    ; STATE: HandlingPopups – Close interfering popups.
+    ; STATE: HandlingPopups – Clear pop-ups until quest icon is visible.
     ;---------------------------------------------------------
     if (gameState = "HandlingPopups") {
-        DebugLog("State: HandlingPopups – Checking for popups.")
-        if (ArePopupsPresent()) {
-            DebugLog("Popup detected. Sending {Esc} to close it.")
+        DebugLog("HandlingPopups: Attempting to clear pop-ups...")
+        popupAttempts := 0
+        while (!IsMainScreenAnchorDetected()) {
             Send, {Esc}
-            Sleep, 700  ; Allow time for the popup to close.
-            Return  ; Stay in HandlingPopups for the next cycle.
-        } else {
-            ; this text check for the red X on quest icon itself
-                Text:="|<>*147$71.zzzs000000Dzzzzk000000TzzzzU000000zzzzz0000001zk0000000000DU0000000000T00000000000y00000000001w00000000003z00000000D00C00000000S00Q00000000w00s00000001s01ky000001w003Vw000003s0073s000007k00C7k00000DU00QDU00000T000s0zs000Dy001k1zk000Tw003U3zU000zs00707z0001zk00C00zzk1zk000Q01zzU3zU000s03zz07z0001k07zy0Dy0003U0Dzw0Tw0007000zzz00000C001zzy00000Q003zzw00000s007zzs00001k00Dzzk00003U001w0T0003z0003s0y0007y0007k1w000Dw000DU3s000T00000zs0000y00001zk0001w00003zU0003s00007z00007k0000Dy0000DU003zzzs007z0007zzzk00Dy000DzzzU00Tw000Tzzz000zs00Tw0Tzs01zk00zs0zzk03zU01zk1zzU07z003zU3zz00Dy007z07zy00Tw03k000Tw0Tw007U000zs0zs00D0001zk1zk00S0003zU3zU0T00000D1zky0y00000S3zVw1w00000w7z3s3s00001sDy7k7k00003kTwDU0000000TzsT00000000zzky00000001zzVw00000003zz3s00000000Dy7k00000000TwDU00000000zsT000000001zky000000003zVw000000007z0000000000Dy0000000000Tw0E"
-                if (ok:=FindText(X, Y, 1299-150000, 622-150000, 1299+150000, 622+150000, 0, 0, Text))
-                    {
-                        DebugLog("No popups detected and anchor stable. Transitioning to NormalOperation.")
-                        gameState := "NormalOperation"
-            } else {
-                DebugLog("Anchor lost during HandlingPopups. Reverting to NotLoggedIn.")
-                gameState := "NotLoggedIn"
-            }
+            Sleep, 1000  ; Allow UI to update.
+            popupAttempts++
+            DebugLog("HandlingPopups: Sent {Esc}, attempt #" . popupAttempts)
         }
+        DebugLog("HandlingPopups: Quest icon detected. Transitioning to NormalOperation.")
+        gameState := "NormalOperation"
         Return
     }
     
@@ -97,44 +94,42 @@ BotMain:
         currentAction := actionOrder[currentActionIndex]
         DebugLog("NormalOperation: Attempting action: " . currentAction)
         
-        ; Move to the next action in the rotation for the next cycle.
+        ; Rotate to the next action for the next cycle.
         currentActionIndex := Mod(currentActionIndex, actionOrder.Length()) + 1
 
-        ; Execute only if the action is enabled in user configuration.
         if (!actionConfig[currentAction]) {
-            DebugLog("Action " . currentAction . " is disabled. Skipping.")
+            DebugLog("NormalOperation: Action " . currentAction . " disabled. Skipping.")
             Return
         }
 
         now := A_TickCount
-        ; Check if 20 minutes have passed since this action last ran.
         if ((now - lastActionTime[currentAction]) >= actionCooldown) {
             Switch currentAction {
                 Case "Quest":
-                    DebugLog("Executing Quest action.")
+                    DebugLog("NormalOperation: Executing Quest action.")
                     ActionQuest()
                 Case "PVP":
-                    DebugLog("Executing PVP action.")
+                    DebugLog("NormalOperation: Executing PVP action.")
                     ActionPVP()
                 Case "WorldBoss":
-                    DebugLog("Executing World Boss action.")
+                    DebugLog("NormalOperation: Executing World Boss action.")
                     ActionWorldBoss()
                 Case "Raid":
-                    DebugLog("Executing Raid action.")
+                    DebugLog("NormalOperation: Executing Raid action.")
                     ActionRaid()
                 Case "Trials":
-                    DebugLog("Executing Trials action.")
+                    DebugLog("NormalOperation: Executing Trials action.")
                     ActionTrials()
                 Case "Expedition":
-                    DebugLog("Executing Expedition action.")
+                    DebugLog("NormalOperation: Executing Expedition action.")
                     ActionExpedition()
                 Case "Gauntlet":
-                    DebugLog("Executing Gauntlet action.")
+                    DebugLog("NormalOperation: Executing Gauntlet action.")
                     ActionGauntlet()
             }
             lastActionTime[currentAction] := now
         } else {
-            DebugLog(currentAction . " skipped - cooldown active.")
+            DebugLog("NormalOperation: " . currentAction . " skipped - cooldown active.")
         }
     }
 }
@@ -150,41 +145,38 @@ DebugLog(msg) {
 }
 
 ;─────────────────────────────────────────────;
-; Functions – OCR & UI Detection Placeholders
-; Replace these with your actual integrated OCR routines.
+; OCR & UI Detection Functions
 ;─────────────────────────────────────────────;
 
 IsMainScreenAnchorDetected() {
-Text:="|<>*159$81.zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzk07zzzz00Dzzzy00zzzzs01zzzzk07zzzz00Dzzzy00zzzzs01zzzzk07zzzz00Dzzzy00zzzzs01zzzzk07zzzz00Dzzzy000Tzk001zzzzk003zy000Dzzzy000Tzk001zzzzk003zy000Dzzzy000Tzk001zzzzk003zy000Dzzzzy0000003zzzzzzk000000Tzzzzzy0000003zzzzzzk000000Tzzzzzy0000003zzzzzzk000000Tzzzzzy0000003zzzzzzzs0000zzzzzzzzz00007zzzzzzzzs0000zzzzzzzzz00007zzzzzzzzs0000zzzzzzzzz00007zzzzzzzzs0000zzzzzzzzz00007zzzzzzzzs0000zzzzzzzzz00007zzzzzzzzs0000zzzzzzzzz00007zzzzzzzzs0000zzzzzzzzz00007zzzzzzzk000000Tzzzzzy0000003zzzzzzk000000Tzzzzzy0000003zzzzzzk000000Tzzzzzy0000003zzzzzk003zy000Dzzzy000Tzk001zzzzk003zy000Dzzzy000Tzk001zzzzk003zy000Dzzzy000Tzk001zzzzk003zy000Dzzzy00zzzzs01zzzzk07zzzz00Dzzzy00zzzzs01zzzzk07zzzz00Dzzzy00zzzzs01zzzzk07zzzz00Dzzzy00zzzzs01zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz7zzzzzzzzzzzzszzzzzzzzzzzzz7zzzzzzzzzzzzw"
-if (ok:=FindText(X, Y, 2673-150000, 739-150000, 2673+150000, 739+150000, 0, 0, Text)) ;this text search for any red X corner
-    {
-        SoundBeep, 800, 300
+    ; Assign quest icon pattern to Text (the variable name remains "Text" and its contents are set here).
+    Text:="|<>E8D0A6-0.90$59.0zzzzs01zk1zzzzk03zU3kTzk007Us7UzzU00D1kD1zz000S3US3zy000w70w7zw001sC1zk1sD1w0Q3zU3kS3s0s7z07Uw7k1kDy0D1sDU3UTzk03zU3z0zzU07z07y1zz00Dy0Dw3zy00Tw0Ts7zw00zs0zkDzzk0001zUTzzU0003z0zzz00007y1zzy0000Dw3zzw0000Ts7zzzU00DzkDzzz000TzUTzzy000zz0zzzw001zyzzzzs01zzxzzzzk03zzvzzzzU07zzrzzzz00Dzzjzzzy00TzzTzzz0001zyzzzy0003zxzzzw0007zvzzzs000Dzrzzs0zs01zjzzk1zk03zTzzU3zU07yzzz07z00Dxzzy0Dy00Tzzz3zz000zzzy7zy001zzzwDzw003zzzsTzs007zzsDzzk00DXzkTzzU00T7zUzzz000yDz1zzy001wTy3zzw003szzzzzs01s1zzzzzk03k3zzzzzU07U7zzzzz00D0Dz07zzzzzwTy0Dzzzzzszw0Tzzzzzlzs0zzzzzzXzk1zzzzzz7s007zzzzyDk00DzzzzwTU00Tzzzzsz000zzzzzly001zzzzzW0000DzzzU40000Tzzz080000zzzy0E0001zzzw0U0003zzy0100007zzw02"
+    if (ok:=FindText(X, Y, 790-150000, 579-150000, 790+150000, 579+150000, 0, 0, Text))
+        {
+            SoundBeep, 800, 200
+        DebugLog("IsMainScreenAnchorDetected: Quest icon detected.")
         Return True
-    }
-    DebugLog("IsMainScreenAnchorDetected() called (placeholder).")
-    return false  ; Replace with your actual detection logic.
+        }
+    DebugLog("IsMainScreenAnchorDetected: Quest icon NOT detected.")
+    Return False
 }
 
 ArePopupsPresent() {
-    Text:="|<>*159$81.zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzk07zzzz00Dzzzy00zzzzs01zzzzk07zzzz00Dzzzy00zzzzs01zzzzk07zzzz00Dzzzy00zzzzs01zzzzk07zzzz00Dzzzy000Tzk001zzzzk003zy000Dzzzy000Tzk001zzzzk003zy000Dzzzy000Tzk001zzzzk003zy000Dzzzzy0000003zzzzzzk000000Tzzzzzy0000003zzzzzzk000000Tzzzzzy0000003zzzzzzk000000Tzzzzzy0000003zzzzzzzs0000zzzzzzzzz00007zzzzzzzzs0000zzzzzzzzz00007zzzzzzzzs0000zzzzzzzzz00007zzzzzzzzs0000zzzzzzzzz00007zzzzzzzzs0000zzzzzzzzz00007zzzzzzzzs0000zzzzzzzzz00007zzzzzzzzs0000zzzzzzzzz00007zzzzzzzk000000Tzzzzzy0000003zzzzzzk000000Tzzzzzy0000003zzzzzzk000000Tzzzzzy0000003zzzzzk003zy000Dzzzy000Tzk001zzzzk003zy000Dzzzy000Tzk001zzzzk003zy000Dzzzy000Tzk001zzzzk003zy000Dzzzy00zzzzs01zzzzk07zzzz00Dzzzy00zzzzs01zzzzk07zzzz00Dzzzy00zzzzs01zzzzk07zzzz00Dzzzy00zzzzs01zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz7zzzzzzzzzzzzszzzzzzzzzzzzz7zzzzzzzzzzzzw"
-if (ok:=FindText(X, Y, 2673-150000, 739-150000, 2673+150000, 739+150000, 0, 0, Text)) ;same as the one above, searches for any red X corner
-    {
-        DebugLog("Found an X, pop up present. Closing")
-        send {esc}
-        return True
+Text:="|<>**50$59.k07w01z00CU08000200F00E000400W00U0008014010000E028020000U04E07y03z008U00404000F000808000W000E0E0014000U0U0028001010004E003zy0008zU000000zk1000000100200000020040000004008000000800E000000E00U000000U01zU0003z0001000040000200008000040000E000080000U0000E000100000U000200001000040000200008000040000E000080000U0000E000100000U00020003z00007y0040000004008000000800E000000E00U000000U01000000103y0000003z4000zzU0028001010004E002020008U00404000F000808000W000E0E0014000U0U002E"
+if (ok:=FindText(X, Y, 2177-150000, 680-150000, 2177+150000, 680+150000, 0, 0, Text))
+{ ;this text search for any red X corner
+        DebugLog("ArePopupsPresent: Popup detected (red X).")
+        Return True
     }
-    ; This function should return true if any interfering popup (e.g. daily rewards) is detected.
-    DebugLog("ArePopupsPresent() reports no popups")
-    return false  ; Replace with your actual detection logic.
+    Return False
 }
 
 ;─────────────────────────────────────────────;
-; Action Functions – Replace with your input automation commands.
+; Action Functions – Replace with your automation commands.
 ;─────────────────────────────────────────────;
-
 ActionQuest() {
     DebugLog("ActionQuest() executed (placeholder).")
-    Sleep, 500  ; Replace with actual keystroke/mouse routines.
+    Sleep, 500
 }
 
 ActionPVP() {
@@ -223,9 +215,10 @@ ActionGauntlet() {
 F12::
     if (gameState = "Paused") {
         gameState := "NotLoggedIn"
-        DebugLog("Bot resumed via hotkey.")
+        DebugLog("Resumed via hotkey. Resetting state to NotLoggedIn.")
     } else {
+        previousState := gameState
         gameState := "Paused"
-        DebugLog("Bot paused via hotkey.")
+        DebugLog("Paused via hotkey. Previous state: " . previousState)
     }
     Return

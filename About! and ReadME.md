@@ -1,95 +1,69 @@
-# Bit Heroes Bot
+===========================================
+Bit Heroes Bot (Nickname: ORION)
+===========================================
 
-**Bit Heroes Bot** (Nickname: ORION) is an automation script designed for Bit Heroes (web). It uses OCR via the FindText.ahk library to detect game UI elements (such as the quest icon and resource warnings) and then rotates through a series of in-game actions. The script is state‐based (waiting for login, handling pop-ups, operating normally, or being paused) and features a custom cooldown mechanism for actions that run out of resources.
+Orion is an automation script designed for the web version of Bit Heroes. It uses OCR (via the FindText.ahk library) to identify game elements and automatically cycles through configured in-game actions.
 
-> **Note:**  
-> This version is currently tuned to work on a 4K resolution with a 150% zoom browser layout. OCR strings and UI coordinates are hard-coded based on that environment. Future improvements may add multi-resolution support.
+The script operates using a state machine and includes features like automatic dialogue handling, multi-quest cycling, and a responsive pause system.
 
----
+Note:
+-----
+This version is currently tuned for a **4K resolution** monitor with the browser zoomed to **150%**. OCR patterns and UI coordinates are based on this layout. Adjustments would be needed for different resolutions or zoom levels.
 
-## Features
+Features:
+---------
 
-- **State Machine–Based Flow:**  
-  - **NotLoggedIn:** Waits for the quest icon (main screen) to be detected.  
-  - **HandlingPopups:** If pop-ups (e.g., with a red “X”) block the UI, the bot automatically clears them by sending `{Esc}` until the quest icon is visible.  
-  - **NormalOperation:** The bot rotates through a configured set of actions (e.g. Quest, PVP, WorldBoss, Raid, Trials, Expedition, Gauntlet).  
-  - **Paused:** Allows you to pause/resume the bot via a hotkey (F12).
+* **State Machine–Based Flow:** Ensures the bot acts appropriately based on the game's current state:
+    * `NotLoggedIn`: Waits patiently for the main game screen (specifically the quest icon) to appear.
+    * `HandlingPopups`: Automatically dismisses common pop-ups (like daily rewards) by sending `{Esc}` until the main screen is clear.
+    * `NormalOperation`: Selects the next available action from the configured rotation (`actionOrder`) based on readiness and cooldowns.
+    * `ActionRunning`: Monitors the progress of a long-running action (currently Quest), handling completion, errors, or interruptions.
+    * `Paused`: A responsive paused state, toggled by F12.
 
-- **Action Rotation & Cooldown:**  
-  Each action is subject to a 20‑minute cooldown only when the action returns an "outofresource" status. If an action completes successfully, it is reattempted immediately until a resource shortage is detected.
+* **Responsive Pause/Resume (F12 Hotkey):**
+    * Pressing F12 now uses AutoHotkey's built-in `Pause` command targeting the main script thread (`Pause, On/Off, 1`).
+    * This allows the pause to interrupt the script much more quickly, even during `Sleep` commands.
+    * Resuming via F12 is reliable and avoids the hangs experienced with previous methods.
 
-- **Modular Quest Logic:**  
-  The Quest action is broken into several steps:
-  1. Click the quest icon if the quest window isn’t already open.
-  2. Navigate to the desired dungeon/zone (via left/right arrow clicks and OCR-based zone detection).
-  3. Select Heroic difficulty.
-  4. Click Accept.
-  5. Finally, check for resource shortage. Only if the resource warning is detected does the bot mark the Quest action as “outofresource” and start its cooldown.
+* **Automatic Dialogue Handling:**
+    * Includes the `HandleInProgressDialogue` function which actively checks for in-game dialogue boxes during quests (currently identifies a specific "yellow arrow" pattern).
+    * If dialogue is detected, it automatically sends `{Esc}` to attempt dismissal, allowing the bot to continue without getting stuck.
+    * Includes fixes to reduce potential false dialogue detection and prevent interference with the game's autopilot feature after dismissal.
 
-- **Debug Logging:**  
-  All actions and state transitions are logged both to the debugger (using `OutputDebug`) and to a file (`debug_log.txt`). This aids in troubleshooting and fine-tuning the bot’s operation.
+* **Action Rotation & Cooldown:**
+    * Rotates through enabled actions specified in `actionOrder` (`Quest`, `PVP`, etc.).
+    * An action only goes on cooldown (currently 20 minutes) if it fails specifically due to lack of resources (e.g., returning `"outofresource"`).
+    * Otherwise, after an action attempt (whether successful, failed with retry, or started a long process), the bot moves on to check the *next* action in the `actionOrder` sequence on the following cycle.
 
-- **Extensible OCR Integration:**  
-  The script uses the FindText.ahk library for OCR. All OCR strings are stored as hardcoded patterns for your current layout. Future updates could extend support to more resolutions or dynamic pattern selection.
+* **Multi-Stage Quest Logic (`ActionQuest` & `MonitorActionProgress`):**
+    * **Initiation:** Opens the quest window (sending `{Esc}` first if it fails to open), navigates to the configured zone and dungeon (using OCR for zone name and dungeon pattern matching), selects Heroic difficulty, clicks Accept, and checks for immediate resource issues.
+    * **Monitoring:** While a quest is running (`ActionRunning` state):
+        * Checks for completion (using `IsActionComplete`)
+        * Checks for disconnection or player death (placeholders for future implementation).
+        * Checks for and handles in-progress dialogue via `HandleInProgressDialogue`.
+    * **Completion Handling:**
+        * If only one quest is configured (`desiredZones.Length() = 1`), attempts to `ClickRerun` and checks for resource issues *after* clicking.
+        * If multiple quests are configured, attempts to exit the completion screen via `ClickTownOnCompletionScreen` to allow cycling to the next configured quest.
+        * Returns specific statuses (`rerun`, `outofresource`, `start_next_config`, `error`, `in_progress`) back to `BotMain` for appropriate handling.
 
----
+* **Detailed Debug Logging:**
+    * Provides extensive logging to both the debugger (use DebugView, you can add a filter for Orion to only see those events) and a file (`debug_log.txt`).
+    * Logs clearly indicate state transitions, action attempts, cooldown status, results of checks within `MonitorActionProgress`, and reasons for function returns. Logs include the " Orion" suffix for easier filtering.
 
-## Requirements
+* **Extensible OCR Integration:**
+    * Relies on the included `FindText.ahk` library. OCR patterns are currently hardcoded but could be adapted or expanded.
 
-- [AutoHotkey](https://www.autohotkey.com/) (version 1.1.34+ recommended)
-- [FindText.ahk](https://www.autohotkey.com/boards/viewtopic.php?f=6&t=17834) – include this library in your project directory.
-- A 4K monitor (could be virtualized) with a 150% zoomed browser (for the current configuration)
+Requirements:
+-------------
+* AutoHotkey (latest stable of AHK V1)
+* `FindText.ahk` library (included or placed in AHK's Lib folder)
+* Environment matching the current OCR tuning (4K resolution, 150% browser zoom) OR ability to recapture OCR strings/coordinates. 4k monitor could likely be virtualized through a VM or using Nvidia 
 
----
+Usage:
+------
+1.  **Launch:** Run the `.ahk` script file. Bot starts in `NotLoggedIn` state.
+2.  **Operation:** Waits for the game's main screen. Clears pop-ups. Rotates through enabled actions based on cooldowns. Executes quest steps or placeholder actions. Monitors running quests.
+3.  **Pause/Resume:** Press F12 to toggle pause.
+4.  **Debug:** Check `debug_log.txt` for detailed operational history.
 
-## Installation
-
-1. Clone or download this repository.
-2. Ensure that `FindText.ahk` is available in your script’s folder
-3. Adjust the OCR strings only if you know what you're doing, and having issues.
-4. Run the script with AutoHotkey.
-
----
-
-## Usage
-
-- **Launch the Bot:**  
-  Double-click the script file to launch it. The bot will start in the `NotLoggedIn` state.
-
-- **State Transitions:**  
-  The bot monitors the game screen:
-  - It waits for the quest icon.
-  - If pop-ups block the UI, like daily log in or weekly event rewards, it sends `{Esc}` until the quest icon is visible.
-  - Once detected, it rotates through the actions.
-
-- **Quest Action Details:**  
-  The Quest logic will:
-  1. Open the quest window
-  2. Navigate to the desired dungeon/zone
-  3. Select the Heroic difficulty.
-  4. Click the Accept button
-  5. After Accept, check if resources are out (e.g. attempts exhausted)
-  
-  If resources are insufficient, it returns an “outofresource” state and starts a 20‑minute cooldown for the Quest action, and then will move to the next action that isnt on cooldown.
-
-- **Pause/Resume:**  
-  Press `F12` to toggle between Paused and active states.
-
-- **Debug Logs:**  
-  Check `debug_log.txt` in your script’s folder to review detailed log messages about state transitions and action statuses.
-
----
-
-## Contributing
-
-Contributions are welcome! If you have ideas or fixes for enhancing multi-resolution support, additional action logic, or any other feature, please open an issue or submit a pull request.
-Discord: VeryInky
-
----
-
-## License
-
-Check the license file on this repo page for licesning.
----
-
-*Happy coding and good luck automating Bit Heroes!*
+Contributing / License / Contact:

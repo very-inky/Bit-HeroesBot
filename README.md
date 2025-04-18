@@ -65,5 +65,3 @@ Usage:
 2.  **Operation:** Waits for the game's main screen. Clears pop-ups. Rotates through enabled actions based on cooldowns. Executes quest steps or placeholder actions. Monitors running quests.
 3.  **Pause/Resume:** Press F12 to toggle pause.
 4.  **Debug:** Check `debug_log.txt` for detailed operational history.
-
-Contributing / License / Contact:

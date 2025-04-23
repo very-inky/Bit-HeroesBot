@@ -4,8 +4,9 @@ SetBatchLines, -1
 #Include Debug.ahk
 #Include FindText.ahk
 #Include Patterns.ahk
-Soundbeep, 500, 600
+;Soundbeep, 500, 600
 ;──────────────────────────────────────────────────────────────
+; Context‐object refactor of your BitHeroesBot
 ; All OCR patterns come from PatternBot.ahk via the global `Patterns` object.
 ;──────────────────────────────────────────────────────────────
 
@@ -16,7 +17,7 @@ global Bot := {}
 Bot.actionConfig := { Quest: true, PVP: true, WorldBoss: true
                   , Raid: true, Trials: true, Expedition: true, Gauntlet: true }
 Bot.actionOrder := ["Quest","PVP","WorldBoss","Raid","Trials","Expedition","Gauntlet"]
-Bot.currentActionIndex := 2
+Bot.currentActionIndex := 2 ; starting with index 4 for Raid testing
 
 ; 2) Questing configs
 ; --- Define the specific Zone PATTERNS and Dungeon NAMES you want to run ---
@@ -27,13 +28,22 @@ Bot.desiredDungeons    := [ "Dungeon2", "Dungeon1" ]       ;  Not all zones have
 Bot.currentSelectionIndex := 1
 
 ; 3) PVP configs
-Bot.PvpTicketChoice   := 4    ; 1–5
-Bot.PvpOpponentChoice := 3    ; 1–4
+Bot.PvpTicketChoice   := 5    ; 1–5
+Bot.PvpOpponentChoice := 2    ; 1–4
 
-; 4) OCR patterns
+Bot.Raid := {}
+Bot.Raid.Conf := {}
+; 4) Raid configs
+Bot.Raid.Conf.List := ["Raid6", "Raid4"] ; List of raids to run. (MATCH THESE TO Patterns.Raid.RaidName
+Bot.Raid.Conf.Count := 0 ; Number of raids to run, (0 for infinite, run raids till out of resources.)
+Bot.Raid.Conf.Difficulty := "Heroic" ; Raid difficulty (Normal, Hard, Heroic)
+Bot.Raid.Conf.CurrentIndex := 1 ; Tracks which raid in the list to run next
+Bot.Raid.Conf.CompletedCount := 0 ; Tracks how many raids have been completed in this session/cycle
+
+; 5) OCR patterns
 Bot.ocr := Patterns       ; so we can do e.g. Bot.ocr.QuestIcon, Bot.ocr.Zone[1], etc.
 
-; 5) State & cooldown tracking
+; 6) State & cooldown tracking
 Bot.gameState     := "NotLoggedIn"
 Bot.actionCooldown := 1200000  ; 20 min in ms
 DebugLog("=== BOT LOADED; initial gameState=" Bot.gameState)
@@ -110,6 +120,16 @@ BotMain:
         if ((now - Bot.lastActionTime[current]) >= Bot.actionCooldown) {
             DebugLog("NormalOperation: Running " . current . " (cooldown ready)")
             result := ""
+
+            ; --- Raid Count Check (Specific for Raid) ---
+            if (current = "Raid" && Bot.Raid.Conf.Count > 0 && Bot.Raid.Conf.CompletedCount >= Bot.Raid.Conf.Count) {
+                 DebugLog("NormalOperation: Skipping Raid - Target count (" . Bot.Raid.Conf.Count . ") already reached.")
+                 Bot.lastActionTime[current] := now ; Update cooldown time even if skipped due to count
+                 Bot.currentActionIndex := Mod(Bot.currentActionIndex, Bot.actionOrder.Length()) + 1
+                 return ; Skip to next action
+            }
+            ; --- End Raid Count Check ---
+
             Switch current
             {
                 Case "Quest":      result := ActionQuest()
@@ -147,18 +167,18 @@ BotMain:
                 Bot.gameState := "HandlingPopups"
                 DebugLog("BotMain: State changed to HandlingPopups to ensure return to main screen.")
 
-                ; DO NOT advance Bot.currentActionIndex here.
+                ; DO NOT advance Bot.currentActionIndex here. Let HandlingPopups resolve first.
             }
             else if (result = "disconnected") {
                 Bot.gameState := "NotLoggedIn"
                 ; No DebugLog needed here, NotLoggedIn state handles its entry log
             }
-            else if (current = "PVP" and result = "success") {
+            else if (current = "PVP" and result = "success") { ; Note: PVP returns "started", not "success" now
                 ; loop PVP immediately - do nothing here, next loop iteration will handle it
                  DebugLog("BotMain: PVP returned success, looping PVP immediately.")
             }
             else {
-                ; Default case for other results ("retry", "success" for non-PVP, "error", etc.)
+                ; Default case for other results ("retry", "success" for non-PVP/non-Raid, "error", etc.)
                 ; Start cooldown & advance to next action
                  DebugLog("BotMain: Action '" . current . "' finished with result '" . result . "'. Starting cooldown and advancing.")
                 Bot.lastActionTime[current] := now
@@ -172,76 +192,114 @@ BotMain:
         return
     }
 
-    ; === ActionRunning ===
+  ; === ActionRunning ===
     if (Bot.gameState = "ActionRunning") {
         current := Bot.actionOrder[Bot.currentActionIndex]
         DebugLog("ActionRunning: monitoring " . current)
         monitorResult := ""
 
         ; Call the appropriate monitoring function based on the current action
-        if (current = "Quest")
-            monitorResult := MonitorQuestProgress()
-        else if (current = "PVP")
-            monitorResult := MonitorPVPProgress()
-        else {
-            ; No monitor needed for simple actions (WorldBoss, Raid, etc.)
-            DebugLog("ActionRunning: No monitor function for '" . current . "'. Returning to NormalOperation.")
-            Bot.gameState := "NormalOperation"
-            return
+        Switch current
+        {
+            Case "Quest": monitorResult := MonitorQuestProgress()
+            Case "PVP":   monitorResult := MonitorPVPProgress()
+            Case "Raid":  monitorResult := MonitorRaidProgress() ; Ensure this function name matches yours
+            Default:
+                ; No monitor needed for simple actions (WorldBoss, Trials, etc.)
+                DebugLog("ActionRunning: No monitor function for '" . current . "'. Returning to NormalOperation.")
+                Bot.gameState := "NormalOperation"
+                Bot.lastActionTime[current] := A_TickCount
+                Bot.currentActionIndex := Mod(Bot.currentActionIndex, Bot.actionOrder.Length()) + 1
+                DebugLog("ActionRunning: Cooldown set for " . current . ", index advanced.")
+                return
         }
 
         DebugLog("ActionRunning: Monitor function for '" . current . "' returned: '" . monitorResult . "'")
 
-        ; Process monitor result (example for PVP, adapt as needed for Quest if MonitorQuestProgress returns specific values)
+        ; --- Process monitor result ---
         if (monitorResult = "pvp_completed_continue") {
             DebugLog("ActionRunning: PVP monitor reported completion. Returning to NormalOperation.")
             Bot.gameState := "NormalOperation"
-            ; Index is NOT advanced here, allowing PVP to loop if desired by main logic
             return
         }
-        else if (monitorResult = "outofresource") { ; This might be specific to PVP monitor? Adapt if needed.
-            DebugLog("ActionRunning: Monitor reported 'outofresource' for PVP.")
-            Bot.lastActionTime["PVP"] := A_TickCount ; Set cooldown specifically for PVP
-            Bot.currentActionIndex := Mod(Bot.currentActionIndex, Bot.actionOrder.Length()) + 1 ; Advance past PVP
-            Bot.gameState := "NormalOperation"
-            DebugLog("ActionRunning: Cooldown set for PVP, index advanced. Returning to NormalOperation.")
+        else if (monitorResult = "raid_completed" or monitorResult = "raid_completed_next") { ; Check for EITHER raid complete result
+            DebugLog("ActionRunning: Raid monitor reported completion.")
+            Bot.Raid.Conf.CompletedCount += 1
+            Bot.Raid.Conf.CurrentIndex += 1
+            if (Bot.Raid.Conf.CurrentIndex > Bot.Raid.Conf.List.MaxIndex()) { ; Use MaxIndex here
+                Bot.Raid.Conf.CurrentIndex := 1 ; Wrap around
+            }
+            DebugLog("ActionRunning: Raid count incremented to " . Bot.Raid.Conf.CompletedCount . ". Next Raid index: " . Bot.Raid.Conf.CurrentIndex)
+
+            ; Check if target count reached (only if count > 0)
+            if (Bot.Raid.Conf.Count > 0 && Bot.Raid.Conf.CompletedCount >= Bot.Raid.Conf.Count) {
+                DebugLog("ActionRunning: Raid target count (" . Bot.Raid.Conf.Count . ") reached.")
+                Bot.lastActionTime[current] := A_TickCount ; Set cooldown
+                Bot.currentActionIndex := Mod(Bot.currentActionIndex, Bot.actionOrder.Length()) + 1 ; Advance past Raid
+                DebugLog("ActionRunning: Cooldown set for Raid, index advanced.")
+                Bot.gameState := "NormalOperation" ; Return to NormalOperation
+                DebugLog("ActionRunning: Returning to NormalOperation.")
+                return ; !!! Important: Return after handling state change
+            } else {
+                DebugLog("ActionRunning: Raid target count not reached or infinite. Cooldown NOT set, index NOT advanced (will attempt next raid).")
+                Bot.gameState := "HandlingPopups" ; Go back via popups to restart Raid action
+                DebugLog("ActionRunning: State changed to HandlingPopups to ensure return to main screen before next raid attempt.")
+                return ; !!! Important: Return after handling state change
+            }
+
+        }
+        else if (monitorResult = "raid_rerun") { ; Handle specific rerun case for single-config raid
+             DebugLog("ActionRunning: Monitor reported 'raid_rerun'. Raid is restarting. Remaining in ActionRunning.")
+             ; Do nothing, stay in ActionRunning state
+             return
+        }
+        else if (monitorResult = "outofresource") {
+            DebugLog("ActionRunning: Monitor reported 'outofresource' for " . current . ".")
+            Bot.lastActionTime[current] := A_TickCount ; Set cooldown
+            Bot.currentActionIndex := Mod(Bot.currentActionIndex, Bot.actionOrder.Length()) + 1 ; Advance past current action
+            Bot.gameState := "HandlingPopups" ; Go handle popups first
+            DebugLog("ActionRunning: Cooldown set for " . current . ", index advanced. State changed to HandlingPopups.")
             return
         }
         else if (monitorResult = "disconnected" or monitorResult = "player_dead") {
              DebugLog("ActionRunning: Monitor reported '" . monitorResult . "'. State already changed by monitor function.")
              ; Monitor function should have already changed Bot.gameState to NotLoggedIn
              return
-        }
-        else if (monitorResult = "start_next_config") {
-                 DebugLog("ActionRunning: Monitor reported quest config complete. Advancing config index.")
-                 Bot.currentSelectionIndex += 1
-
-                 ; Check if we've run out of configs
-                 if (Bot.currentSelectionIndex > Bot.desiredZones.MaxIndex()) {
-                    DebugLog("ActionRunning: All quest configs completed. Resetting config index and returning to NormalOperation.")
-                    Bot.currentSelectionIndex := 1 ; Reset config index for the next time Quest runs
-
-                    ; --- REMOVED Cooldown set and Action Index advance ---
-
-                    Bot.gameState := "NormalOperation" ; Go back to NormalOperation to evaluate next main action
-                 } else {
-                    ; Still more configs left, go start the next one
-                    DebugLog("ActionRunning: Moving to next quest config (Index: " . Bot.currentSelectionIndex . "). Returning to NormalOperation to start it.")
-                    Bot.gameState := "NormalOperation"
-                 }
-                 return
-             }
-         else if (monitorResult = "rerun") { ; Specific to single-config Quest monitor
-              DebugLog("ActionRunning: Monitor reported 'rerun'. Quest is restarting. Remaining in ActionRunning.")
-              ; Do nothing, stay in ActionRunning state
-              return
          }
-        ; Default: "in_progress" or other non-state-changing results from Monitor
-        ; Stay in ActionRunning state and wait for next timer tick
+        else if (monitorResult = "error") {
+             DebugLog("ActionRunning: Monitor reported 'error'. Setting cooldown and advancing past " . current . ".")
+             Bot.lastActionTime[current] := A_TickCount
+             Bot.currentActionIndex := Mod(Bot.currentActionIndex, Bot.actionOrder.Length()) + 1
+             Bot.gameState := "HandlingPopups" ; Go to popups after error for safety
+             DebugLog("ActionRunning: State changed to HandlingPopups after error.")
+             return
+        }
+        else if (monitorResult = "start_next_config") { ; Quest specific
+            DebugLog("ActionRunning: Monitor reported quest config complete. Advancing config index.")
+            Bot.currentSelectionIndex += 1
+            if (Bot.currentSelectionIndex > Bot.desiredZones.MaxIndex()) {
+                DebugLog("ActionRunning: All quest configs completed. Resetting config index.")
+                Bot.currentSelectionIndex := 1
+                Bot.lastActionTime[current] := A_TickCount
+                Bot.currentActionIndex := Mod(Bot.currentActionIndex, Bot.actionOrder.Length()) + 1
+                DebugLog("ActionRunning: Cooldown set for Quest, index advanced.")
+                Bot.gameState := "NormalOperation"
+            } else {
+                DebugLog("ActionRunning: Moving to next quest config (Index: " . Bot.currentSelectionIndex . "). Returning to NormalOperation to start it.")
+                Bot.gameState := "NormalOperation"
+            }
+            return
+        }
+        else if (monitorResult = "rerun") { ; Specific to single-config Quest monitor
+             DebugLog("ActionRunning: Monitor reported 'rerun'. Quest is restarting. Remaining in ActionRunning.")
+             return
+         }
+
+        ; Default case includes "in_progress" - stay in ActionRunning state
+        ; No action needed, just wait for the next timer tick
         return
     }
-return
-
+     
 ;———————————————————————————————————————————————————————————————
 ; === Quest Flow ===
 ActionQuest() {
@@ -508,6 +566,15 @@ ActionPVP() {
     }
     DebugLog("ActionPVP: PVP Accept clicked.")
 
+    DebugLog("ActionPVP: Performing one-time AutoPilot check.")
+    autoPilotOk := EnsureAutoPilotOn() ; Assumes this function has own logs
+    if (!autoPilotOk) {
+        DebugLog("ActionPVP: Warning - EnsureAutoPilotOn failed after starting")
+        ; Continue anyway, AutoPilot isn't critical for starting
+    } else {
+         DebugLog("ActionPVP: EnsureAutoPilotOn completed successfully (check its logs for details).")
+    }
+
 
     DebugLog("ActionPVP: --- Success! All steps completed. Returning 'started'. ---")
     return "started"
@@ -565,28 +632,278 @@ MonitorPVPProgress() {
 
 ;———————————————————————————————————————————————————————————————
 ; === Stub flows for other actions ===
-ActionWorldBoss()   { 
-    return CheckOutOfResources() ? "outofresource" : "success" 
+ActionWorldBoss()   {
+    global Bot
+    DebugLog("ActionWorldBoss: --- Entered function ---")
+    ; Add logic to find and click World Boss button
+    ; Add logic to click attack/accept
+    ; Check for resources if applicable before starting
+    if (CheckOutOfResources()) {
+        DebugLog("ActionWorldBoss: Out of resources detected. Returning 'outofresource'.")
+        return "outofresource"
+    }
+    DebugLog("ActionWorldBoss: --- Success! Returning 'success'. ---")
+    return "success"
+}
+
+
+ActionRaid() {
+    global Bot
+    DebugLog("ActionRaid: --- Entered function ---")
+
+    ; --- Check Configuration ---
+    isObj := IsObject(Bot.Raid.Conf.List)
+    maxIdx := ""
+    if (isObj) {
+            maxIdx := Bot.Raid.Conf.List.MaxIndex() 
+               }
+    DebugLog("ActionRaid: Config Check - IsObject(Bot.Raid.Conf.List) = " . isObj . ", Bot.Raid.Conf.List.MaxIndex() = " . maxIdx)
+    if (!isObj || maxIdx = "" || maxIdx = 0) {
+        DebugLog("ActionRaid: ERROR - Failed config check. No raids defined in Bot.Raid.Conf.List. Returning 'error'.")
+        return "error"
+    }
+    if (Bot.Raid.Conf.CurrentIndex < 1 || Bot.Raid.Conf.CurrentIndex > Bot.Raid.Conf.List.MaxIndex()) {
+        DebugLog("ActionRaid: Warning - Invalid Bot.Raid.Conf.CurrentIndex. Resetting to 1.")
+        Bot.Raid.Conf.CurrentIndex := 1
+    }
+
+    ; --- Determine Target Raid ---
+    configListIndex := Bot.Raid.Conf.CurrentIndex
+    targetRaidName := Bot.Raid.Conf.List[configListIndex] ; Get the NAME (e.g., "Raid2")
+    targetDifficulty := Bot.Raid.Conf.Difficulty
+
+    ; *** NEW: Extract the numeric index FROM the NAME ***
+    targetMappingIndex := SubStr(targetRaidName, 5) ; Extract number part (assumes format "RaidN")
+    if (targetMappingIndex is not number or targetMappingIndex < 1) {
+        DebugLog("ActionRaid: ERROR - Could not extract valid numeric index from raid name '" . targetRaidName . "'. Returning 'error'.")
+        return "error"
+    }
+    ; Convert to integer just in case
+    targetMappingIndex += 0 
+    
+    DebugLog("ActionRaid: Config List Index: " . configListIndex . ", Target Raid Name: '" . targetRaidName . "', Target Mapping Index: " . targetMappingIndex . ", Difficulty: '" . targetDifficulty . "'")
+
+
+    ; --- Navigation ---
+    DebugLog("ActionRaid: Checking if Raid window is open...")
+    if (!IsRaidWindowOpen()) {
+        DebugLog("ActionRaid: Raid window not open. Clicking Raid icon...")
+        if (!ClickRaidIcon()) {
+            DebugLog("ActionRaid: ClickRaidIcon failed. Returning 'retry'.")
+            return "retry"
+        }
+        Sleep, 900
+        if (!IsRaidWindowOpen()) {
+            DebugLog("ActionRaid: Raid window did not appear after clicking icon. Returning 'retry'.")
+            return "retry"
+        }
+        DebugLog("ActionRaid: Raid window opened.")
+    } else {
+        DebugLog("ActionRaid: Raid window already open.")
+    }
+
+    ; --- Select Raid (Using Correct Target Index) ---
+    ; *** Call the helper using the correct MAPPING INDEX ***
+    DebugLog("ActionRaid: Ensuring correct raid (Mapping Index: " . targetMappingIndex . ") is selected...")
+    if (!EnsureCorrectRaidSelected(targetMappingIndex)) {
+        DebugLog("ActionRaid: EnsureCorrectRaidSelected failed for index '" . targetMappingIndex . "'. Returning 'retry'.")
+        return "retry"
+    }
+    DebugLog("ActionRaid: Successfully ensured raid index '" . targetMappingIndex . "' is selected.")
+    Sleep, 500
+
+    ; --- Click SUMMON Button ---
+    DebugLog("ActionRaid: Clicking Raid Summon button...")
+    if (!ClickRaidSummonButton()) {
+        DebugLog("ActionRaid: ClickRaidSummonButton failed. Returning 'retry'.")
+        return "retry"
+    }
+     DebugLog("ActionRaid: Clicked Raid Summon button.")
+    Sleep, 1000
+
+ ; --- *** NEW: Handle Pre-Raid Dialogue (Looping) *** ---
+    DebugLog("ActionRaid: Checking for pre-raid dialogue...")
+    dialogueAttempts := 0
+    maxDialogueAttempts := 9 ; Try up to 5 times to close dialogue
+    Loop, %maxDialogueAttempts%
+    {
+        dialogueFound := ClickPreRaidDialogue()
+        if (!dialogueFound) { ; Dialogue is not present
+            if (A_Index = 1) { ; Dialogue wasn't found on the very first check
+                 DebugLog("ActionRaid: No pre-raid dialogue detected.")
+            } else { ; Dialogue was found previously but is now gone
+                 DebugLog("ActionRaid: Dialogue successfully closed after " . (A_Index - 1) . " attempt(s).")
+            }
+            break ; Exit the dialogue handling loop
+        }
+        ; If dialogue WAS found...
+        DebugLog("ActionRaid: Dialogue found (Attempt " . A_Index . "). Esc sent by handler. Waiting...")
+        Sleep, 750 ; Wait longer for Esc to take effect before checking again
+    }
+
+    ; Check if the loop finished because dialogue is gone, or because attempts ran out
+    if (dialogueFound) { ; If dialogueFound is still true, the loop finished without breaking
+        DebugLog("ActionRaid: ERROR - Dialogue still present after " . maxDialogueAttempts . " attempts! Returning 'retry'.")
+        return "retry"
+    }
+    
+    ; --- Select Difficulty ---
+    DebugLog("ActionRaid: Selecting Difficulty '" . targetDifficulty . "'...")
+    if (!SelectRaidDifficulty(targetDifficulty)) {
+        DebugLog("ActionRaid: SelectRaidDifficulty failed for '" . targetDifficulty . "'. Returning 'retry'.")
+        return "retry"
+    }
+    DebugLog("ActionRaid: Successfully selected difficulty '" . targetDifficulty . "'.")
+    Sleep, 700
+
+    ; --- Start Raid (Click Play Button) ---
+    DebugLog("ActionRaid: Clicking Play button...")
+    if (!ClickRaidPlayButton()) {
+        DebugLog("ActionRaid: ClickRaidPlayButton failed. Returning 'retry'.")
+        return "retry"
+    }
+    DebugLog("ActionRaid: Clicked Play button.")
+    Sleep, 1000
+
+    ; --- Check Resources ---
+    if (CheckOutOfResources()) {
+        DebugLog("ActionRaid: Out of resources detected after clicking Play. Returning 'outofresource'.")
+        return "outofresource"
+    }
+    DebugLog("ActionRaid: No 'Out Of Resources' detected after clicking Play.")
+
+    DebugLog("ActionRaid: Performing one-time AutoPilot check.")
+    autoPilotOk := EnsureAutoPilotOn() ; Assumes this function has own logs
+    if (!autoPilotOk) {
+        DebugLog("ActionRaid: Warning - EnsureAutoPilotOn failed after starting")
+        ; Continue anyway
+    } else {
+         DebugLog("ActionRaid: EnsureAutoPilotOn completed successfully (check its logs for details).")
+    }
+
+    DebugLog("ActionRaid: --- Success! Raid started. Returning 'started'. ---")
+    return "started"
+}
+
+; --- Add MonitorRaid function ---
+MonitorRaidProgress() {
+    global Bot
+    ; Note: BotMain logs "monitoring Raid"
+
+    ; 1. Check for Completion first (using IsRaidComplete helper)
+    isComplete := IsActionComplete()
+    DebugLog("MonitorRaid: IsActionComplete returned true")
+    if (isComplete) {
+        DebugLog("MonitorRaid: Raid Complete detected.")
+
+        ; Check if configured for single raid or multiple
+        if (Bot.Raid.Conf.List.MaxIndex() = 1) {
+            ; --- SINGLE RAID CONFIG: Attempt Rerun ---
+            DebugLog("MonitorRaid: Single raid config - attempting Rerun.")
+            if (ClickRerun()) {
+                 DebugLog("MonitorRaid: ClickRerun succeeded. Sleeping and checking resources...")
+                 Sleep, 2000 ; Wait after clicking rerun
+                 outOfRes := CheckOutOfResources() ; Check resources AFTER clicking rerun
+                 returnVal := outOfRes ? "outofresource" : "raid_rerun" ; Return "raid_rerun" if resources OK
+                 DebugLog("MonitorRaid: Rerun attempt finished. Returning '" . returnVal . "'")
+                 return returnVal
+            } else {
+                 DebugLog("MonitorRaid: ClickRerun failed. Returning 'error'.")
+                 return "error" ; Failed to click Rerun
+            }
+
+        } else {
+            ; --- MULTI RAID CONFIG: Attempt Town/Exit ---
+            DebugLog("MonitorRaid: Multi-raid config - attempting ClickTownOnComplete.")
+            if (ClickTownOnComplete()) { ; Reuse the generic Town button clicker
+                 DebugLog("MonitorRaid: ClickTownOnComplete succeeded.")
+                 Sleep, 1000 ; Wait after clicking town
+                 ; NOTE: We don't usually need to check resources when just exiting to town.
+                 DebugLog("MonitorRaid: Returning 'raid_completed_next'.")
+                 return "raid_completed_next" ; Signal BotMain to setup next raid in list
+            } else {
+                 DebugLog("MonitorRaid: ClickTownOnComplete failed. Looking for Raid Accept button as fallback...")
+                 ; Fallback: Maybe an "Accept" button instead of "Town"?
+                 acceptClicked := ClickRaidAccept()
+                 if (acceptClicked) {
+                     DebugLog("MonitorRaid: ClickRaidAccept (fallback) succeeded.")
+                     Sleep, 1000
+                     DebugLog("MonitorRaid: Returning 'raid_completed_next'.")
+                     return "raid_completed_next" ; Signal BotMain to setup next raid
+                 } else {
+                     DebugLog("MonitorRaid: ERROR - Neither Town nor Accept button found after multi-raid completion.")
+                     return "error" ; Stuck on completion screen
+                 }
+            }
+        }
+    }
+
+    ; 2. If NOT complete, check for Failure/Interrupt States
+    disconnected := IsDisconnected()
+    DebugLog("MonitorRaid: IsDisconnected returned: '" . (disconnected ? "True" : "False") . "'")
+    if (disconnected) {
+        DebugLog("MonitorRaid: Disconnected detected.")
+        AttemptReconnect()
+        Bot.gameState := "NotLoggedIn"
+        DebugLog("MonitorRaid: State changed to NotLoggedIn. Returning 'disconnected'.")
+        return "disconnected"
+    }
+
+    playerDead := IsPlayerDead()
+    DebugLog("MonitorRaid: IsPlayerDead returned: '" . (playerDead ? "True" : "False") . "'")
+    if (playerDead) {
+        DebugLog("MonitorRaid: Player Dead detected.")
+        Send, {Esc} ; Try to dismiss
+        Sleep, 800
+        Bot.gameState := "NotLoggedIn"
+        DebugLog("MonitorRaid: State changed to NotLoggedIn. Returning 'player_dead'.")
+        return "player_dead"
+    }
+
+    ; Removed the CheckOutOfResources from here, as per your request
+
+    ; Check for in-progress dialogue
+    dialogueHandled := HandleInProgressDialogue()
+    if (dialogueHandled) {
+        DebugLog("MonitorRaid: Handled in-progress dialogue during raid.")
+        ; Continue monitoring after handling
+    }
+
+    ; 3. Still In Progress
+    DebugLog("MonitorRaid: No end/fail/dialogue state change detected. Returning 'in_progress'.")
+    return "in_progress"
+}
+
+ActionTrials()      {
+    global Bot
+    DebugLog("ActionTrials: --- Entered function ---")
+    ; Add logic
+    if (CheckOutOfResources()) 
+        return "outofresource"
+    DebugLog("ActionTrials: --- Success! Returning 'success'. ---")
+    return "success"
                     }
 
 
-ActionRaid()        { 
-    return CheckOutOfResources() ? "outofresource" : "success"
+ActionExpedition()  {
+    global Bot
+    DebugLog("ActionExpedition: --- Entered function ---")
+    ; Add logic
+    if (CheckOutOfResources())
+        return "outofresource"
+    DebugLog("ActionExpedition: --- Success! Returning 'success'. ---")
+    return "success"
                     }
 
 
-ActionTrials()      { 
-    return CheckOutOfResources() ? "outofresource" : "success"
-                    }
-
-
-ActionExpedition()  { 
-    return CheckOutOfResources() ? "outofresource" : "success"
-                    }
-
-
-ActionGauntlet()    { 
-    return CheckOutOfResources() ? "outofresource" : "success"
+ActionGauntlet()    {
+    global Bot
+    DebugLog("ActionGauntlet: --- Entered function ---")
+    ; Add logic
+    if (CheckOutOfResources())
+        return "outofresource"
+    DebugLog("ActionGauntlet: --- Success! Returning 'success'. ---")
+    return "success"
                     }
 
 ;———————————————————————————————————————————————————————————————
@@ -594,6 +911,7 @@ ActionGauntlet()    {
 
 IsMainScreenAnchor() {
     global Bot
+    SoundBeep, 1000, 500
     return FindText(X, Y, 790-150000, 579-150000, 790+150000, 579+150000, 0, 0, Bot.ocr.QuestIcon)
 }
 
@@ -905,10 +1223,12 @@ ClickRerun() {
         DebugLog("ClickRerun: Found Rerun button-Clicking.")
         FindText().Click(X, Y, "L")
         Sleep, 500
+        return true
     } else {
          DebugLog("ClickRerun: Rerun button NOT found!")
+         return false
     }
-     DebugLog("ClickRerun: --- Exiting function ---")
+     DebugLog("This should not be reached")
 }
 
 ClickTownOnComplete() {
@@ -1075,9 +1395,9 @@ SelectPvpOpponent(choice) {
 
     DebugLog("SelectPvpOpponent: Clicking opponent at mapped index " . realIdx . " using coordinates (X=" . clickX . " Y=" . clickY . ")")
 
-    ; *** CHANGE: Use FindText().Click() with explicit coordinates ***
+
     FindText().Click(clickX, clickY, "L")
-    ; *** END CHANGE ***
+
 
     Sleep, 300
 
@@ -1092,8 +1412,270 @@ ClickPvpAccept() {
         Sleep, 800
         return true
     }
+    DebugLog("ClickPvpAccept: Accept button not found.")
     return false
 }
+
+;── Raid helpers ─────────────────────────
+IsRaidWindowOpen() {
+    global Bot
+    DebugLog("IsRaidWindowOpen: Checking for Raid window pattern...")
+    result := FindText(X, Y, 376, 409, 2761, 1746, 0, 0, Bot.ocr.RaidWindow) 
+    found := result ? "True" : "False"
+    DebugLog("IsRaidWindowOpen: FindText result: " . found)
+    return result
+}
+
+ClickRaidIcon() {
+    global Bot
+    DebugLog("ClickRaidIcon: Searching for Raid icon on main screen...")
+    if FindText(X, Y, 710, 1014, 858, 1158, 0, 0, Bot.ocr.RaidIcon) {
+        DebugLog("ClickRaidIcon: Found. Clicking.")
+        FindText().Click(X, Y, "L")
+        Sleep, 900 ; Short sleep after click
+        return true
+    } else {
+        DebugLog("ClickRaidIcon: Raid icon NOT found!")
+        return false
+    }
+}
+
+EnsureCorrectRaidSelected(targetRaidIndex) {
+    global Bot
+    DebugLog("EnsureCorrectRaidSelected: --- OPTIMIZED Entered Function --- Target Index: " . targetRaidIndex)
+
+    ; --- Step 1: Detect Current Raid Index (with retry) ---
+    currentIndex := 0 ; Initialize to 0 (failure state)
+    Loop, 2 ; Try up to 2 times to detect the current raid
+    {
+        DebugLog("EnsureCorrectRaidSelected: Detecting current raid index (Attempt " . A_Index . " of 2)...")
+        currentIndex := DetectCurrentlyDisplayedRaidIndex()
+        if (currentIndex != 0) { ; If detection succeeded
+            DebugLog("EnsureCorrectRaidSelected: Detected index '" . currentIndex . "' on attempt " . A_Index . ".")
+            break ; Exit the detection loop
+        }
+        if (A_Index = 1) { ; If first attempt failed, wait before retrying
+            DebugLog("EnsureCorrectRaidSelected: Attempt 1 failed. Sleeping 500ms before retry.")
+            Sleep, 500
+        }
+    }
+
+    ; Check if detection failed after all attempts
+    if (currentIndex = 0) {
+        DebugLog("EnsureCorrectRaidSelected: Failed to detect initial raid index after 2 attempts. Returning False.")
+        return false
+    }
+
+    ; --- Proceed only if detection was successful ---
+    DebugLog("EnsureCorrectRaidSelected: Initial detected index: '" . currentIndex . "'")
+
+    if (currentIndex = targetRaidIndex) { ; Already on the correct raid
+        DebugLog("EnsureCorrectRaidSelected: Already on target raid index " . targetRaidIndex . ". Returning True.")
+        return true
+    }
+
+    ; --- Step 2: Calculate Clicks Needed ---
+    totalRaids := Bot.ocr.RaidMapping.MaxIndex() ; Get total number of raids defined
+    if (totalRaids <= 1) { ; Should not happen if check passed in ActionRaid, but safety check
+         DebugLog("EnsureCorrectRaidSelected: Only 1 or fewer raids defined in mapping. Cannot navigate.")
+         return (currentIndex = targetRaidIndex) ; Return true only if already correct
+    }
+
+    ; Calculate distance in both directions (handling wrap-around)
+    diffRight := targetRaidIndex - currentIndex
+    if (diffRight < 0) { ; Wrap around going right (e.g., from 10 to 2)
+        diffRight += totalRaids
+    }
+
+    diffLeft := currentIndex - targetRaidIndex
+    if (diffLeft < 0) { ; Wrap around going left (e.g., from 2 to 10)
+         diffLeft += totalRaids
+    }
+
+    ; Determine direction and number of clicks
+    numClicks := 0
+    clickDirection := ""
+    if (diffLeft < diffRight) {
+        numClicks := diffLeft
+        clickDirection := "Left"
+    } else { ; Includes diffLeft = diffRight case, prefer right? Or choose based on shortest path? Let's prefer right if equal.
+        numClicks := diffRight
+        clickDirection := "Right"
+    }
+
+    if (numClicks = 0) { ; Should only happen if current = target, already handled
+        DebugLog("EnsureCorrectRaidSelected: Calculated 0 clicks needed? Returning True (already correct).")
+        return true
+    }
+
+    DebugLog("EnsureCorrectRaidSelected: Need to click " . clickDirection . " " . numClicks . " time(s).")
+
+    ; --- Step 3: Perform Arrow Clicks ---
+    Loop, %numClicks%
+    {
+        DebugLog("EnsureCorrectRaidSelected: Clicking " . clickDirection . " Arrow (Click " . A_Index . " of " . numClicks . ")")
+        if (clickDirection = "Left") {
+            if (!ClickRaidLeftArrow()) { ; Check if click function indicated failure
+                 DebugLog("EnsureCorrectRaidSelected: ClickRaidLeftArrow failed during loop. Aborting.")
+                 return false ; Abort if arrow not found
+            }
+        } else { ; Must be Right
+            if (!ClickRaidRightArrow()) {
+                 DebugLog("EnsureCorrectRaidSelected: ClickRaidRightArrow failed during loop. Aborting.")
+                 return false ; Abort if arrow not found
+            }
+        }
+        Sleep, 150 ; Smaller sleep between clicks - adjust if needed
+    }
+
+    ; --- Step 4: Final Verification ---
+    DebugLog("EnsureCorrectRaidSelected: Finished clicking arrows. Verifying final position...")
+    Sleep, 600 ; Wait a bit longer for screen to settle after last click
+
+    finalIndex := DetectCurrentlyDisplayedRaidIndex()
+    DebugLog("EnsureCorrectRaidSelected: Final detected index: '" . finalIndex . "'")
+
+    if (finalIndex = targetRaidIndex) {
+        DebugLog("EnsureCorrectRaidSelected: --- Success! Target raid index '" . targetRaidIndex . "' is displayed. ---")
+        return true
+    } else {
+        DebugLog("EnsureCorrectRaidSelected: --- Failed! Target raid index '" . targetRaidIndex . "' NOT displayed after clicking. Detected '" . finalIndex . "' instead. ---")
+        return false
+    }
+}
+
+DetectCurrentlyDisplayedRaidIndex() {
+    global Bot
+    DebugLog("DetectCurrentlyDisplayedRaidIndex: --- Entered function ---")
+
+    for index, pattern in Bot.ocr.RaidMapping {
+        if (pattern = "") ; Skip empty patterns if any
+            continue
+        if FindText(X, Y, 603, 462, 2539, 1728, 0, 0, pattern) {
+            DebugLog("DetectCurrentlyDisplayedRaidIndex: Found pattern for index " . index . ". --- Exiting function ---")
+            return index ; Return the INDEX (1, 2, 3...)
+        }
+    }
+    DebugLog("DetectCurrentlyDisplayedRaidIndex: No known raid pattern found! --- Exiting function ---")
+    return 0 ; Return 0 if no known raid found
+}
+
+ClickRaidLeftArrow() {
+    global Bot
+    DebugLog("ClickRaidLeftArrow: Searching for Raid Left Arrow...")
+
+    if FindText(X, Y, 629, 492, 1603, 1678, 0, 0, Bot.ocr.RaidLeftArrow) {
+        DebugLog("ClickRaidLeftArrow: Found. Clicking.")
+        FindText().Click(X, Y, "L")
+        Sleep, 400 ; Short sleep after click
+        return true
+    } else {
+        DebugLog("ClickRaidLeftArrow: Arrow NOT found!")
+        return false
+    }
+}
+
+ClickRaidRightArrow() {
+    global Bot
+    DebugLog("ClickRaidRightArrow: Searching for Raid Right Arrow...")
+
+    if FindText(X, Y, 1587, 480, 2571, 1662, 0, 0, Bot.ocr.RaidRightArrow) {
+        DebugLog("ClickRaidRightArrow: Found. Clicking.")
+        FindText().Click(X, Y, "L")
+        Sleep, 400 ; Short sleep after click
+        return true
+    } else {
+        DebugLog("ClickRaidRightArrow: Arrow NOT found!")
+        return false
+    }
+}
+
+ClickRaidSummonButton() {
+    global Bot
+    DebugLog("ClickRaidSummonButton: Searching for Raid Summon button...")
+    if FindText(X, Y, 659, 482, 2521, 1642, 0, 0, Bot.ocr.Button.RaidSummon) {
+        DebugLog("ClickRaidSummonButton: Found. Clicking.")
+        FindText().Click(X, Y, "L")
+        Sleep, 900 ; Short sleep after click
+        return true
+    } else {
+        DebugLog("ClickRaidSummonButton: Raid Summon button NOT found!")
+        return false
+    }
+}
+
+ClickPreRaidDialogue() {
+    global Bot
+    DebugLog("ClickPreRaidDialogue: Searching for Pre-Raid dialogue...")
+    if FindText(X, Y, 1868, 617, 2804, 1745, 0, 0, Bot.ocr.PreRaidDialogue) {
+        DebugLog("ClickPreRaidDialogue: Found. Sending {Esc}.")
+        Send, {Esc}
+        Sleep, 200 ; Short sleep after sending key
+        return true
+    }
+    return false
+}
+
+SelectRaidDifficulty(difficultyName) {
+    global Bot
+    DebugLog("SelectRaidDifficulty: Attempting to select difficulty '" . difficultyName . "'...")
+    if (!Bot.ocr.RaidDifficulty.HasKey(difficultyName)) {
+        DebugLog("SelectRaidDifficulty: ERROR - Pattern for difficulty '" . difficultyName . "' not defined.")
+        return false
+    }
+    diffPattern := Bot.ocr.RaidDifficulty[difficultyName]
+    ; Adjust search region for difficulty buttons
+    if (FindText(X, Y, 697, 496, 2495, 1651, 0, 0, diffPattern)) {
+        DebugLog("SelectRaidDifficulty: Found pattern for '" . difficultyName . "'. Clicking.")
+        FindText().Click(X, Y, "L")
+        ; Optional: Add verification step if needed
+        return true
+    } else {
+        DebugLog("SelectRaidDifficulty: Pattern for '" . difficultyName . "' not found.")
+        return false
+    }
+}
+
+ClickRaidPlayButton() {
+    global Bot
+    DebugLog("ClickRaidPlayButton: Searching for Play button...")
+    ; Adjust search region for the play button
+    if (FindText(X, Y, 1861-150000, 1539-150000, 1861+150000, 1539+150000, 0, 0, Bot.ocr.Button.Accept)) {
+        DebugLog("ClickRaidPlayButton: Found. Clicking.")
+        FindText().Click(X, Y, "L")
+        return true
+    } else {
+        DebugLog("ClickRaidPlayButton: Play button not found.")
+        return false
+    }
+}
+
+IsRaidComplete() {
+    global Bot
+    DebugLog("IsRaidComplete: Checking for Raid completion screen...")
+    ; Adjust search region for completion indicators
+    result := FindText(X, Y, 800, 300, 2400, 1000, 0, 0, Bot.ocr.Raid.CompletionScreen)
+    found := result ? "True" : "False"
+    DebugLog("IsRaidComplete: FindText result: " . found)
+    return result
+}
+
+
+ClickRaidAccept() {
+    global Bot
+    DebugLog("ClickRaidAccept: Searching for Accept button on completion screen...")
+    ; Adjust search region for the accept button after a raid
+    if (FindText(X, Y, 1500, 1400, 2200, 1700, 0, 0, Bot.ocr.Button.Rerun)) { ; Might be same pattern as Bot.ocr.Button.Accept
+        DebugLog("ClickRaidAccept: Found. Clicking.")
+        FindText().Click(X, Y, "L")
+        return true
+    } else {
+        DebugLog("ClickRaidAccept: Accept button not found.")
+        return false
+    }
+}
+
+;── Hotkey ───────────────────────────────
 F12::
 {
     global Bot

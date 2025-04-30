@@ -1,0 +1,16 @@
+Concat the strings
+
+example := "|<>hf8eyufa|<>huaguasu" where this one var can hold more than one OCR string so we can check for more than one on a single if statement
+
+
+TO TEST. ActionWorldBoss flow, should properly detect tiers, logic for changing tiers NOT implemented, should properly detect and change difficulty, and worldboss using the efficient navigation method, MUCH FASTER! :D
+
+TODO:
+Worldboss logic seems solid,
+right now the only bits non functional or not present: if your desired and selected tier do NOT match.
+If tiers match, this will run.
+	Pre worldboss dialogue, could likely reuse the raid functions for this.
+	Highest and Lowest available config options present but not tested.
+	Disconnect check in MonitorWorldBoss needs verified
+
+Need to get rid of the first is worldboss window open check since it never will be open in this condition

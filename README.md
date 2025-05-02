@@ -1,4 +1,4 @@
-# Orion Bit Heroes Automation Script (v0.2.5 Pre-Release)
+# Orion Bit Heroes Automation Script (v0.2.5 Hydra)
 
 ## Overview
 

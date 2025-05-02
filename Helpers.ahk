@@ -9,7 +9,6 @@ IsMainScreenAnchor() {
 
 AttemptReconnect() {
     global Bot
-     ; No entry/exit needed unless problematic. Log IF found.
     DebugLog("AttemptReconnect: Checking for disconnect message...")
     if FindText(X, Y, 696, 470, 2503, 1632, 0, 0, Bot.ocr.Disconnect) {
          DebugLog("AttemptReconnect: Found disconnect message. Clicking OK.")
@@ -27,7 +26,7 @@ CheckOutOfResources() {
     result := FindText(X, Y, 1000-150000, 800-150000, 1000+150000, 800+150000, 0, 0, Bot.ocr.OutOfResources)
     found := result ? "True" : "False"
     DebugLog("CheckOutOfResources: FindText result: " . found . " --- Exiting function ---")
-    return result ; Return FindText result
+    return result ; Returns the actual reselt
 }
 
 ClickRightArrow() {
@@ -59,7 +58,7 @@ EnsureAutoPilotOn() {
     DebugLog("EnsureAutoPilotOn: --- Entered function (will try up to 3 times) ---")
     foundRed := false, foundGreen := false, variation := 0.1 ; Keep color variation
 
-    Loop, 3 ; Try up to 3 times
+    Loop, 3
     {
         DebugLog("EnsureAutoPilotOn: Attempt " . A_Index . " of 3.")
 
@@ -70,9 +69,9 @@ EnsureAutoPilotOn() {
         if (foundRed) {
             DebugLog("EnsureAutoPilotOn: Found RED AutoPilot button. Sending {Space} to toggle ON.")
             Send, {space}
-            Sleep, 300 ; Short sleep after sending key
+            Sleep, 300
             DebugLog("EnsureAutoPilotOn: --- Exiting function (Action Taken) ---")
-            return true ; Success - Exit function immediately
+            return true
         }
 
         ; 2. If RED wasn't found, check for GREEN (On) button
@@ -86,7 +85,7 @@ EnsureAutoPilotOn() {
 
         ; 3. If neither was found on this attempt
         DebugLog("EnsureAutoPilotOn: Attempt " . A_Index . ": Neither RED nor GREEN button found.")
-        if (A_Index < 3) { ; Don't sleep after the last attempt
+        if (A_Index < 3) {
              DebugLog("EnsureAutoPilotOn: Sleeping 400ms before next attempt.")
              Sleep, 400
         }
@@ -100,7 +99,7 @@ EnsureAutoPilotOn() {
 IsActionComplete() {
     global Bot
     DebugLog("IsActionComplete: --- Entered Function ---")
-    ; Checking for "Town" button using wide coords
+    ; Checking for "Town"
     result := FindText(X, Y, 601, 488, 2507, 1677, 0, 0, Bot.ocr.Button.Town)
     found := result ? "True" : "False"
     DebugLog("IsActionComplete: FindText for Town button returned: " . found . " --- Exiting function ---")
@@ -110,7 +109,7 @@ IsActionComplete() {
 IsDisconnected() {
     global Bot
     DebugLog("IsDisconnected: --- Entered Function ---")
-    ; Checking for disconnect popup in specific region
+    ; Checking for disconnect popup
     result := FindText(X, Y, 696, 470, 2503, 1632, 0, 0, Bot.ocr.Disconnect)
      found := result ? "True" : "False"
     DebugLog("IsDisconnected: FindText for Disconnect pattern returned: " . found . " --- Exiting function ---")
@@ -120,7 +119,7 @@ IsDisconnected() {
 IsPlayerDead() {
     global Bot
     DebugLog("IsPlayerDead: --- Entered Function ---")
-    ; Checking for death overlay in specific region
+    ; Checking for death
     result := FindText(X, Y, 672, 371, 2508, 944, 0, 0, Bot.ocr.PlayerDead)
     found := result ? "True" : "False"
     DebugLog("IsPlayerDead: FindText for PlayerDead pattern returned: " . found . " --- Exiting function ---")
@@ -162,7 +161,6 @@ ClickTownOnComplete() {
 HandleInProgressDialogue() {
     global Bot
     ; No entry/exit needed unless it becomes problematic. Just log IF found.
-    ; Checking for dialogue arrow in specific region
     if FindText(X, Y, 1859, 727, 2495, 1369, 0, 0, Bot.ocr.InProgressDialogue) {
         DebugLog("HandleInProgressDialogue: Found dialogue arrow. Sending {Esc}.")
         Send, {Esc}

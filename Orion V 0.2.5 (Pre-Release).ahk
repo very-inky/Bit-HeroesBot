@@ -8,42 +8,42 @@
 #Include Quest_Logic.ahk
 #Include PVP_Logic.ahk
 #Include Raid_Logic.ahk
-#Include WorldBoss_Logic.ahk
+
 
 ;Soundbeep, 500, 600
 
 
-;——— Build the Bot “context” object —————————————————————————————
+; Build the Bot object
 global Bot := {}
 
-; 1) Action configurations & rotation
-Bot.actionConfig := { Quest: false, PVP: false, WorldBoss: true
-                  , Raid: false, Trials: false, Expedition: false, Gauntlet: false }
+; Action configurations & rotation
+Bot.actionConfig := { Quest: true, PVP: true, WorldBoss: true
+                  , Raid: true, Trials: false, Expedition: false, Gauntlet: false }
 Bot.actionOrder := ["Quest","PVP","WorldBoss","Raid","Trials","Expedition","Gauntlet"]
-Bot.currentActionIndex := 3
+Bot.currentActionIndex := 2
 
-; 2) Questing configs
-; --- Define the specific Zone PATTERNS and Dungeon NAMES you want to run ---
+; Questing configs
+
 Bot.desiredZones       := [ Patterns.Zone[3], Patterns.Zone[2] ] ; Use the PATTERN for Zone 3 from Patterns.ahk
-Bot.desiredDungeons    := [ "Dungeon2", "Dungeon1" ]       ;  Not all zones have 3 dungeons!
+Bot.desiredDungeons    := [ "Dungeon2", "Dungeon1" ]       ;  Not all zones have 3 dungeons
 ; --- If running multiple configurations, add more pairs!
 
 Bot.currentSelectionIndex := 1
 
-; 3) PVP configs
+; PVP configs
 Bot.PvpTicketChoice   := 5    ; 1–5
 Bot.PvpOpponentChoice := 2    ; 1–4
 
 Bot.Raid := {}
 Bot.Raid.Conf := {}
-; 4) Raid configs
+; Raid configs
 Bot.Raid.Conf.List := ["Raid8"] ; List of raids to run. (MATCH THESE TO Patterns.Raid.RaidName
 Bot.Raid.Conf.Count := 0 ; Number of raids to run, (0 for infinite, run raids till out of resources.)
 Bot.Raid.Conf.Difficulty := "Heroic" ; Raid difficulty (Normal, Hard, Heroic)
 Bot.Raid.Conf.CurrentIndex := 1 ; Tracks which raid in the list to run next
 Bot.Raid.Conf.CompletedCount := 0 ; Tracks how many raids have been completed in this session/cycle
 
-; 5) World Boss configs
+; World Boss configs
 Bot.WorldBoss := {}
 Bot.WorldBoss.Conf := {}
 ; --- List of configs for specifying worldboss name and tier ---
@@ -51,40 +51,22 @@ Bot.WorldBoss.Conf := {}
 ; Initialize as an empty array first
 Bot.WorldBoss.Conf.List := []
 ; Add each configuration object separately
-Bot.WorldBoss.Conf.List.Push({ Name: "Orlag Clan", Tier: 7 })
-Bot.WorldBoss.Conf.List.Push({ Name: "Netherworld", Tier: 7 })
-;Bot.WorldBoss.Conf.List.Push({ Name: "Netherworld", Tier: "HighestAvailable" }) ; Run Netherworld Highest Available
+;Bot.WorldBoss.Conf.List.Push({ Name: "Orlag Clan", Tier: 7 })
+;Bot.WorldBoss.Conf.List.Push({ Name: "Netherworld", Tier: 7 })
+Bot.WorldBoss.Conf.List.Push({ Name: "Netherworld", Tier: "HighestAvailable" }) ; Run Netherworld Highest Available
 ;Bot.WorldBoss.Conf.List.Push({ Name: "Orlag Clan", Tier: "LowestAvailable" })   ; Run Orlag Clan Lowest Available
 ;Bot.WorldBoss.Conf.List.Push({ Name: "Titans Attack", Tier: 11 })           ; Run Titans Attack Tier 11 (if available)
 ;Bot.WorldBoss.Conf.List.Push({ Name: "Project Goodall", Tier: 99 })         ; Example of an invalid tier for testing
 Bot.WorldBoss.Conf.CurrentIndex := 1 ; Tracks which WB config in the list to run next, shouldnt need to change this, multiple configs are handled in the monitor function and ran automatically
 Bot.WorldBoss.Conf.Difficulty := "Heroic" ; Add Difficulty setting (Normal, Hard, Heroic)
-; Bot.WorldBoss.Conf.TierPreference := "HighestAvailable" ; This is now part of the List object
 
-; --- ADDED: Full UI Order of World Bosses (Adjust if necessary!) ---
-Bot.WorldBoss.UiOrder := [ "Orlag Clan"
-                         , "Netherworld"
-                         , "Melvin Factory"
-                         , "Extermination"
-                         , "Brimstone Syndicate"
-                         , "Titans Attack"
-                         , "The Ignited Abyss"
-                         , "Project Goodall" ]
-
-; 6) OCR patterns
 Bot.ocr := Patterns       ; so we can point Bot.ocr with the Patterns for easier handling.
-; --- Add World Boss Tier Mapping to OCR patterns ---
-Bot.ocr.WorldBossValidTiers := { "Orlag Clan":          [12, 11, 10, 9, 8, 7, 6, 5, 4, 3] ; Highest to lowest
-                                , "Netherworld":         [13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3]
-                                , "Melvin Factory":      [11, 10]
-                                , "Extermination":       [11, 10]
-                                , "Brimstone Syndicate": [12, 11]
-                                , "Titans Attack":       [14, 13, 12, 11]
-                                , "The Ignited Abyss":   [14, 13]
-                                , "Project Goodall":     [14, 7] }
-; --- Placeholder patterns for WB elements are now in Patterns.ahk ---
+; Moved the include for WorldBoss logic down here to allow
+; non config, worldboss setup to me moved out of this file 
+#Include WorldBoss_Logic.ahk
 
-; 7) State & cooldown tracking
+
+;State & cooldown tracking
 Bot.gameState     := "NotLoggedIn"
 Bot.actionCooldown := 1200000  ; 20 min in ms
 DebugLog("=== BOT LOADED; initial gameState=" Bot.gameState)
@@ -124,10 +106,13 @@ BotMain:
         popupAttempts := 0
         ; Loop until main screen anchor is found OR attempts run out
         while (!IsMainScreenAnchor() and popupAttempts < 7) {
+            Loop, 2
+            {
             if FindText(X, Y, 610, 490, 2515, 1649, 0, 0, Bot.ocr.Popup)
                 FindText().Click(X, Y, "L")
             if FindText(X, Y, 610, 490, 2515, 1649, 0, 0, Bot.ocr.PopupYes)
                 FindText().Click(X, Y, "L")
+            }
             Send, {Esc}
             Sleep, 500
             popupAttempts++
@@ -218,16 +203,18 @@ BotMain:
                 Bot.gameState := "NotLoggedIn"
                 ; No DebugLog needed here, NotLoggedIn state handles its entry log
             }
-            else if (current = "PVP" and result = "success") { ; Note: PVP returns "started", not "success" now
-                ; loop PVP immediately - do nothing here, next loop iteration will handle it
-                 DebugLog("BotMain: PVP returned success, looping PVP immediately.")
+            ; --- ADDED/MODIFIED: Explicit handling for retry/error ---
+            else if (result = "retry" or result = "error" or result = "error_unknown_action") {
+                 DebugLog("BotMain: Action '" . current . "' returned '" . result . "'. Attempting UI cleanup via HandlingPopups and will retry.")
+                 Bot.gameState := "HandlingPopups"
+                 ; DO NOT set cooldown
+                 ; DO NOT advance index
             }
-            else {
-                ; Default case for other results ("retry", "success" for non-PVP/non-Raid, "error", etc.)
-                ; Start cooldown & advance to next action
+            ; --- END ADDED/MODIFIED ---
+            else { ; Includes "success" for simple actions or specific cases like WB skipping invalid tier
                  DebugLog("BotMain: Action '" . current . "' finished with result '" . result . "'. Starting cooldown and advancing.")
-                Bot.lastActionTime[current] := now
-                Bot.currentActionIndex := Mod(Bot.currentActionIndex, Bot.actionOrder.Length()) + 1
+                 Bot.lastActionTime[current] := now
+                 Bot.currentActionIndex := Mod(Bot.currentActionIndex, Bot.actionOrder.Length()) + 1
             }
         } else {
             ; skip due to cooldown
@@ -278,17 +265,12 @@ BotMain:
             }
             DebugLog("ActionRunning: Advanced WB config index to " . Bot.WorldBoss.Conf.CurrentIndex)
 
-            ; --- REMOVED Cooldown setting and Main Action Index advancement ---
-            ; Bot.lastActionTime[current] := A_TickCount ; Set cooldown for WorldBoss action type
-            ; Bot.currentActionIndex := Mod(Bot.currentActionIndex, Bot.actionOrder.Length()) + 1 ; Advance main action index
-            ; DebugLog("ActionRunning: Cooldown set for WorldBoss, main action index advanced.")
 
             ; Go back via popups to ensure clean state before starting next WB config
             Bot.gameState := "HandlingPopups"
             DebugLog("ActionRunning: State changed to HandlingPopups to attempt next WB config.")
             return
         }
-        ; --- END CORRECTION ---
         else if (monitorResult = "raid_completed" or monitorResult = "raid_completed_next") { ; Check for EITHER raid complete result
             DebugLog("ActionRunning: Raid monitor reported completion.")
             Bot.Raid.Conf.CompletedCount += 1
@@ -304,14 +286,14 @@ BotMain:
                 Bot.lastActionTime[current] := A_TickCount ; Set cooldown
                 Bot.currentActionIndex := Mod(Bot.currentActionIndex, Bot.actionOrder.Length()) + 1 ; Advance past Raid
                 DebugLog("ActionRunning: Cooldown set for Raid, index advanced.")
-                Bot.gameState := "NormalOperation" ; Return to NormalOperation
+                Bot.gameState := "NormalOperation"
                 DebugLog("ActionRunning: Returning to NormalOperation.")
-                return ; !!! Important: Return after handling state change
+                return
             } else {
                 DebugLog("ActionRunning: Raid target count not reached or infinite. Cooldown NOT set, index NOT advanced (will attempt next raid).")
                 Bot.gameState := "HandlingPopups" ; Go back via popups to restart Raid action
                 DebugLog("ActionRunning: State changed to HandlingPopups to ensure return to main screen before next raid attempt.")
-                return ; !!! Important: Return after handling state change
+                return
             }
 
         }
@@ -330,7 +312,7 @@ BotMain:
         }
         else if (monitorResult = "disconnected" or monitorResult = "player_dead") {
              DebugLog("ActionRunning: Monitor reported '" . monitorResult . "'. State already changed by monitor function.")
-             ; Monitor function should have already changed Bot.gameState to NotLoggedIn
+             ; Monitor function should have already changed Bot.gameState to NotLoggedIn or HandlingPopups ?
              return
          }
         else if (monitorResult = "error") {
@@ -369,7 +351,7 @@ BotMain:
 ActionTrials()      {
     global Bot
     DebugLog("ActionTrials: --- Entered function ---")
-    ; INCOMPLETE, THIS IS A PLACEHOLDER FOR YOUR LOGIC
+    ; INCOMPLETE, THIS IS A PLACEHOLDER
     if (CheckOutOfResources()) 
         return "outofresource"
     DebugLog("ActionTrials: --- Success! Returning 'success'. ---")
@@ -380,7 +362,7 @@ ActionTrials()      {
 ActionExpedition()  {
     global Bot
     DebugLog("ActionExpedition: --- Entered function ---")
-    ; INCOMPLETE, THIS IS A PLACEHOLDER FOR YOUR LOGIC
+    ; INCOMPLETE, THIS IS A PLACEHOLDER
     if (CheckOutOfResources())
         return "outofresource"
     DebugLog("ActionExpedition: --- Success! Returning 'success'. ---")
@@ -391,7 +373,7 @@ ActionExpedition()  {
 ActionGauntlet()    {
     global Bot
     DebugLog("ActionGauntlet: --- Entered function ---")
-    ; INCOMPLETE, THIS IS A PLACEHOLDER FOR YOUR LOGIC
+    ; INCOMPLETE, THIS IS A PLACEHOLDER
     if (CheckOutOfResources())
         return "outofresource"
     DebugLog("ActionGauntlet: --- Success! Returning 'success'. ---")

@@ -1,16 +1,46 @@
-Concat the strings
+Wow! Feels like Its been a minute. As you may have seen from the 0.2.5 pre-release, logic has been abstracted to included files now for more modular control and additions than before. Starting out, the entire process I've struggled with the growing scope and logic but knew what it was meant to be in my head.
+This new modularized logic files, helper file and of course the main Orion script acting as the central hub outsourcing actions and work to these is now much more reflected. That being said, WorldBoss was particularly challenging. The worldboss logic file itself is almost equal in lines of code to all the other files together! ~1200 just for worldboss logic and setup Lets roll with what has been done since pre-release.
 
-example := "|<>hf8eyufa|<>huaguasu" where this one var can hold more than one OCR string so we can check for more than one on a single if statement
+World Boss:
+Significant improvements to World Boss logic all around! tier selection logic for both "HighestAvailable" and "LowestAvailable" settings now available, making it more efficient and reliable. Easier than ever to run the content you want! Multi config worldboss runs are quite slow, sadly.
+This is due to there being 3 summon buttons during setup, pretty sure they are all different, so the if check for each summon button, evaluates all 3 at once, three times. This can be optimized later, but isn't too bad for regen. Wouldn't use it on a 4 hour boost!
+Refined scrolling behavior when selecting the lowest available tier.
+Improved code organization by moving World Boss specific, non configuration logic to the worldboss file.
+Detailed Changes:
+
+Optimized ActionWorldBoss, removing the first window open check. This would never be true and just slows us down. 
+
+Tier Selection Optimization:
+Both FindHighestAvailableTier and FindLowestAvailableTier now check if the desired tier (highest or lowest valid) is already selected before attempting to open the tier list. This prevents unnecessary clicks and potential errors.
 
 
-TO TEST. ActionWorldBoss flow, should properly detect tiers, logic for changing tiers NOT implemented, should properly detect and change difficulty, and worldboss using the efficient navigation method, MUCH FASTER! :D
+FindLowestAvailableTier Logic:
+The function now only attempts to scroll down the tier list if the target lowest tier button is not immediately visible after the list is opened.
+Scrolling now occurs in cycles: scroll down twice, then check for the button. This repeats until the button is found, the scroll limit is reached, or the down arrow disappears.
 
-TODO:
-Worldboss logic seems solid,
-right now the only bits non functional or not present: if your desired and selected tier do NOT match.
-If tiers match, this will run.
-	Pre worldboss dialogue, could likely reuse the raid functions for this.
-	Highest and Lowest available config options present but not tested.
-	Disconnect check in MonitorWorldBoss needs verified
+FindHighestAvailableTier Logic:
+Added the check to see if the highest valid tier is already selected before opening the list (similar to the lowest tier logic).
+Added an Esc key press after clicking a tier button to help ensure the tier list closes reliably. This is due to a peculiarity, HighestAvailable could translate into Tier13, but your character only has Tier10 unlocked, meaning on first glance, we aren't on highest available, but then we scan to see what the player's highest available is.
 
-Need to get rid of the first is worldboss window open check since it never will be open in this condition
+Codebase:
+Mini-refactor. As stated above, This was done to better show the actual logic flow that is intended. Orion is a central object outsourcing its work and listening to how it goes. Each action now has its own file, and reusable functions are included in the helpers file.
+
+Moved Bot.WorldBoss.UiOrder (the order bosses appear in the UI) and Bot.ocr.WorldBossValidTiers (the mapping of valid tiers per boss) from the main script into WorldBoss_Logic.ahk for better organization.
+
+
+Core Logic / Other:
+Minor adjustments to sleep timers
+Improved debug logging messages for clearer state tracking.
+Refined state transitions in the main loop (BotMain) to better handle retry and error results from action functions.
+
+TODO: 
+PreWorldBoss dialogue checks, unsure when these occur during setup if youve never ran that WB before or cookies were cleared. Not a high priority, other actions are.
+Expect a 0.2.5(a) for bugfixes that may release before another Action.
+
+Versioning:
+
+The software uses a Major.Minor.Supported format (e.g., 0.2.5) followed by a codename for thematic purposes.
+
+Major (0): Indicates the project is pre-release (version 1.0).
+Minor (2): Increments with significant milestones like code refactors, architectural changes, or substantial feature overhauls. The initial build (0.0.1) established the core framework (initialization, login/disconnect handling, screen verification).
+Supported (5): This number specifically counts the distinct game modes and processes the bot can fully automate (e.g., Quest, PVP, Raid, WorldBoss, Trials), starting from 1 before the first action (like Questing) was completed. Where 1 was the bot recognizing a main screen anchor, verifying login and handling popups and rewards.

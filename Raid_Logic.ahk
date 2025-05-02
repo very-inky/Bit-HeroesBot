@@ -4,7 +4,7 @@ ActionRaid() {
     global Bot
     DebugLog("ActionRaid: --- Entered function ---")
 
-    ; --- Check Configuration ---
+    ; Check Configuration
     isObj := IsObject(Bot.Raid.Conf.List)
     maxIdx := ""
     if (isObj) {
@@ -20,12 +20,12 @@ ActionRaid() {
         Bot.Raid.Conf.CurrentIndex := 1
     }
 
-    ; --- Determine Target Raid ---
+    ; Determine Target Raid
     configListIndex := Bot.Raid.Conf.CurrentIndex
     targetRaidName := Bot.Raid.Conf.List[configListIndex] ; Get the NAME (e.g., "Raid2")
     targetDifficulty := Bot.Raid.Conf.Difficulty
 
-    ; *** NEW: Extract the numeric index FROM the NAME ***
+    ; Extract the numeric index FROM the NAME
     targetMappingIndex := SubStr(targetRaidName, 5) ; Extract number part (assumes format "RaidN")
     if (targetMappingIndex is not number or targetMappingIndex < 1) {
         DebugLog("ActionRaid: ERROR - Could not extract valid numeric index from raid name '" . targetRaidName . "'. Returning 'error'.")
@@ -37,7 +37,7 @@ ActionRaid() {
     DebugLog("ActionRaid: Config List Index: " . configListIndex . ", Target Raid Name: '" . targetRaidName . "', Target Mapping Index: " . targetMappingIndex . ", Difficulty: '" . targetDifficulty . "'")
 
 
-    ; --- Navigation ---
+    ; Navigation
     DebugLog("ActionRaid: Checking if Raid window is open...")
     if (!IsRaidWindowOpen()) {
         DebugLog("ActionRaid: Raid window not open. Clicking Raid icon...")
@@ -55,8 +55,7 @@ ActionRaid() {
         DebugLog("ActionRaid: Raid window already open.")
     }
 
-    ; --- Select Raid (Using Correct Target Index) ---
-    ; *** Call the helper using the correct MAPPING INDEX ***
+    ; Select Raid (Using Correct Target Index)
     DebugLog("ActionRaid: Ensuring correct raid (Mapping Index: " . targetMappingIndex . ") is selected...")
     if (!EnsureCorrectRaidSelected(targetMappingIndex)) {
         DebugLog("ActionRaid: EnsureCorrectRaidSelected failed for index '" . targetMappingIndex . "'. Returning 'retry'.")
@@ -65,7 +64,7 @@ ActionRaid() {
     DebugLog("ActionRaid: Successfully ensured raid index '" . targetMappingIndex . "' is selected.")
     Sleep, 500
 
-    ; --- Click SUMMON Button ---
+    ; Click SUMMON Button
     DebugLog("ActionRaid: Clicking Raid Summon button...")
     if (!ClickRaidSummonButton()) {
         DebugLog("ActionRaid: ClickRaidSummonButton failed. Returning 'retry'.")
@@ -74,10 +73,9 @@ ActionRaid() {
      DebugLog("ActionRaid: Clicked Raid Summon button.")
     Sleep, 1000
 
- ; --- *** NEW: Handle Pre-Raid Dialogue (Looping) *** ---
     DebugLog("ActionRaid: Checking for pre-raid dialogue...")
     dialogueAttempts := 0
-    maxDialogueAttempts := 9 ; Try up to 9 times to close dialogue
+    maxDialogueAttempts := 9 ; Try up to X times to close dialogue
     Loop, %maxDialogueAttempts%
     {
         dialogueFound := ClickPreRaidDialogue()
@@ -87,7 +85,7 @@ ActionRaid() {
             } else { ; Dialogue was found previously but is now gone
                  DebugLog("ActionRaid: Dialogue successfully closed after " . (A_Index - 1) . " attempt(s).")
             }
-            break ; Exit the dialogue handling loop
+            break
         }
         ; If dialogue WAS found...
         DebugLog("ActionRaid: Dialogue found (Attempt " . A_Index . "). Esc sent by handler. Waiting...")
@@ -100,7 +98,7 @@ ActionRaid() {
         return "retry"
     }
     
-    ; --- Select Difficulty ---
+    ; Select Difficulty
     DebugLog("ActionRaid: Selecting Difficulty '" . targetDifficulty . "'...")
     if (!SelectRaidDifficulty(targetDifficulty)) {
         DebugLog("ActionRaid: SelectRaidDifficulty failed for '" . targetDifficulty . "'. Returning 'retry'.")
@@ -109,7 +107,7 @@ ActionRaid() {
     DebugLog("ActionRaid: Successfully selected difficulty '" . targetDifficulty . "'.")
     Sleep, 700
 
-    ; --- Start Raid (Click Play Button) ---
+    ; Start Raid (Click Play Button)
     DebugLog("ActionRaid: Clicking Play button...")
     if (!ClickRaidPlayButton()) {
         DebugLog("ActionRaid: ClickRaidPlayButton failed. Returning 'retry'.")
@@ -118,7 +116,7 @@ ActionRaid() {
     DebugLog("ActionRaid: Clicked Play button.")
     Sleep, 1000
 
-    ; --- Check Resources ---
+    ; Check Resources
     if (CheckOutOfResources()) {
         DebugLog("ActionRaid: Out of resources detected after clicking Play. Returning 'outofresource'.")
         return "outofresource"
@@ -140,9 +138,8 @@ ActionRaid() {
 
 MonitorRaidProgress() {
     global Bot
-    ; Note: BotMain logs "monitoring Raid"
 
-    ; 1. Check for Completion first (using IsRaidComplete helper)
+    ; Check for Completion first (using IsRaidComplete helper)
     isComplete := IsActionComplete()
     DebugLog("MonitorRaid: IsActionComplete returned true")
     if (isComplete) {
@@ -150,11 +147,11 @@ MonitorRaidProgress() {
 
         ; Check if configured for single raid or multiple
         if (Bot.Raid.Conf.List.MaxIndex() = 1) {
-            ; --- SINGLE RAID CONFIG: Attempt Rerun ---
+            ; SINGLE RAID CONFIG: Attempt Rerun
             DebugLog("MonitorRaid: Single raid config - attempting Rerun.")
             if (ClickRerun()) {
                  DebugLog("MonitorRaid: ClickRerun succeeded. Sleeping and checking resources...")
-                 Sleep, 2000 ; Wait after clicking rerun
+                 Sleep, 2000
                  outOfRes := CheckOutOfResources() ; Check resources AFTER clicking rerun
                  returnVal := outOfRes ? "outofresource" : "raid_rerun" ; Return "raid_rerun" if resources OK
                  DebugLog("MonitorRaid: Rerun attempt finished. Returning '" . returnVal . "'")
@@ -165,17 +162,16 @@ MonitorRaidProgress() {
             }
 
         } else {
-            ; --- MULTI RAID CONFIG: Attempt Town/Exit ---
+            ; MULTI RAID CONFIG: Attempt Town/Exit
             DebugLog("MonitorRaid: Multi-raid config - attempting ClickTownOnComplete.")
             if (ClickTownOnComplete()) { ; Reuse the generic Town button clicker
                  DebugLog("MonitorRaid: ClickTownOnComplete succeeded.")
-                 Sleep, 1000 ; Wait after clicking town
+                 Sleep, 1000
                  ; NOTE: We don't usually need to check resources when just exiting to town.
                  DebugLog("MonitorRaid: Returning 'raid_completed_next'.")
                  return "raid_completed_next" ; Signal BotMain to setup next raid in list
-            } else {
+            } else { ;pretty sure this else block is wrong and a Rerun should be the fallback
                  DebugLog("MonitorRaid: ClickTownOnComplete failed. Looking for Raid Accept button as fallback...")
-                 ; Fallback: Maybe an "Accept" button instead of "Town"?
                  acceptClicked := ClickRaidAccept()
                  if (acceptClicked) {
                      DebugLog("MonitorRaid: ClickRaidAccept (fallback) succeeded.")
@@ -212,13 +208,11 @@ MonitorRaidProgress() {
         return "player_dead"
     }
 
-    ; Removed the CheckOutOfResources from here, as per your request
 
     ; Check for in-progress dialogue
     dialogueHandled := HandleInProgressDialogue()
     if (dialogueHandled) {
         DebugLog("MonitorRaid: Handled in-progress dialogue during raid.")
-        ; Continue monitoring after handling
     }
 
     ; 3. Still In Progress
@@ -227,7 +221,7 @@ MonitorRaidProgress() {
 }
 
 
-; --- Raid Helpers ---
+; Raid Helpers
 IsRaidWindowOpen() {
     global Bot
     DebugLog("IsRaidWindowOpen: Checking for Raid window pattern...")
@@ -243,7 +237,7 @@ ClickRaidIcon() {
     if FindText(X, Y, 710, 1014, 858, 1158, 0, 0, Bot.ocr.RaidIcon) {
         DebugLog("ClickRaidIcon: Found. Clicking.")
         FindText().Click(X, Y, "L")
-        Sleep, 900 ; Short sleep after click
+        Sleep, 900
         return true
     } else {
         DebugLog("ClickRaidIcon: Raid icon NOT found!")
@@ -255,7 +249,7 @@ EnsureCorrectRaidSelected(targetRaidIndex) {
     global Bot
     DebugLog("EnsureCorrectRaidSelected: --- OPTIMIZED Entered Function --- Target Index: " . targetRaidIndex)
 
-    ; --- Step 1: Detect Current Raid Index (with retry) ---
+    ; Detect Current Raid Index (with retry)
     currentIndex := 0 ; Initialize to 0 (failure state)
     Loop, 2 ; Try up to 2 times to detect the current raid
     {
@@ -277,7 +271,7 @@ EnsureCorrectRaidSelected(targetRaidIndex) {
         return false
     }
 
-    ; --- Proceed only if detection was successful ---
+    ; Proceed only if detection was successful
     DebugLog("EnsureCorrectRaidSelected: Initial detected index: '" . currentIndex . "'")
 
     if (currentIndex = targetRaidIndex) { ; Already on the correctraid
@@ -285,7 +279,7 @@ EnsureCorrectRaidSelected(targetRaidIndex) {
         return true
     }
 
-    ; --- Step 2: Calculate Clicks Needed ---
+    ; Calculate Clicks Needed
     totalRaids := Bot.ocr.RaidMapping.MaxIndex() ; Get total number of raids defined
     if (totalRaids <= 1) { ; Should not happen if check passed in ActionRaid, but safety check
          DebugLog("EnsureCorrectRaidSelected: Only 1 or fewer raids defined in mapping. Cannot navigate.")
@@ -321,7 +315,7 @@ EnsureCorrectRaidSelected(targetRaidIndex) {
 
     DebugLog("EnsureCorrectRaidSelected: Need to click " . clickDirection . " " . numClicks . " time(s).")
 
-    ; --- Step 3: Perform Arrow Clicks ---
+    ; Perform Arrow Clicks
     Loop, %numClicks%
     {
         DebugLog("EnsureCorrectRaidSelected: Clicking " . clickDirection . " Arrow (Click " . A_Index . " of " . numClicks . ")")
@@ -336,12 +330,12 @@ EnsureCorrectRaidSelected(targetRaidIndex) {
                  return false ; Abort if arrow not found
             }
         }
-        Sleep, 150 ; Smaller sleep between clicks - adjust if needed
+        Sleep, 150
     }
 
-    ; --- Step 4: Final Verification ---
+    ; Final Verification
     DebugLog("EnsureCorrectRaidSelected: Finished clicking arrows. Verifying final position...")
-    Sleep, 600 ; Wait a bit longer for screen to settle after last click
+    Sleep, 600
 
     finalIndex := DetectCurrentlyDisplayedRaidIndex()
     DebugLog("EnsureCorrectRaidSelected: Final detected index: '" . finalIndex . "'")
@@ -364,7 +358,7 @@ DetectCurrentlyDisplayedRaidIndex() {
             continue
         if FindText(X, Y, 603, 462, 2539, 1728, 0, 0, pattern) {
             DebugLog("DetectCurrentlyDisplayedRaidIndex: Found pattern for index " . index . ". --- Exiting function ---")
-            return index ; Return the INDEX (1, 2, 3...)
+            return index
         }
     }
     DebugLog("DetectCurrentlyDisplayedRaidIndex: No known raid pattern found! --- Exiting function ---")
@@ -378,7 +372,7 @@ ClickRaidLeftArrow() {
     if FindText(X, Y, 629, 492, 1603, 1678, 0, 0, Bot.ocr.RaidLeftArrow) {
         DebugLog("ClickRaidLeftArrow: Found. Clicking.")
         FindText().Click(X, Y, "L")
-        Sleep, 400 ; Short sleep after click
+        Sleep, 400
         return true
     } else {
         DebugLog("ClickRaidLeftArrow: Arrow NOT found!")
@@ -393,7 +387,7 @@ ClickRaidRightArrow() {
     if FindText(X, Y, 1587, 480, 2571, 1662, 0, 0, Bot.ocr.RaidRightArrow) {
         DebugLog("ClickRaidRightArrow: Found. Clicking.")
         FindText().Click(X, Y, "L")
-        Sleep, 400 ; Short sleep after click
+        Sleep, 400
         return true
     } else {
         DebugLog("ClickRaidRightArrow: Arrow NOT found!")
@@ -407,7 +401,7 @@ ClickRaidSummonButton() {
     if FindText(X, Y, 659, 482, 2521, 1642, 0, 0, Bot.ocr.Button.RaidSummon) {
         DebugLog("ClickRaidSummonButton: Found. Clicking.")
         FindText().Click(X, Y, "L")
-        Sleep, 900 ; Short sleep after click
+        Sleep, 900
         return true
     } else {
         DebugLog("ClickRaidSummonButton: Raid Summon button NOT found!")
@@ -421,7 +415,7 @@ ClickPreRaidDialogue() {
     if FindText(X, Y, 1868, 617, 2804, 1745, 0, 0, Bot.ocr.PreRaidDialogue) {
         DebugLog("ClickPreRaidDialogue: Found. Sending {Esc}.")
         Send, {Esc}
-        Sleep, 200 ; Short sleep after sending key
+        Sleep, 200
         return true
     }
     return false
@@ -435,7 +429,6 @@ SelectRaidDifficulty(difficultyName) {
         return false
     }
     diffPattern := Bot.ocr.RaidDifficulty[difficultyName]
-    ; Adjust search region for difficulty buttons
     if (FindText(X, Y, 697, 496, 2495, 1651, 0, 0, diffPattern)) {
         DebugLog("SelectRaidDifficulty: Found pattern for '" . difficultyName . "'. Clicking.")
         FindText().Click(X, Y, "L")
@@ -464,7 +457,6 @@ ClickRaidPlayButton() {
 IsRaidComplete() {
     global Bot
     DebugLog("IsRaidComplete: Checking for Raid completion screen...")
-    ; Adjust search region for completion indicators
     result := FindText(X, Y, 800, 300, 2400, 1000, 0, 0, Bot.ocr.Raid.CompletionScreen)
     found := result ? "True" : "False"
     DebugLog("IsRaidComplete: FindText result: " . found)
@@ -475,8 +467,7 @@ IsRaidComplete() {
 ClickRaidAccept() {
     global Bot
     DebugLog("ClickRaidAccept: Searching for Accept button on completion screen...")
-    ; Adjust search region for the accept button after a raid
-    if (FindText(X, Y, 1500, 1400, 2200, 1700, 0, 0, Bot.ocr.Button.Rerun)) { ; Might be same pattern as Bot.ocr.Button.Accept
+    if (FindText(X, Y, 1500, 1400, 2200, 1700, 0, 0, Bot.ocr.Button.Rerun)) { ; Might be same pattern as Bot.ocr.Button.Accept ?
         DebugLog("ClickRaidAccept: Found. Clicking.")
         FindText().Click(X, Y, "L")
         return true

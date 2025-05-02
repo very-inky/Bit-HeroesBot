@@ -10,9 +10,9 @@ ActionQuest() {
 
     if (!questWinOpen) {
         DebugLog("ActionQuest: Quest window NOT open, attempting ClickQuestIcon()")
-        ClickQuestIcon() ; Assumes this function has its own logs
-        Sleep, 600 ; Wait for window to potentially open
-        questWinOpen := IsQuestWindowOpen() ; Check again
+        ClickQuestIcon()
+        Sleep, 600
+        questWinOpen := IsQuestWindowOpen() ; Verify
         DebugLog("ActionQuest: IsQuestWindowOpen (after click) returned: '" . (questWinOpen ? "True" : "False") . "'")
         if (!questWinOpen) {
             DebugLog("ActionQuest: Failed to open quest window after click. Returning 'retry'.")
@@ -22,7 +22,7 @@ ActionQuest() {
          DebugLog("ActionQuest: Quest window was already open.")
     }
 
-    ; Get desired targets for this run
+    ; Pull desired targets for this run from Bot object config
     targetZonePattern := Bot.desiredZones[Bot.currentSelectionIndex]
     targetDungeonName := Bot.desiredDungeons[Bot.currentSelectionIndex]
     DebugLog("ActionQuest: Target Zone Pattern starts: " . SubStr(targetZonePattern, 1, 10) . "..., Target Dungeon Name: " . targetDungeonName)
@@ -49,11 +49,9 @@ ActionQuest() {
         DebugLog("ActionQuest: EnsureCorrectDungeon failed (pattern not found). Returning 'retry'.")
         return "retry"
     } else {
-        ; Dungeon pattern IS present. Now FIND IT AGAIN to update Global X/Y and CLICK.
         DebugLog("ActionQuest: Dungeon pattern found by check. Finding again to click...")
-
         ; Retrieve the pattern string again (needed for the local FindText call)
-        ; Error handling for invalid zone/dungeon index happens within this block now
+        ; Error handling for invalid zone/dungeon index happens within this block
         if (!Bot.ocr.DungeonMapping.HasKey(currentZoneName)) {
              DebugLog("ActionQuest: ERROR - Zone '" . currentZoneName . "' not found in DungeonMapping for find-and-click.")
              return "retry"
@@ -66,12 +64,10 @@ ActionQuest() {
         }
         targetDungeonPattern := dungeonPatternList[dungeonIndex]
 
-        ; Perform FindText AGAIN, this time using X, Y output vars to update globals
         if (FindText(X, Y, 660, 496, 2501, 1680, 0, 0, targetDungeonPattern)) {
              DebugLog("ActionQuest: Found dungeon again- Clicking")
-             ; Use the standard click method which relies on the X,Y updated above
              FindText().Click(X, Y, "L")
-             Sleep, 900 ; Increased delay after clicking dungeon
+             Sleep, 900
         } else {
              DebugLog("ActionQuest: ERROR - Failed to find dungeon pattern for click immediately after check found it!? Returning 'retry'.")
              return "retry" ; Should not happen if EnsureCorrectDungeon just worked, but safety check.
@@ -80,7 +76,7 @@ ActionQuest() {
 
     ; Select Heroic Difficulty
     DebugLog("ActionQuest: Calling SelectHeroic()")
-    heroicSelected := SelectHeroic() ; Assumes this function has own logs
+    heroicSelected := SelectHeroic()
     DebugLog("ActionQuest: SelectHeroic returned: '" . heroicSelected . "'")
     if (!heroicSelected) {
          DebugLog("ActionQuest: SelectHeroic failed. Returning 'retry'.")
@@ -89,7 +85,7 @@ ActionQuest() {
 
     ; Click the final Accept button (which checks for resources)
     DebugLog("ActionQuest: Calling ClickAcceptQuest()")
-    acceptResult := ClickAcceptQuest() ; Assumes this function has own logs
+    acceptResult := ClickAcceptQuest()
     DebugLog("ActionQuest: ClickAcceptQuest returned: '" . acceptResult . "'")
 
     if (acceptResult = "outofresource") {
@@ -101,26 +97,25 @@ ActionQuest() {
         return "retry"
     }
 
-    ; --- Quest Start Confirmed - Perform one-time AutoPilot check ---
+    ; Quest Start Confirmed - Perform one-time AutoPilot check
     DebugLog("ActionQuest: Quest accepted. Waiting for quest screen to load before AutoPilot check...")
-    Sleep, 1500 ; Wait 1.5 seconds (Adjust as needed)
+    Sleep, 1500 ;Adjust as needed
 
     DebugLog("ActionQuest: Performing one-time AutoPilot check.")
-    autoPilotOk := EnsureAutoPilotOn() ; Assumes this function has own logs
+    autoPilotOk := EnsureAutoPilotOn()
     if (!autoPilotOk) {
         DebugLog("ActionQuest: Warning - EnsureAutoPilotOn failed after starting quest.")
         ; Continue anyway, AutoPilot isn't critical for starting
     } else {
          DebugLog("ActionQuest: EnsureAutoPilotOn completed successfully (check its logs for details).")
     }
-    ; --- End AutoPilot Check ---
+
 
     DebugLog("ActionQuest: --- Success! All steps completed. Returning 'started'. ---")
     return "started"
 }
 MonitorQuestProgress() {
     global Bot
-    ; Note: No AutoPilot check here anymore.
 
     if (IsActionComplete()) {
         DebugLog("MonitorQuestProgress: IsActionComplete returned True.")
@@ -169,29 +164,25 @@ MonitorQuestProgress() {
 IsQuestWindowOpen() {
     global Bot
     DebugLog("IsQuestWindowOpen: --- Entered function ---")
-    ; Use a reliable element WITHIN the quest window (e.g., the Accept button is good if using wide coords)
-    ; Ensure Bot.ocr.Button.Accept pattern is correct
     result := FindText(X, Y, 1045-150000, 642-150000, 1045+150000, 642+150000, 0, 0, Bot.ocr.Button.QuestWindowOpen)
     found := result ? "True" : "False" ; Convert FindText result to True/False string
     DebugLog("IsQuestWindowOpen: FindText for the zone button within quest returned: " . found)
     DebugLog("IsQuestWindowOpen: --- Exiting function ---")
-    return result ; Return the original FindText result (evaluates correctly in IFs)
+    return result
 }
 
 ClickQuestIcon() {
     global Bot
     DebugLog("ClickQuestIcon: --- Entered function ---")
-    ; Ensure Bot.ocr.QuestIcon pattern is correct
     found := FindText(X, Y, 790-150000, 579-150000, 790+150000, 579+150000, 0, 0, Bot.ocr.QuestIcon)
     if (found) {
         DebugLog("ClickQuestIcon: Found, Clicking.")
         FindText().Click(X,Y,"L")
-        Sleep, 100 ; Short sleep after click
+        Sleep, 100
     } else {
         DebugLog("ClickQuestIcon: Quest Icon NOT found!")
     }
     DebugLog("ClickQuestIcon: --- Exiting function ---")
-    ; This function doesn't need to return anything, it just performs an action.
 }
 
 GetZoneNameFromPattern(patternToFind) {
@@ -200,10 +191,10 @@ GetZoneNameFromPattern(patternToFind) {
     {
         if (patternInArray = patternToFind)
         {
-            return "Zone" . index ; Return "Zone1", "Zone2" etc.
+            return "Zone" . index ; Return "Zone1", "Zone2" etc of the index
         }
     }
-    return "UnknownZone" ; Return this if pattern not found in the array
+    return "UnknownZone, zone not defined in patterns?" ; Return this if pattern not found in the array
 }
 
 EnsureCorrectZone(targetZonePattern) {
@@ -219,8 +210,6 @@ EnsureCorrectZone(targetZonePattern) {
     while (currentZoneName != targetZoneName && attempts < 20) {
         DebugLog("EnsureCorrectZone: Mismatch! Current='" . currentZoneName . "', Target='" . targetZoneName . "'. Attempt " . attempts)
 
-        ; --- Determine Click Direction (Needs Robust Logic) ---
-        ; This requires knowing the order of zones. Assuming numerical order for now.
         ; Extract numbers from "ZoneN" strings
         currentZoneNum := SubStr(currentZoneName, 5) ; Get number part
         targetZoneNum := SubStr(targetZoneName, 5)   ; Get number part
@@ -235,9 +224,9 @@ EnsureCorrectZone(targetZonePattern) {
              DebugLog("EnsureCorrectZone: Clicking Left Arrow.")
              ClickLeftArrow()
         }
-        ; --- End Direction Logic ---
+        ; end direction logic
 
-        Sleep, 600           ; Increased sleep slightly
+        Sleep, 600
         currentZoneName := DetectCurrentZoneName() ; Detect NAME again
         attempts++
         DebugLog("EnsureCorrectZone: After arrow click & sleep, detected zone: '" . currentZoneName . "' (Attempt " . attempts . ")")
@@ -257,7 +246,6 @@ DetectCurrentZoneName() {
     global Bot
     DebugLog("DetectCurrentZoneName: --- Entered function (searching 400,200 to 800,300) ---")
     for index, pat in Bot.ocr.Zone {
-        ; Ensure these coordinates are correct for seeing the Zone Title Text
         if FindText(X, Y, 1191, 537, 1999, 700, 0, 0, pat) {
             zoneName := "Zone" . index
             DebugLog("DetectCurrentZoneName: Found " . zoneName . " --- Exiting function ---")
@@ -269,21 +257,21 @@ DetectCurrentZoneName() {
 }
 
 
-EnsureCorrectDungeon(zoneName, dungeonName) { ; Takes NAMES now
-    global Bot ; Still need Bot for patterns
+EnsureCorrectDungeon(zoneName, dungeonName) {
+    global Bot
     DebugLog("EnsureCorrectDungeon: --- Entered Function --- Zone Name: " . zoneName . ", Dungeon Name: " . dungeonName)
     foundResult := false ; Default to false
 
     if (!Bot.ocr.DungeonMapping.HasKey(zoneName)) {
         DebugLog("EnsureCorrectDungeon: ERROR - Zone '" . zoneName . "' not found in DungeonMapping.")
-        return false ; Return simple false (0)
+        return false
     }
     dungeonPatternList := Bot.ocr.DungeonMapping[zoneName]
     dungeonIndex := SubStr(dungeonName, 8)
 
     if (dungeonIndex is not number or dungeonIndex < 1 || dungeonIndex > dungeonPatternList.MaxIndex()) {
          DebugLog("EnsureCorrectDungeon: ERROR - Invalid dungeon index '" . dungeonIndex . "' extracted from '" . dungeonName . "'.")
-         return false ; Return simple false (0)
+         return false
     }
 
     targetDungeonPattern := dungeonPatternList[dungeonIndex]
@@ -291,7 +279,6 @@ EnsureCorrectDungeon(zoneName, dungeonName) { ; Takes NAMES now
     DebugLog("EnsureCorrectDungeon: Searching for pattern in region 660,496 to 2501,1680...")
 
     ; Perform FindText and store the result OBJECT in foundResult
-    ; DO NOT use global X, Y here.
     foundResult := FindText(X, Y, 660, 496, 2501, 1680, 0, 0, targetDungeonPattern)
 
     if (foundResult) {
@@ -306,7 +293,6 @@ EnsureCorrectDungeon(zoneName, dungeonName) { ; Takes NAMES now
 SelectHeroic() {
     global Bot
     DebugLog("SelectHeroic: --- Entered Function ---")
-    ; Ensure Bot.ocr.Button.Heroic pattern is correct
     DebugLog("SelectHeroic: Searching for Heroic button...")
     heroicButton := FindText(X, Y, 2020-150000, 1033-150000, 2020+150000, 1033+150000, 0, 0, Bot.ocr.Button.Heroic)
     if (heroicButton) {
@@ -328,7 +314,6 @@ ClickAcceptQuest() {
 
     ; Now look for the Accept button
      DebugLog("ClickAcceptQuest: Searching for Accept button...")
-    ; Ensure Bot.ocr.Button.Accept pattern is correct
     if FindText(X, Y, 1861-150000, 1539-150000, 1861+150000, 1539+150000, 0, 0, Bot.ocr.Button.Accept) {
         acceptButtonFound := true
         DebugLog("ClickAcceptQuest: Found Accept button-Clicking.")

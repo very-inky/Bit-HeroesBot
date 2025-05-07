@@ -10,7 +10,7 @@ IsMainScreenAnchor() {
 AttemptReconnect() {
     global Bot
     DebugLog("AttemptReconnect: Checking for disconnect message...")
-    if FindText(X, Y, 696, 470, 2503, 1632, 0, 0, Bot.ocr.Disconnect) {
+    if FindText(X, Y, 4, 40, 3837, 2159, 0, 0, Bot.ocr.Disconnect) {
          DebugLog("AttemptReconnect: Found disconnect message. Clicking OK.")
         FindText().Click(X,Y,"L")
         Sleep, 2000
@@ -110,7 +110,7 @@ IsDisconnected() {
     global Bot
     DebugLog("IsDisconnected: --- Entered Function ---")
     ; Checking for disconnect popup
-    result := FindText(X, Y, 696, 470, 2503, 1632, 0, 0, Bot.ocr.Disconnect)
+    result := FindText(X, Y, 4, 40, 3837, 2159, 0, 0, Bot.ocr.Disconnect)
      found := result ? "True" : "False"
     DebugLog("IsDisconnected: FindText for Disconnect pattern returned: " . found . " --- Exiting function ---")
     return result

@@ -122,10 +122,15 @@ MonitorQuestProgress() {
         if (Bot.desiredZones.Length() = 1) {
             DebugLog("MonitorQuestProgress: Single config - attempting Rerun.")
             ClickRerun()
-            Sleep, 1200
+            Sleep, 1500
+            Loop, 10 {
             outOfRes := CheckOutOfResources()
             returnVal := outOfRes ? "outofresource" : "rerun"
             DebugLog("MonitorQuestProgress: Rerun attempt finished. Returning '" . returnVal . "'")
+            Sleep, 400
+            if (EnsureAutoPilotOn())
+                break
+            }
             return returnVal
         } else {
             DebugLog("MonitorQuestProgress: Multi-config - attempting ClickTownOnComplete.")

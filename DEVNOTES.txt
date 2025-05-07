@@ -1,46 +1,35 @@
-Wow! Feels like Its been a minute. As you may have seen from the 0.2.5 pre-release, logic has been abstracted to included files now for more modular control and additions than before. Starting out, the entire process I've struggled with the growing scope and logic but knew what it was meant to be in my head.
-This new modularized logic files, helper file and of course the main Orion script acting as the central hub outsourcing actions and work to these is now much more reflected. That being said, WorldBoss was particularly challenging. The worldboss logic file itself is almost equal in lines of code to all the other files together! ~1200 just for worldboss logic and setup Lets roll with what has been done since pre-release.
+Orion - Changelog (v0.2.5 (a) )
+This update introduces several enhancements and bug fixes to improve bot stability and reliability.
 
-World Boss:
-Significant improvements to World Boss logic all around! tier selection logic for both "HighestAvailable" and "LowestAvailable" settings now available, making it more efficient and reliable. Easier than ever to run the content you want! Multi config worldboss runs are quite slow, sadly.
-This is due to there being 3 summon buttons during setup, pretty sure they are all different, so the if check for each summon button, evaluates all 3 at once, three times. This can be optimized later, but isn't too bad for regen. Wouldn't use it on a 4 hour boost!
-Refined scrolling behavior when selecting the lowest available tier.
-Improved code organization by moving World Boss specific, non configuration logic to the worldboss file.
-Detailed Changes:
+**I. World Boss Module (`WorldBoss_Logic.ahk`)**
 
-Optimized ActionWorldBoss, removing the first window open check. This would never be true and just slows us down. 
+*   **Enhanced Fight Initiation Stability:**
+    *   Resolved an issue in `ActionWorldBoss` where the bot could prematurely click the "Start" button before it was fully interactable. The updated logic ensures the button is active, preventing potential hangs or failed starts.
 
-Tier Selection Optimization:
-Both FindHighestAvailableTier and FindLowestAvailableTier now check if the desired tier (highest or lowest valid) is already selected before attempting to open the tier list. This prevents unnecessary clicks and potential errors.
+**II. PVP Module (`PVP_Logic.ahk`)**
 
+*   **`ActionPVP` Function:**
+    *   **Improved Initial Window Detection:** The function now performs a more robust initial check to determine if the PVP window is already open before attempting navigation, streamlining the entry into PVP specifically on a sequential runs.
 
-FindLowestAvailableTier Logic:
-The function now only attempts to scroll down the tier list if the target lowest tier button is not immediately visible after the list is opened.
-Scrolling now occurs in cycles: scroll down twice, then check for the button. This repeats until the button is found, the scroll limit is reached, or the down arrow disappears.
+*   **`MonitorPVPProgress` Function:**
+    *   **Optimized Post-Match Transition:** Increased the delay after clicking "Town" upon PVP match completion (from 800ms to 2500ms) to allow ample time for the game client to transition back to the town screen, improving stability. This could be done more efficiently in a loop, may do later.
 
-FindHighestAvailableTier Logic:
-Added the check to see if the highest valid tier is already selected before opening the list (similar to the lowest tier logic).
-Added an Esc key press after clicking a tier button to help ensure the tier list closes reliably. This is due to a peculiarity, HighestAvailable could translate into Tier13, but your character only has Tier10 unlocked, meaning on first glance, we aren't on highest available, but then we scan to see what the player's highest available is.
+**III. Raid Module (`Raid_Logic.ahk`)**
+Raid rerun outofresource check sometimes doesn't exit the raid action -- fixed
+*   **`ActionRaid` Function:**
+    *   **More Reliable Resource Checking:** Implemented a looped check for "Out of Resources" popups after attempting to start a raid. This provides multiple opportunities to detect the popup, which may not appear instantaneously.
+*   **`MonitorRaidProgress` Function:**
+    *   **Significantly Enhanced Raid Rerun Logic (for single raid configurations):**
+        *   Introduced a more resilient multi-check system for "Out of Resources" popups after initiating a rerun.
+        *   Added a dedicated loop to explicitly ensure "Autopilot" is activated after a successful rerun and resource check, leading to more consistent automated subsequent runs.
 
-Codebase:
-Mini-refactor. As stated above, This was done to better show the actual logic flow that is intended. Orion is a central object outsourcing its work and listening to how it goes. Each action now has its own file, and reusable functions are included in the helpers file.
-
-Moved Bot.WorldBoss.UiOrder (the order bosses appear in the UI) and Bot.ocr.WorldBossValidTiers (the mapping of valid tiers per boss) from the main script into WorldBoss_Logic.ahk for better organization.
+---
 
 
-Core Logic / Other:
-Minor adjustments to sleep timers
-Improved debug logging messages for clearer state tracking.
-Refined state transitions in the main loop (BotMain) to better handle retry and error results from action functions.
+Bugs:
 
-TODO: 
-PreWorldBoss dialogue checks, unsure when these occur during setup if youve never ran that WB before or cookies were cleared. Not a high priority, other actions are.
-Expect a 0.2.5(a) for bugfixes that may release before another Action.
+Raid logic, in the monitor function, isactioncomplete is always returning true, but the town button for the actual actioncomplete actual function is correctly returning false..
 
-Versioning:
 
-The software uses a Major.Minor.Supported format (e.g., 0.2.5) followed by a codename for thematic purposes.
 
-Major (0): Indicates the project is pre-release (version 1.0).
-Minor (2): Increments with significant milestones like code refactors, architectural changes, or substantial feature overhauls. The initial build (0.0.1) established the core framework (initialization, login/disconnect handling, screen verification).
-Supported (5): This number specifically counts the distinct game modes and processes the bot can fully automate (e.g., Quest, PVP, Raid, WorldBoss, Trials), starting from 1 before the first action (like Questing) was completed. Where 1 was the bot recognizing a main screen anchor, verifying login and handling popups and rewards.
+Furhter refine handling popups to NOT hit yes on purchase more. I dont recall why this is like that, something to do with changes i made to it because of PVP? I think it was because handling popups state didn't work on the PVP opponent screen, because we would always hit escape on the flee confirm menu, but it does find its way out of it now and the accidental yes to buy more resources.

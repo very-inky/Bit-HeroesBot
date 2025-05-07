@@ -1,56 +1,58 @@
-﻿
-;———————————————————————————————————————————————————————————————
-; === PVP Flow ===
+﻿; === PVP Flow ===
 ActionPVP() {
     global Bot
     DebugLog("ActionPVP: --- Entered function ---")
 
+    Loop, 2 {
+    ; 1. Ensure PVP Window is Open
+    pvpWindowOpen := IsPvpWindowOpen()
+    DebugLog("ActionPVP: Initial IsPvpWindowOpen check returned: '" . (pvpWindowOpen ? "True" : "False") . "'")
+        Sleep, 300
+        }
+    if (!pvpWindowOpen) {
+        DebugLog("ActionPVP: PVP Window not open. Attempting to navigate...")
+        DebugLog("ActionPVP: Calling ClickPVPButton...")
+        if (!ClickPVPButton()) {
+             DebugLog("ActionPVP: ClickPVPButton failed. Returning 'retry'.")
+             return "retry"
+        }
+        Sleep, 600
+        pvpWindowOpen := IsPvpWindowOpen() ; Check again after clicking
+        DebugLog("ActionPVP: IsPvpWindowOpen (after click) returned: '" . (pvpWindowOpen ? "True" : "False") . "'")
+        if (!pvpWindowOpen) {
+              DebugLog("ActionPVP: PVP Window still not open after click. Returning 'retry'.")
+              return "retry"
+        }
+        DebugLog("ActionPVP: PVP Window successfully opened.")
+    } else {
+        DebugLog("ActionPVP: PVP Window was already open.")
+    }
+
+    ; At this point, the PVP window *should* be open.
+
+    ; 2. Ensure Opponent Selection Screen is Visible
     opponentsVisibleResult := OpponentsVisible()
-    DebugLog("ActionPVP: Initial OpponentsVisible check returned: '" . (opponentsVisibleResult ? "True" : "False") . "'")
+    DebugLog("ActionPVP: OpponentsVisible check returned: '" . (opponentsVisibleResult ? "True" : "False") . "'")
 
     if (!opponentsVisibleResult) {
-        ; Need to navigate to opponent screen
-        DebugLog("ActionPVP: Opponents not visible. Navigating PVP menu...")
-
-        pvpWindowOpen := IsPvpWindowOpen()
-        DebugLog("ActionPVP: IsPvpWindowOpen returned: '" . (pvpWindowOpen ? "True" : "False") . "'")
-        if (!pvpWindowOpen) {
-            DebugLog("ActionPVP: PVP Window not open. Calling ClickPVPButton...")
-            if (!ClickPVPButton()) {
-                 DebugLog("ActionPVP: ClickPVPButton failed. Returning 'retry'.")
-                 return "retry"
-            }
-            Sleep, 600
-             pvpWindowOpen := IsPvpWindowOpen()
-             DebugLog("ActionPVP: IsPvpWindowOpen (after click) returned: '" . (pvpWindowOpen ? "True" : "False") . "'")
-             if (!pvpWindowOpen) {
-                  DebugLog("ActionPVP: PVP Window still not open after click. Returning 'retry'.")
-                  return "retry"
-             }
-             DebugLog("ActionPVP: PVP Window successfully opened.")
-        } else {
-             DebugLog("ActionPVP: PVP Window was already open.")
-        }
-
+        DebugLog("ActionPVP: Opponents not visible. Attempting to reach opponent screen...")
 
         DebugLog("ActionPVP: Calling EnsureCorrectTickets(Choice: " . Bot.PvpTicketChoice . ")")
         ticketsCorrect := EnsureCorrectTickets(Bot.PvpTicketChoice)
-         DebugLog("ActionPVP: EnsureCorrectTickets returned: '" . (ticketsCorrect ? "True" : "False") . "'")
+        DebugLog("ActionPVP: EnsureCorrectTickets returned: '" . (ticketsCorrect ? "True" : "False") . "'")
         if (!ticketsCorrect) {
             DebugLog("ActionPVP: EnsureCorrectTickets failed. Returning 'retry'.")
             return "retry"
         }
-         DebugLog("ActionPVP: Tickets confirmed correct.")
-
+        DebugLog("ActionPVP: Tickets confirmed correct.")
 
         DebugLog("ActionPVP: Calling ClickPvpPlay...")
         if (!ClickPvpPlay()) {
             DebugLog("ActionPVP: ClickPvpPlay failed. Returning 'retry'.")
             return "retry"
         }
-         DebugLog("ActionPVP: ClickPvpPlay succeeded.")
+        DebugLog("ActionPVP: ClickPvpPlay succeeded.")
         Sleep, 1000 ; Wait after clicking play
-
 
         DebugLog("ActionPVP: Calling CheckOutOfResources...")
         if (CheckOutOfResources()) {
@@ -59,7 +61,6 @@ ActionPVP() {
         }
         DebugLog("ActionPVP: No 'Out Of Resources' detected after clicking Play.")
 
-
         ; Re-check if opponents are visible now after clicking Play
         opponentsVisibleResult := OpponentsVisible()
         DebugLog("ActionPVP: OpponentsVisible (after Play) returned: '" . (opponentsVisibleResult ? "True" : "False") . "'")
@@ -67,8 +68,7 @@ ActionPVP() {
             DebugLog("ActionPVP: Opponents still not visible after clicking Play. Returning 'retry'.")
             return "retry"
         }
-         DebugLog("ActionPVP: Opponent screen successfully reached.")
-
+        DebugLog("ActionPVP: Opponent screen successfully reached.")
     } else {
          DebugLog("ActionPVP: Opponents were already visible.")
     }
@@ -121,7 +121,7 @@ MonitorPVPProgress() {
         townClicked := ClickTownOnComplete()
         DebugLog("MonitorPVPProgress: ClickTownOnComplete returned: '" . (townClicked ? "True" : "False") . "'")
         if (townClicked) {
-            Sleep, 800
+            Sleep, 2500
             DebugLog("MonitorPVPProgress: Successfully clicked Town. Returning 'pvp_completed_continue'")
             return "pvp_completed_continue" ; Signal BotMain to go back to NormalOperation to loop PVP
         } else {

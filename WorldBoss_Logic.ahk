@@ -171,27 +171,23 @@ ActionWorldBoss() {
     Sleep, 1000
 
     if (CheckOutOfResources()) {
-        DebugLog("MonitorWorldBoss: Out of resources detected during rerun attempt. Returning 'outofresource'.")
+        DebugLog("ActionWorldBoss: Out of resources detected before final Start. Returning 'outofresource'.") // Corrected log context
         return "outofresource"
     }
 
-    ; 10a. Click WB Start button
-    DebugLog("ActionWorldBoss: Clicking WB Start button...")
-    if (!ClickWorldBossStartButton()) {
-        DebugLog("ActionWorldBoss: ClickWorldBossStartButton failed. Returning 'retry'.")
-        return "retry"
-    }
-    DebugLog("ActionWorldBoss: WB Start button clicked.")
-    Sleep, 500
+    ; 10a & 11. Attempt to Start WB and Handle Confirmation
+    DebugLog("ActionWorldBoss: Attempting to start WB and handle confirmation...")
+    startResult := AttemptWorldBossStartWithConfirmation("ActionWorldBoss")
 
-    ; 11. Handle "Team not full" Warning
-    DebugLog("ActionWorldBoss: Checking for 'Team not full' warning...")
-    if (!ClickWorldBossYesWarning()) {
-        DebugLog("ActionWorldBoss: 'Team not full' Yes button not found (or not needed). Continuing...")
-    } else {
-        DebugLog("ActionWorldBoss: Clicked 'Yes' on warning.")
-        Sleep, 500
+    if (startResult = "start_failed") {
+        DebugLog("ActionWorldBoss: AttemptWorldBossStartWithConfirmation indicated 'start_failed'. Returning 'retry'.")
+        return "retry"
+    } else if (startResult = "success_with_warning") {
+        DebugLog("ActionWorldBoss: AttemptWorldBossStartWithConfirmation was 'success_with_warning' (warning clicked).")
+    } else { ; success_no_warning
+        DebugLog("ActionWorldBoss: AttemptWorldBossStartWithConfirmation was 'success_no_warning' (no warning needed/found).")
     }
+    Sleep, 300 ; General pause after start sequence
 
     ; --- 12. Check Resources ---
     if (CheckOutOfResources()) {
@@ -237,15 +233,21 @@ MonitorWorldBossProgress() {
                 ; Only one config (or error): Rerun the current one
                 DebugLog("MonitorWorldBoss: Single WB config detected. Rerunning current config.")
 
-                ; --- Re-run sequence: click Start + Yes warning ---
-                DebugLog("MonitorWorldBoss: Clicking WB Start button for rerun.")
-                ClickWorldBossStartButton()
-                Sleep, 500
-                DebugLog("MonitorWorldBoss: Clicking 'Yes' warning for rerun.")
-                ClickWorldBossYesWarning()
-                Sleep, 500
+                ; --- Re-run sequence: use helper function ---
+                DebugLog("MonitorWorldBoss: Attempting to restart WB (rerun) and handle confirmation...")
+                startResult := AttemptWorldBossStartWithConfirmation("MonitorWorldBossRerun")
 
-                ; --- Check resources AFTER clicking Yes warning on rerun ---
+                if (startResult = "start_failed") {
+                    DebugLog("MonitorWorldBoss: AttemptWorldBossStartWithConfirmation indicated 'start_failed' for rerun. Returning 'error'.")
+                    return "error"
+                } else if (startResult = "success_with_warning") {
+                    DebugLog("MonitorWorldBoss: Rerun start was 'success_with_warning' (warning clicked).")
+                } else { ; success_no_warning
+                    DebugLog("MonitorWorldBoss: Rerun start was 'success_no_warning' (no warning needed/found).")
+                }
+                Sleep, 300 ; General pause after start sequence
+
+                ; --- Check resources AFTER attempting start ---
                 if (CheckOutOfResources()) {
                     DebugLog("MonitorWorldBoss: Out of resources detected during rerun attempt. Returning 'outofresource'.")
                     return "outofresource"
@@ -254,8 +256,6 @@ MonitorWorldBossProgress() {
                 DebugLog("MonitorWorldBoss: Rerun initiated. Returning 'in_progress' to continue monitoring.")
                 return "in_progress"
             }
-
-
         } else {
             DebugLog("MonitorWorldBoss: WARNING - Failed regroup click; exiting monitor.")
             Send, {Esc}
@@ -763,10 +763,10 @@ ClickWorldBossStartButton() {
     global Bot
     DebugLog("ClickWorldBossStartButton: Searching for WB Start button...")
 
-    Loop, 3
+    Loop, 4
     {
         attemptNum := A_Index
-        DebugLog("ClickWorldBossStartButton: Attempt " . attemptNum . "/3...")
+        DebugLog("ClickWorldBossStartButton: Attempt " . attemptNum . "/4...")
 
         if FindText(X, Y, 488, 1011, 2269, 1836, 0, 0, Bot.ocr.Button.WorldBossStart) {
             DebugLog("ClickWorldBossStartButton: Found on attempt " . attemptNum . ". Clicking.")
@@ -795,8 +795,8 @@ ClickWorldBossYesWarning() {
         Sleep, 500
         return true
     } else {
-        DebugLog("ClickWorldBossYesWarning: Yes button not found. Not necessarily an error.")
-        return true
+        DebugLog("ClickWorldBossYesWarning: Yes button NOT found.")
+        return false
     }
 }
 
@@ -813,7 +813,52 @@ ClickRegroupOnComplete() {
     Sleep, 800
     return result
 }
+; NEW fucntion, testing
+AttemptWorldBossStartWithConfirmation(logPrefix := "AttemptWBStart") {
+    global Bot
+    DebugLog(logPrefix . ": Attempting to start World Boss and handle 'Yes' warning...")
 
+    Loop, 4 { ; Try the whole Start + Yes Check sequence up to 2 times
+        currentAttempt := A_Index
+        DebugLog(logPrefix . ": Overall Start Attempt " . currentAttempt . "/4")
+
+        DebugLog(logPrefix . ": Clicking WB Start button...")
+        if (!ClickWorldBossStartButton()) {
+            DebugLog(logPrefix . ": ClickWorldBossStartButton failed on attempt " . currentAttempt . ".")
+            if (currentAttempt = 2) { ; If this was the last attempt
+                DebugLog(logPrefix . ": All attempts to click Start button failed.")
+                return "start_failed"
+            }
+            Sleep, 750 ; Wait before retrying Start
+            continue    ; Go to the next iteration of the loop to retry Start
+        }
+        DebugLog(logPrefix . ": ClickWorldBossStartButton SUCCEEDED on attempt " . currentAttempt . ".")
+        Sleep, 600      ; Give generous time for 'Yes' warning to appear
+
+        DebugLog(logPrefix . ": Checking for 'Yes' warning...")
+        yesButtonWasClicked := ClickWorldBossYesWarning() ; Returns true if clicked, false if not found
+
+        if (yesButtonWasClicked) {
+            DebugLog(logPrefix . ": 'Yes' warning was found and clicked. WB start confirmed.")
+            return "success_with_warning" ; WB started, warning handled
+        } else {
+            DebugLog(logPrefix . ": 'Yes' warning was NOT found after Start button click on attempt " . currentAttempt . ".")
+            if (currentAttempt < 2) {
+                DebugLog(logPrefix . ": Start click might have been too early or ineffective. Retrying entire sequence...")
+                Sleep, 500 ; Wait before retrying the whole sequence (which starts with ClickWorldBossStartButton)
+                ; Loop will continue for the next overall attempt
+            } else {
+                DebugLog(logPrefix . ": 'Yes' warning still not found after final attempt. Assuming WB started without needing 'Yes', or start was ineffective but not detected by ClickWorldBossStartButton.")
+                ; If Start button was clicked successfully, and Yes warning is still not there after retries,
+                ; we proceed assuming it wasn't needed, aligning with the original idea that "not found is not necessarily an error" for the Yes button.
+                return "success_no_warning"
+            }
+        }
+    }
+    ; Fallback, should ideally not be reached if loop logic is correct
+    DebugLog(logPrefix . ": Unexpectedly exited start attempt loop.")
+    return "start_failed"
+}
 
 FindHighestAvailableTier(targetBossName) {
     global Bot

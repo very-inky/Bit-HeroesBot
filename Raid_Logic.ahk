@@ -117,12 +117,14 @@ ActionRaid() {
     Sleep, 1000
 
     ; Check Resources
+    Loop, 2 {
     if (CheckOutOfResources()) {
         DebugLog("ActionRaid: Out of resources detected after clicking Play. Returning 'outofresource'.")
         return "outofresource"
     }
+    Sleep, 400
     DebugLog("ActionRaid: No 'Out Of Resources' detected after clicking Play.")
-
+            }
     DebugLog("ActionRaid: Performing one-time AutoPilot check.")
     autoPilotOk := EnsureAutoPilotOn() ; Assumes this function has own logs
     if (!autoPilotOk) {
@@ -144,18 +146,46 @@ MonitorRaidProgress() {
     DebugLog("MonitorRaid: IsActionComplete returned true")
     if (isComplete) {
         DebugLog("MonitorRaid: Raid Complete detected.")
-
         ; Check if configured for single raid or multiple
         if (Bot.Raid.Conf.List.MaxIndex() = 1) {
             ; SINGLE RAID CONFIG: Attempt Rerun
             DebugLog("MonitorRaid: Single raid config - attempting Rerun.")
             if (ClickRerun()) {
-                 DebugLog("MonitorRaid: ClickRerun succeeded. Sleeping and checking resources...")
-                 Sleep, 2000
-                 outOfRes := CheckOutOfResources() ; Check resources AFTER clicking rerun
-                 returnVal := outOfRes ? "outofresource" : "raid_rerun" ; Return "raid_rerun" if resources OK
-                 DebugLog("MonitorRaid: Rerun attempt finished. Returning '" . returnVal . "'")
-                 return returnVal
+                 DebugLog("MonitorRaid: ClickRerun succeeded. Initial sleep before resource checks...")
+                 Sleep, 1500 ; Give some time for the game to react to Rerun click
+
+                 maxResourceChecks := 3    ; How many times to check for "Out of Resources"
+                 resourceCheckInterval := 500 ; Milliseconds to wait between checks
+
+                 Loop, %maxResourceChecks%
+                 {
+                     currentCheckAttempt := A_Index
+                     DebugLog("MonitorRaid: Resource Check Attempt " . currentCheckAttempt . "/" . maxResourceChecks)
+                     if (CheckOutOfResources()) {
+                         DebugLog("MonitorRaid: Out of resources detected on attempt " . currentCheckAttempt . ". Returning 'outofresource'.")
+                         return "outofresource" ; Immediate return if out of resources
+                     }
+                     DebugLog("MonitorRaid: Resources OK on attempt " . currentCheckAttempt . ".")
+                     if (currentCheckAttempt < maxResourceChecks) {
+                         Sleep, %resourceCheckInterval% ; Wait before the next resource check
+                     }
+                 }
+
+                 ; If the loop completes, it means "Out of Resources" was NOT detected in any check
+                 DebugLog("MonitorRaid: All " . maxResourceChecks . " resource checks passed (no 'Out of Resources' detected).")
+                 DebugLog("MonitorRaid: Proceeding to ensure autopilot for rerun.")
+
+                 Loop, 10 { ; Autopilot check loop (can adjust iterations as needed)
+                     Sleep, 400 ; Wait a bit before each autopilot check
+                     if (EnsureAutoPilotOn()) {
+                         DebugLog("MonitorRaid: EnsureAutoPilotOn succeeded for rerun.")
+                         break ; Autopilot is on, exit loop
+                     }
+                     DebugLog("MonitorRaid: EnsureAutoPilotOn attempt " . A_Index . "/10 failed for rerun.")
+                 }
+                 ; After autopilot check (or if it timed out), return "raid_rerun"
+                 DebugLog("MonitorRaid: Rerun initiated (autopilot check complete). Returning 'raid_rerun'.")
+                 return "raid_rerun"
             } else {
                  DebugLog("MonitorRaid: ClickRerun failed. Returning 'error'.")
                  return "error" ; Failed to click Rerun
@@ -234,7 +264,7 @@ IsRaidWindowOpen() {
 ClickRaidIcon() {
     global Bot
     DebugLog("ClickRaidIcon: Searching for Raid icon on main screen...")
-    if FindText(X, Y, 710, 1014, 858, 1158, 0, 0, Bot.ocr.RaidIcon) {
+    if FindText(X, Y, 271, 184, 3513, 1917, 0, 0, Bot.ocr.RaidIcon) {
         DebugLog("ClickRaidIcon: Found. Clicking.")
         FindText().Click(X, Y, "L")
         Sleep, 900

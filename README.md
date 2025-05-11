@@ -1,8 +1,8 @@
-# Orion Bit Heroes Automation Script (v0.2.5 Hydra)
+# Orion Bit Heroes Automation Script (v0.2.6 Javelin)
 
 ## Overview
 
-Orion is an automation script for the web version of Bit Heroes, built using AutoHotkey v1. It leverages the FindText.ahk library to identify game elements and automatically cycles through configured in-game actions like Quests, PVP, Raids, and World Bosses.
+Orion is an automation script for the web version of Bit Heroes, built using AutoHotkey v1. It leverages the FindText.ahk library to identify game elements and automatically cycles through configured in-game actions like Quests, PVP, Raids, World Boss and <new> GVG.
 
 The script utilizes a state based approach for operation and includes features like automatic popup and dialogue handling, multi-config action cycling, and a pause system.
 
@@ -57,7 +57,8 @@ The script utilizes a state based approach for operation and includes features l
     * Handles the final summon sequence, including the "Team not full" warning.
     * Checks for resource issues before starting and on rerun
     * Supports running multiple different World Boss configurations sequentially.
-
+* **GVG Logic (`ActionGVG`):**
+  Similar to PVP.
 * **Responsive Pause/Resume (`F12` Hotkey):**
     * Uses AutoHotkey's built-in `Pause` command for quick interruption, even during `Sleep`.
     * Reliably resumes and restores the bot's previous state. Not recommended to manually play the game with the bot paused with your intent to resume, as it will get desync'd
@@ -75,22 +76,23 @@ The script utilizes a state based approach for operation and includes features l
 * AutoHotkey v1 (latest stable recommended)
 * `FindText.ahk` library in same directory as Orion
 * The following script files in the same directory
-    * `Orion V 0.2.5 (Early-Blueprint).ahk` (or your main script file)
+    * `Orion <main script file>
     * `Helpers.ahk`
+    * `Patterns.ahk`
     * `Quest_Logic.ahk`
     * `PVP_Logic.ahk`
     * `Raid_Logic.ahk`
     * `WorldBoss_Logic.ahk`
-    * `Patterns.ahk`
+    * `GVG_Logic.ahk`
     * `Debug.ahk`
 * Environment matching the current OCR tuning (4K resolution, 150% browser zoom) OR ability to recapture OCR strings/coordinates in `Patterns.ahk`.
-
+(multi resolution support to come)
 ## Usage
 
-1.  **Configure:** Edit the main script file (`Orion V 0.2.5 (Early-Blueprint).ahk`) to:
+1.  **Configure:** Edit the main script file to:
     * Enable/disable actions in `Bot.actionConfig`.
     * Set the desired `Bot.actionOrder`.
-    * Configure specific settings for Quest, PVP, Raid, and World Boss within the `Bot` object (e.g., `Bot.desiredZones`, `Bot.PvpTicketChoice`, `Bot.Raid.Conf.List`, `Bot.WorldBoss.Conf.List` etc.).
+    * Configure specific settings for Quest, PVP, GVG, Raid, and World Boss within the `Bot` object (e.g., `Bot.desiredZones`, `Bot.PvpTicketChoice`, `Bot.Raid.Conf.List`, `Bot.WorldBoss.Conf.List` etc.).
 2.  **Launch:** Run the main `.ahk` script file. The bot starts in the `NotLoggedIn` state.
 3.  **Operation:** The bot waits for the game's main screen, clears pop-ups, and then rotates through enabled actions based on cooldowns and configuration.
 4.  **Pause/Resume:** Press `F12` to toggle pause.

@@ -13,8 +13,8 @@ Bot.ocr.WorldBossValidTiers := { "Orlag Clan":          [12, 11, 10, 9, 8, 7, 6,
     , "Melvin Factory":      [11, 10]
     , "Extermination":       [11, 10]
     , "Brimstone Syndicate": [12, 11]
-    , "Titans Attack":       [14, 13, 12, 11]
-    , "The Ignited Abyss":   [14, 13]
+    , "Titans Attack":       [15, 14, 13, 12, 11]
+    , "The Ignited Abyss":   [15, 14, 13]
     , "Project Goodall":     [14, 7] }
 
 ActionWorldBoss() {
@@ -168,7 +168,7 @@ ActionWorldBoss() {
         return "retry"
     }
     DebugLog("ActionWorldBoss: Clicked final Attack/Summon button.")
-    Sleep, 1000
+    Sleep, 1200
 
     if (CheckOutOfResources()) {
         DebugLog("ActionWorldBoss: Out of resources detected before final Start. Returning 'outofresource'.") // Corrected log context
@@ -187,7 +187,7 @@ ActionWorldBoss() {
     } else { ; success_no_warning
         DebugLog("ActionWorldBoss: AttemptWorldBossStartWithConfirmation was 'success_no_warning' (no warning needed/found).")
     }
-    Sleep, 300 ; General pause after start sequence
+    Sleep, 400 ; General pause after start sequence
 
     ; --- 12. Check Resources ---
     if (CheckOutOfResources()) {
@@ -242,10 +242,10 @@ MonitorWorldBossProgress() {
                     return "error"
                 } else if (startResult = "success_with_warning") {
                     DebugLog("MonitorWorldBoss: Rerun start was 'success_with_warning' (warning clicked).")
-                } else { ; success_no_warning
+                } else {
                     DebugLog("MonitorWorldBoss: Rerun start was 'success_no_warning' (no warning needed/found).")
                 }
-                Sleep, 300 ; General pause after start sequence
+                Sleep, 300
 
                 ; --- Check resources AFTER attempting start ---
                 if (CheckOutOfResources()) {
@@ -281,8 +281,8 @@ MonitorWorldBossProgress() {
         DebugLog("MonitorWorldBoss: Player Dead detected.")
         Send, {Esc} ; Try to dismiss
         Sleep, 800
-        Bot.gameState := "NotLoggedIn" ; Change state directly here
-        DebugLog("MonitorWorldBoss: State changed to NotLoggedIn. Returning 'player_dead'.")
+        Bot.gameState := "HandlingPopups" ; Change state directly here
+        DebugLog("MonitorWorldBoss: State changed to HandlingPopups. Returning 'player_dead'.")
         return "player_dead" ; Return the specific state
     }
 

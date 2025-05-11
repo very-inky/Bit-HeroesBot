@@ -117,7 +117,7 @@ ActionRaid() {
     Sleep, 1000
 
     ; Check Resources
-    Loop, 2 {
+    Loop, 3 {
     if (CheckOutOfResources()) {
         DebugLog("ActionRaid: Out of resources detected after clicking Play. Returning 'outofresource'.")
         return "outofresource"
@@ -139,11 +139,10 @@ ActionRaid() {
 }
 
 MonitorRaidProgress() {
-    global Bot
-
-    ; Check for Completion first (using IsRaidComplete helper)
-    isComplete := IsActionComplete()
-    DebugLog("MonitorRaid: IsActionComplete returned true")
+global Bot
+isComplete := IsActionComplete()
+isCompleteString := isComplete ? "True" : "False" ; Convert boolean to string for logging
+DebugLog("MonitorRaid: IsActionComplete() returned: '" . isCompleteString . "'")
     if (isComplete) {
         DebugLog("MonitorRaid: Raid Complete detected.")
         ; Check if configured for single raid or multiple
@@ -174,15 +173,10 @@ MonitorRaidProgress() {
                  ; If the loop completes, it means "Out of Resources" was NOT detected in any check
                  DebugLog("MonitorRaid: All " . maxResourceChecks . " resource checks passed (no 'Out of Resources' detected).")
                  DebugLog("MonitorRaid: Proceeding to ensure autopilot for rerun.")
-
-                 Loop, 10 { ; Autopilot check loop (can adjust iterations as needed)
-                     Sleep, 400 ; Wait a bit before each autopilot check
                      if (EnsureAutoPilotOn()) {
                          DebugLog("MonitorRaid: EnsureAutoPilotOn succeeded for rerun.")
-                         break ; Autopilot is on, exit loop
                      }
                      DebugLog("MonitorRaid: EnsureAutoPilotOn attempt " . A_Index . "/10 failed for rerun.")
-                 }
                  ; After autopilot check (or if it timed out), return "raid_rerun"
                  DebugLog("MonitorRaid: Rerun initiated (autopilot check complete). Returning 'raid_rerun'.")
                  return "raid_rerun"
@@ -233,8 +227,8 @@ MonitorRaidProgress() {
         DebugLog("MonitorRaid: Player Dead detected.")
         Send, {Esc} ; Try to dismiss
         Sleep, 800
-        Bot.gameState := "NotLoggedIn"
-        DebugLog("MonitorRaid: State changed to NotLoggedIn. Returning 'player_dead'.")
+        Bot.gameState := "HandlingPopups"
+        DebugLog("MonitorRaid: State changed to HandlingPopups. Returning 'player_dead'.")
         return "player_dead"
     }
 

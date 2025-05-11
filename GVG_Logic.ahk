@@ -52,7 +52,7 @@ ActionGVG() {
             return "retry"
         }
         DebugLog("ActionGVG: ClickGVGPlay succeeded.")
-        Sleep, 1000 ; Wait after clicking play
+        Sleep, 1200 ; Wait after clicking play
 
         DebugLog("ActionGVG: Calling CheckOutOfResources...")
         if (CheckOutOfResources()) {
@@ -83,11 +83,7 @@ ActionGVG() {
         return "retry"
     }
      DebugLog("ActionGVG: Opponent selected.")
-
-
     Sleep, 500
-
-
     DebugLog("ActionGVG: Calling ClickGVGAccept...")
     accepted := ClickGVGAccept()
     DebugLog("ActionGVG: ClickGVGAccept returned: '" . (accepted ? "True" : "False") . "'")
@@ -148,8 +144,8 @@ MonitorGVGProgress() {
         DebugLog("MonitorGVGProgress: Sending Esc to clear death screen (if possible).")
         Send, {Esc}
         Sleep, 800
-        Bot.gameState := "NotLoggedIn"
-        DebugLog("MonitorGVGProgress: State changed to NotLoggedIn. Returning 'player_dead'")
+        Bot.gameState := "HandlingPopups"
+        DebugLog("MonitorGVGProgress: State changed to HandlingPopups. Returning 'player_dead'")
         return "player_dead"
     }
 
@@ -257,11 +253,9 @@ HandleGvgParticipationWarning() {
     DebugLog("HandleGvgParticipationWarning: --- Entered function ---")
 ; this function is not called yet, but it is necessary for the GVG to not hang if the user has not clicked the participation warning yet.
 ; the one about not being able to leave or be kicked from a guild if you participate in GVG.
-    if FindText(WarnX, WarnY, 500, 500, 2500, 1700, 0, 0, Bot.ocr.Gvg.ParticipationWarning) {
+    if FindText(WarnX, WarnY, 500, 500, 2500, 1700, 0, 0, Bot.ocr.Gvg.ParticipationWarning) { ;this pattern is not yet defined
         DebugLog("HandleGvgParticipationWarning: Found GVG participation warning popup.")
 
-        ; Now find the confirm button *within* or *near* the popup area
-        ; Use coordinates relative to the found warning (WarnX, WarnY) or a slightly larger fixed area
         if FindText(ConfirmX, ConfirmY, WarnX-100, WarnY, WarnX+400, WarnY+300, 0, 0, Bot.ocr.Gvg.ParticipationConfirm) {
             DebugLog("HandleGvgParticipationWarning: Found Confirm button. Clicking.")
             FindText().Click(ConfirmX, ConfirmY, "L")

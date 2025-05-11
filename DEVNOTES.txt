@@ -1,35 +1,43 @@
-Orion - Changelog (v0.2.5 (a) )
-This update introduces several enhancements and bug fixes to improve bot stability and reliability.
-
-**I. World Boss Module (`WorldBoss_Logic.ahk`)**
-
-*   **Enhanced Fight Initiation Stability:**
-    *   Resolved an issue in `ActionWorldBoss` where the bot could prematurely click the "Start" button before it was fully interactable. The updated logic ensures the button is active, preventing potential hangs or failed starts.
-
-**II. PVP Module (`PVP_Logic.ahk`)**
-
-*   **`ActionPVP` Function:**
-    *   **Improved Initial Window Detection:** The function now performs a more robust initial check to determine if the PVP window is already open before attempting navigation, streamlining the entry into PVP specifically on a sequential runs.
-
-*   **`MonitorPVPProgress` Function:**
-    *   **Optimized Post-Match Transition:** Increased the delay after clicking "Town" upon PVP match completion (from 800ms to 2500ms) to allow ample time for the game client to transition back to the town screen, improving stability. This could be done more efficiently in a loop, may do later.
-
-**III. Raid Module (`Raid_Logic.ahk`)**
-Raid rerun outofresource check sometimes doesn't exit the raid action -- fixed
-*   **`ActionRaid` Function:**
-    *   **More Reliable Resource Checking:** Implemented a looped check for "Out of Resources" popups after attempting to start a raid. This provides multiple opportunities to detect the popup, which may not appear instantaneously.
-*   **`MonitorRaidProgress` Function:**
-    *   **Significantly Enhanced Raid Rerun Logic (for single raid configurations):**
-        *   Introduced a more resilient multi-check system for "Out of Resources" popups after initiating a rerun.
-        *   Added a dedicated loop to explicitly ensure "Autopilot" is activated after a successful rerun and resource check, leading to more consistent automated subsequent runs.
-
----
+GVG Action Implemented:
+Added a new action module: GVG_Logic.ahk
+The bot can now be configured to participate in GVG activities.
+ActionGVG() handles navigation to the GVG screen, badge selection (similar to PVP tickets), opponent selection, and initiating the GVG battle.
+MonitorGVGProgress() tracks GVG battle completion and handles post-battle navigation.
+Added GVG-specific configuration options in the main script for badge and opponent choice.
 
 
-Bugs:
+Bug Fixes & Improvements:
 
-Raid logic, in the monitor function, isactioncomplete is always returning true, but the town button for the actual actioncomplete actual function is correctly returning false..
+Quest Logic:
+Improved "Team Not Full" Handling (Quest):
+Added a new helper function HandleTeamNotFull (in Helpers.ahk).
+This function now checks for an "ADD" button on screen and will click Auto, if you are attempting to run dungeons but for some reason your team isn't full. Currently only implemented in quest logic.
+ActionQuest now calls this handler after selecting difficulty and before the final ClickAcceptQuest().
+Quest & Raid Logic:
+
+Improved Rerun Reliability:
+
+The ClickRerun() helper function in Helpers.ahk now includes a retry loop (3 attempts by default) to more reliably find and click the "Rerun" button on the raid or quest completion screen. This addresses occasional failures where the town button was present, indicating the action was done, but for whatever reason, rerun couldn't be found
+
+Corrected MonitorRaidProgress Logging: Fixed a misleading debug log in MonitorRaidProgress that always stated IsActionComplete() returned true. It now logs the actual boolean result.
 
 
+All actions:
 
-Furhter refine handling popups to NOT hit yes on purchase more. I dont recall why this is like that, something to do with changes i made to it because of PVP? I think it was because handling popups state didn't work on the PVP opponent screen, because we would always hit escape on the flee confirm menu, but it does find its way out of it now and the accidental yes to buy more resources.
+Autopilot Handling (EnsureAutoPilotOn in Helpers.ahk):
+Significantly improved robustness to prevent accidentally toggling autopilot OFF during game transitions.
+The function now requires detecting the RED (OFF) autopilot button twice consecutively before sending the {space} command to toggle it ON.
+The check for the GREEN (ON) button is now performed first for a quicker exit if autopilot is already active. This fixed an issue and hang where the bot would detect the red autopilot button, but the game takes a moment to re-enable it after exiting combat. The bot and game would try to turn it on at the same time, resulting in it being turned off and the bot being stuck in the monitor function.
+
+Resource Handling (CheckOutOfResources in Helpers.ahk):
+Modified to send an {Esc} key press only if the "Out of Resources" popup is actually detected. This aims to dismiss the popup (and thus the subsequent "purchase more" prompts) more directly.
+This change helps prevent the HandlingPopups state from inadvertently clicking "Yes" on a purchase dialog if the {Esc} from CheckOutOfResources successfully closes it.
+MonitorQuestProgress (for single quest rerun) now loops its CheckOutOfResources call multiple times after clicking "Rerun" to more reliably catch delayed "Out of Resources" popups before attempting to re-engage autopilot.
+
+
+TODO:
+Implement the existing GVG helper into the GVG logic that allows us to confirm we want to participate in GVG and cannot be kicked or removed from guild till event concludes
+Add pre worldboss dialogue check (Maybe reuse HandlePreRaidDialogue) ?
+**Multi Resolution Support** -- Working prototype. This involves reworking/replacing all Fintext calls with a modified version
+Add Trials, gauntlet, or invasion action next.
+Add NFT handoff functionality, that is, when all actions are on cooldown, if configured, the bot will automatically cycle to any and all NFT heroes to run actions on them while the character you just ran regenerates resources.

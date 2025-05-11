@@ -148,8 +148,8 @@ MonitorPVPProgress() {
         DebugLog("MonitorPVPProgress: Sending Esc to clear death screen (if possible).")
         Send, {Esc}
         Sleep, 800
-        Bot.gameState := "NotLoggedIn"
-        DebugLog("MonitorPVPProgress: State changed to NotLoggedIn. Returning 'player_dead'")
+        Bot.gameState := "HandlingPopups"
+        DebugLog("MonitorPVPProgress: State changed to HandlingPopups. Returning 'player_dead'")
         return "player_dead"
     }
 
@@ -261,16 +261,39 @@ SelectPvpOpponent(choice) {
     global Bot
     DebugLog("SelectPvpOpponent: --- Entered function (User Choice: " . choice . ") ---")
 
-    DebugLog("SelectPvpOpponent: Searching for opponent entries...")
-    hits := FindText(0, 0, 451, 420, 2520, 1735, 0.09, 0.09, Bot.ocr.Pvp.OpponentList)
+    maxFindAttempts := 3
+    findAttemptDelay := 400 ; milliseconds to wait between attempts
+    hits := false ; Initialize hits to false
+
+    Loop, %maxFindAttempts%
+    {
+        currentAttempt := A_Index
+        DebugLog("SelectPvpOpponent: Searching for opponent entries (Attempt " . currentAttempt . "/" . maxFindAttempts . ")...")
+        hits := FindText(0, 0, 451, 420, 2520, 1735, 0.09, 0.09, Bot.ocr.Pvp.OpponentList)
+
+        if (hits) {
+            DebugLog("SelectPvpOpponent: Found opponent list on attempt " . currentAttempt . ".")
+            break ; Exit loop if opponents are found
+        } else {
+            DebugLog("SelectPvpOpponent: Opponent list not found on attempt " . currentAttempt . ".")
+            if (currentAttempt < maxFindAttempts) {
+                DebugLog("SelectPvpOpponent: Sleeping " . findAttemptDelay . "ms before next attempt.")
+                Sleep, %findAttemptDelay%
+            }
+        }
+    }
 
     if !(hits) {
-        DebugLog("SelectPvpOpponent: No opponents found! Returning False. --- Exiting function ---")
+        DebugLog("SelectPvpOpponent: No opponents found after " . maxFindAttempts . " attempts! Returning False. --- Exiting function ---")
         return false
     }
+
     DebugLog("SelectPvpOpponent: Found " . hits.MaxIndex() . " opponent button(s).")
-    ;This funkiness is due to the fact that findtext returns the array of hits in a non-sequential order, so we need to map the user choice to the actual index of the hit array.
-    map := [3, 1, 4, 2] ; Adjust map if needed!
+    
+    ; This funkiness is due to the fact that findtext returns the array of hits in a non-sequential order,
+    ; so we need to map the user choice to the actual index of the hit array.
+    map := [3, 1, 4, 2] ; Adjust map if needed! This map assumes FindText returns them in a consistent but non-visual order.
+                        ; If FindText().Sort() could be used to sort by Y then X, this map might not be needed.
 
     if (choice < 1 || choice > map.MaxIndex()) {
          DebugLog("SelectPvpOpponent: ERROR - Invalid PvpOpponentChoice (" . choice . ") configured. Must be between 1 and " . map.MaxIndex() . ". Returning False.")
@@ -280,8 +303,14 @@ SelectPvpOpponent(choice) {
     realIdx := map[choice]
     DebugLog("SelectPvpOpponent: User choice " . choice . " maps to hits index " . realIdx)
 
-    if (!hits[realIdx]) {
-         DebugLog("SelectPvpOpponent: ERROR - Mapped index " . realIdx . " does not exist in the found 'hits' array (only found " . hits.MaxIndex() . " hits. Maybe FindText failed? Returning False.")
+    ; Check if the mapped index is valid for the number of hits actually found
+    if (realIdx > hits.MaxIndex() || realIdx < 1) {
+         DebugLog("SelectPvpOpponent: ERROR - Mapped index " . realIdx . " is out of bounds for the found 'hits' array (MaxIndex: " . hits.MaxIndex() . "). Maybe FindText found fewer items than expected or map is incorrect. Returning False.")
+         return false
+    }
+    
+    if (!hits[realIdx]) { ; This check might be redundant if the above MaxIndex check is robust
+         DebugLog("SelectPvpOpponent: ERROR - Mapped index " . realIdx . " does not exist in the found 'hits' array. This shouldn't happen if previous checks passed. Returning False.")
          return false
     }
 
@@ -291,13 +320,8 @@ SelectPvpOpponent(choice) {
     clickY := hitToClick.y
 
     DebugLog("SelectPvpOpponent: Clicking opponent at mapped index " . realIdx . " using coordinates (X=" . clickX . " Y=" . clickY . ")")
-
-
     FindText().Click(clickX, clickY, "L")
-
-
     Sleep, 300
-
     DebugLog("SelectPvpOpponent: Returning True. --- Exiting function ---")
     return true
 }

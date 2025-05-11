@@ -8,11 +8,11 @@ SetBatchLines, -1
 
 
 ; --- Configuration Variables to Test ---
-TestPattern       := "|<>*120$66.zzU000001zzzz0000000zzzy0000000Tzzw0000000Dzzs00000007zzk00000003zzU00000001zz000000000zz03k0003s0zy07w000Ds0Tw07z3zkzs0Dw07zzzzzs0Ds07zzzzzs07s07zzzzzs07k07zzzzzs03k07zzzzzs03k07zzzzzs03U07zzzzzs03U0Dzzzzzw01U0Dzzzzzy01U0Tzzzzzy0100Tzzzzzy0100Tzzzzzz0000zzzzzzz0000zzzzzzz0000zzzzzzz0000zzzzzzz0000zzzzzzz0000zzzzzzz0000zzzzzzz0000Tzzzzzy0000Tzzzzzy0000Tzzzzzy00U0Dzzzzzw01U0Dzzzzzw01U07zzzzzs01U03zzzzzs01k01zzzzzk03k00zzzzz003k00Tzzzy003s703zzzk007s3k07zw0007w1s0Dzw000Dw0s0Dzw000Dy0Q0Dzy000Tz0S0Tzy000zz0DUzzy000zzUDzzzy001zzk7zzzy003zzs3zzzy007zzw0zzzy00Dzzy00Tzy00Tzzz00Tzy00zzzzU0Tzy01zzzzs0Tzy07zzzzw0Tzy0Dzzzzz0Tzy0zzzzzzsTzy7zzzU"
+TestPattern       := "|<>*151$121.zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzs003s1zk007k7z0T0001w001w0zs003s3zUDU000y000y0Tw001w1zk7k000E000T0DU000y0zs3s0008000DU7k000T0Tw1w00040007k3s000DUDy0y00020003s1w000Dk7z0T00010Tzzw0y0zzzs3zUDzs3zUDzzy0T0Tzzw1zk7zw1zk7zzz0DUDzzy0zs3zy0zs1zzzU7k7zzz0Tw1zz0Tw00Tzk3s3s0DU000zzUDy00Dzs1w1w07k000Tzk7z007zw0y0y03s000Dzs3zU03zy0T0T01w0007zw1zk01zz0DUDU0y0003zy0zs00zzU7k7k0T0001zz0Tw00Tzk3s3s0DU000zzUDy0zzzs1w1zk7k7z0Tzk7z0Tzzw0y0zs3s3zUDzs3zUDzzy0T0Tw1w1zk7zw1zk7zzz0DUDy0y0zs3zy0zs3zzzU7k000T0Tw1zz0Tw1zzzk3s000DUDy0zzUDy0zzzs1w0007k7z0Tzk7z0Tzzw0zs00zs3zUDzs3zUDzzy0Tw00Tw1zk7zw1zk7zzz0Dy00Dy0zs3zy0zs3zzzU7z007z0Tw1zz0TzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzU"
                                              ; Replace with your pattern to test
 
-TestZoomW         := 1.0  ; Zoom factor for width (1.0 = 100% = no zoom)
-TestZoomH         := 1.0  ; Zoom factor for height (1.0 = 100% = no zoom)
+TestZoomW         := 1.0  ; Zoom factor for width (1.0 = 100% = no correction)
+TestZoomH         := 1.0  ; Zoom factor for height (1.0 = 100% = no correction)
 
 TestErr1          := 0.09 ; Fault tolerance. Generally 0.0N seems to work best where you only change N
 TestErr0          := 0.09 ; same as above

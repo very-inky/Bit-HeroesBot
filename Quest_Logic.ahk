@@ -83,6 +83,16 @@ ActionQuest() {
         return "retry"
     }
 
+    DebugLog("ActionQuest: Checking for incomplete team (looking for 'Add' button)...")
+    teamAutoFilled := HandleTeamNotFull("Quest") 
+    
+    if (teamAutoFilled) {
+        DebugLog("ActionQuest: Team was incomplete and auto-fill was attempted.")
+    } else {
+        DebugLog("ActionQuest: 'Add' button not found (team presumed full) or auto-fill not performed/failed.")
+    }
+
+
     ; Click the final Accept button (which checks for resources)
     DebugLog("ActionQuest: Calling ClickAcceptQuest()")
     acceptResult := ClickAcceptQuest()
@@ -100,7 +110,6 @@ ActionQuest() {
     ; Quest Start Confirmed - Perform one-time AutoPilot check
     DebugLog("ActionQuest: Quest accepted. Waiting for quest screen to load before AutoPilot check...")
     Sleep, 1500 ;Adjust as needed
-
     DebugLog("ActionQuest: Performing one-time AutoPilot check.")
     autoPilotOk := EnsureAutoPilotOn()
     if (!autoPilotOk) {
@@ -116,22 +125,49 @@ ActionQuest() {
 }
 MonitorQuestProgress() {
     global Bot
+    ; No DebugLog for "Entered function" here, as it's called very frequently.
+    ; We'll log specific events instead.
 
     if (IsActionComplete()) {
         DebugLog("MonitorQuestProgress: IsActionComplete returned True.")
         if (Bot.desiredZones.Length() = 1) {
             DebugLog("MonitorQuestProgress: Single config - attempting Rerun.")
             ClickRerun()
-            Sleep, 1500
-            Loop, 10 {
-            outOfRes := CheckOutOfResources()
-            returnVal := outOfRes ? "outofresource" : "rerun"
-            DebugLog("MonitorQuestProgress: Rerun attempt finished. Returning '" . returnVal . "'")
-            Sleep, 400
-            if (EnsureAutoPilotOn())
-                break
+            Sleep, 500 ; Shorter initial sleep, just to let the click register
+
+            ; --- Loop to check for Out Of Resources multiple times ---
+            maxResourceChecks := 3    ; How many times to check for "Out of Resources"
+            resourceCheckInterval := 700 ; Milliseconds to wait between checks
+
+            Loop, %maxResourceChecks%
+            {
+                currentCheckAttempt := A_Index
+                DebugLog("MonitorQuestProgress: Resource Check Attempt " . currentCheckAttempt . "/" . maxResourceChecks . " after Rerun click.")
+                if (CheckOutOfResources()) {
+                    DebugLog("MonitorQuestProgress: Out of resources detected on attempt " . currentCheckAttempt . ". Returning 'outofresource'.")
+                    return "outofresource" ; <<< IMMEDIATE RETURN
+                }
+                DebugLog("MonitorQuestProgress: Resources OK on attempt " . currentCheckAttempt . ".")
+                if (currentCheckAttempt < maxResourceChecks) {
+                    Sleep, %resourceCheckInterval% ; Wait before the next resource check
+                }
             }
-            return returnVal
+            ; If the loop completes, it means "Out of Resources" was NOT detected in any check
+            DebugLog("MonitorQuestProgress: All " . maxResourceChecks . " resource checks passed (no 'Out of Resources' detected).")
+            DebugLog("MonitorQuestProgress: Proceeding to ensure autopilot for rerun.")
+
+            ; If not out of resources, then try to ensure autopilot is on for the rerun
+            Loop, 10 { ; Loop to give EnsureAutoPilotOn a few tries
+                Sleep, 300 ; Short pause before each autopilot check
+                if (EnsureAutoPilotOn()) {
+                    DebugLog("MonitorQuestProgress: EnsureAutoPilotOn succeeded for rerun. Returning 'rerun'.")
+                    return "rerun" ; Autopilot is on, ready to rerun
+                }
+                DebugLog("MonitorQuestProgress: EnsureAutoPilotOn attempt " . A_Index . "/10 failed for rerun.")
+            }
+            ; If loop finishes, EnsureAutoPilotOn failed multiple times
+            DebugLog("MonitorQuestProgress: Failed to ensure AutoPilot after 10 attempts (but not out of resources). Returning 'rerun' to proceed anyway, or consider 'error'.")
+            return "rerun" ; Or you might decide this is an "error" state
         } else {
             DebugLog("MonitorQuestProgress: Multi-config - attempting ClickTownOnComplete.")
             if (ClickTownOnComplete()) {
@@ -143,6 +179,7 @@ MonitorQuestProgress() {
             return "error"
         }
     }
+
     ; If action is not complete, check for other states:
     if (IsDisconnected()) {
         DebugLog("MonitorQuestProgress: IsDisconnected returned True.")
@@ -153,8 +190,10 @@ MonitorQuestProgress() {
     }
     if (IsPlayerDead()) {
         DebugLog("MonitorQuestProgress: IsPlayerDead returned True.")
-        Bot.gameState := "NotLoggedIn"
-        DebugLog("MonitorQuestProgress: State changed to NotLoggedIn. Returning 'player_dead'")
+        Send, {Esc} ; Try to dismiss death screen
+        Sleep, 800
+        Bot.gameState := "HandlingPopups"
+        DebugLog("MonitorQuestProgress: State changed to HandlingPopups. Returning 'player_dead'")
         return "player_dead"
     }
 
@@ -163,6 +202,7 @@ MonitorQuestProgress() {
         DebugLog("MonitorQuestProgress: Handled in-progress dialogue.")
     }
 
+    ; If none of the above, the action is still in progress
     return "in_progress"
 }
 

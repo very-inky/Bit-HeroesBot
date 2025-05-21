@@ -6,6 +6,9 @@ import orion.ActionConfig
 import orion.QuestActionConfig
 
 class QuestAction : GameAction {
+    // Track the number of consecutive resource checks
+    private var resourceCheckCount = 0
+
     override fun execute(bot: Bot, config: ActionConfig): Boolean {
         if (config !is QuestActionConfig) {
             println("Error: Incorrect config type passed to QuestAction.")
@@ -68,5 +71,35 @@ class QuestAction : GameAction {
 
         println("--- Quest Action Finished (Placeholder) ---")
         return true // Placeholder
+    }
+
+    /**
+     * Checks if the action has resources available to execute.
+     * In a real implementation, this would check for available energy, tickets, etc.
+     * For this placeholder implementation, we'll simulate resource depletion after a few checks.
+     * 
+     * @param bot The Bot instance to use for interacting with the game.
+     * @param config The specific configuration for this action.
+     * @return True if resources are available, false if depleted.
+     */
+    override fun hasResourcesAvailable(bot: Bot, config: ActionConfig): Boolean {
+        if (config !is QuestActionConfig) {
+            println("Error: Incorrect config type passed to QuestAction.hasResourcesAvailable.")
+            return false
+        }
+
+        // Increment the resource check count
+        resourceCheckCount++
+
+        // For repeatCount = 0, simulate resource depletion after 3 checks
+        if (config.repeatCount == 0 && resourceCheckCount >= 3) {
+            println("QuestAction: Resources depleted after $resourceCheckCount checks.")
+            // Reset the counter for next time
+            resourceCheckCount = 0
+            return false
+        }
+
+        println("QuestAction: Resources available. Check count: $resourceCheckCount")
+        return true
     }
 }

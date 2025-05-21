@@ -13,7 +13,7 @@ import javax.imageio.ImageIO
 /**
  * Bot class that handles the game automation logic using OpenCV
  */
-class Bot(private val config: BotConfig) { // Added BotConfig to constructor
+class Bot(private val config: BotConfig, private val configManager: ConfigManager? = null) { // Added ConfigManager parameter
     private val robot = Robot()
     private val screenSize = Toolkit.getDefaultToolkit().screenSize
 
@@ -33,7 +33,14 @@ class Bot(private val config: BotConfig) { // Added BotConfig to constructor
      * Initialize the bot
      */
     fun initialize() {
-        println("Bot initialized for character: ${config.characterName}") // Use config
+        // Get character name from ConfigManager if available, otherwise use config name
+        val characterName = if (configManager != null) {
+            configManager.getCharacter(config.characterId)?.characterName ?: config.configName
+        } else {
+            config.configName
+        }
+
+        println("Bot initialized for character: $characterName, using config: ${config.configName}")
         println("Screen size: ${screenSize.width}x${screenSize.height}")
     }
 
@@ -264,7 +271,14 @@ class Bot(private val config: BotConfig) { // Added BotConfig to constructor
      * Run the bot's main loop
      */
     fun run() {
-        println("Bot running for character: ${config.characterName} with default action: ${config.defaultAction}")
+        // Get character name from ConfigManager if available, otherwise use config name
+        val characterName = if (configManager != null) {
+            configManager.getCharacter(config.characterId)?.characterName ?: config.configName
+        } else {
+            config.configName
+        }
+
+        println("Bot running for character: $characterName with default action: ${config.defaultAction}")
         println("Current system DPI scaling: ${getSystemDPIScaling()}")
         println("Screen resolution: ${screenSize.width}x${screenSize.height}")
 

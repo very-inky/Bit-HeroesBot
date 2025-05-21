@@ -1,63 +1,168 @@
 package orion
 
 import orion.actions.*
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 
 // Imports for Bot, BotConfig, GameAction, ActionConfig from the 'orion' package are not needed
 // if ActionManager is correctly declared in 'package orion'.
 
-class ActionManager(private val bot: Bot, private val config: BotConfig) {
+class ActionManager(private val bot: Bot, private val config: BotConfig, private val configManager: ConfigManager? = null) {
+    // Map to track cooldowns for actions
+    private val actionCooldowns = mutableMapOf<String, Instant>()
+    // Map to track run counts for actions
+    private val actionRunCounts = mutableMapOf<String, Int>()
 
     fun runActionSequence() {
-        println("ActionManager: Starting action sequence for ${config.characterName} using config '${config.configId}'.")
+        // Get character name from ConfigManager if available, otherwise use config name
+        val characterName = if (configManager != null) {
+            configManager.getCharacter(config.characterId)?.characterName ?: config.configName
+        } else {
+            config.configName
+        }
+
+        println("ActionManager: Starting action sequence for $characterName using config '${config.configName}' (ID: ${config.configId}).")
         println("Action sequence: ${config.actionSequence.joinToString(" -> ")}")
 
+        // Initialize run counts for all actions
         for (actionName in config.actionSequence) {
-            val actionConfig = config.actionConfigs[actionName]
+            actionRunCounts[actionName] = 0
+        }
 
-            if (actionConfig == null) {
-                println("Warning: No configuration found for action '$actionName'. Skipping.")
-                continue
-            }
+        // Continue running actions until all are completed or on cooldown
+        var allActionsCompleted = false
+        while (!allActionsCompleted) {
+            allActionsCompleted = true // Assume all actions are completed until proven otherwise
 
-            if (!actionConfig.enabled) {
-                println("Action '$actionName' is disabled in configuration. Skipping.")
-                continue
-            }
+            for (actionName in config.actionSequence) {
+                // Check if this action can be executed
+                val canExecute = canExecuteAction(actionName)
 
-            println("\nAttempting to execute action: $actionName")
-            val actionHandler: GameAction? = when (actionName) {
-                "Quest" -> QuestAction()
-                "Raid" -> RaidAction()
-                // "PVP" -> PvpAction() // Placeholder for when PvpAction.kt is created
-                // "GVG" -> GvgAction()
-                // "WorldBoss" -> WorldBossAction()
-                // "Trials" -> TrialsAction()
-                // "Expedition" -> ExpeditionAction()
-                // "Gauntlet" -> GauntletAction()
-                else -> {
-                    println("Warning: Unknown action type '$actionName' in sequence. No handler defined. Skipping.")
-                    null
+                if (!canExecute.first) {
+                    // Action cannot be executed, print the reason
+                    println(canExecute.second)
+                    continue
                 }
-            }
 
-            actionHandler?.let {
-                try {
-                    val success = it.execute(bot, actionConfig)
-                    if (success) {
-                        println("Action '$actionName' completed successfully.")
-                    } else {
-                        println("Action '$actionName' failed or did not complete fully.")
-                        // Decide if sequence should stop on failure, or continue
-                        // For now, we'll continue
+                // At this point, at least one action is still eligible to run
+                allActionsCompleted = false
+
+                // Get the action config
+                val actionConfig = config.actionConfigs[actionName]!!
+
+                println("\nAttempting to execute action: $actionName")
+                val actionHandler: GameAction? = when (actionName) {
+                    "Quest" -> QuestAction()
+                    "Raid" -> RaidAction()
+                    // "PVP" -> PvpAction() // Placeholder for when PvpAction.kt is created
+                    // "GVG" -> GvgAction()
+                    // "WorldBoss" -> WorldBossAction()
+                    // "Trials" -> TrialsAction()
+                    // "Expedition" -> ExpeditionAction()
+                    // "Gauntlet" -> GauntletAction()
+                    else -> {
+                        println("Warning: Unknown action type '$actionName' in sequence. No handler defined. Skipping.")
+                        null
                     }
-                } catch (e: Exception) {
-                    println("Error executing action '$actionName': ${e.message}")
-                    e.printStackTrace()
-                    // Decide on error handling, e.g., stop sequence or log and continue
                 }
+
+                if (actionHandler != null) {
+                    executeAction(actionName, actionHandler, actionConfig)
+                }
+            }
+
+            // If all actions are completed or on cooldown, break the loop
+            if (allActionsCompleted) {
+                println("All actions have been completed or are on cooldown.")
+                break
             }
         }
-        println("\nActionManager: Finished processing action sequence for ${config.characterName}.")
+
+        println("\nActionManager: Finished processing action sequence for $characterName.")
+    }
+
+    /**
+     * Checks if an action can be executed.
+     * @param actionName The name of the action.
+     * @return A pair of (canExecute, reason) where canExecute is true if the action can be executed,
+     * and reason is a message explaining why it cannot be executed if canExecute is false.
+     */
+    private fun canExecuteAction(actionName: String): Pair<Boolean, String> {
+        val actionConfig = config.actionConfigs[actionName]
+
+        if (actionConfig == null) {
+            return Pair(false, "Warning: No configuration found for action '$actionName'. Skipping.")
+        }
+
+        if (!actionConfig.enabled) {
+            return Pair(false, "Action '$actionName' is disabled in configuration. Skipping.")
+        }
+
+        // Check if action is on cooldown
+        val cooldownEnd = actionCooldowns[actionName]
+        if (cooldownEnd != null && Instant.now().isBefore(cooldownEnd)) {
+            val remainingMinutes = ChronoUnit.MINUTES.between(Instant.now(), cooldownEnd)
+            return Pair(false, "Action '$actionName' is on cooldown for $remainingMinutes more minutes. Skipping.")
+        }
+
+        // Check if action has reached its run count limit
+        val runCount = getRunCountLimit(actionConfig)
+        if (runCount > 0 && (actionRunCounts[actionName] ?: 0) >= runCount) {
+            return Pair(false, "Action '$actionName' has reached its run count limit (${actionRunCounts[actionName]}/$runCount). Skipping.")
+        }
+
+        return Pair(true, "")
+    }
+
+    /**
+     * Executes an action and handles the result.
+     * @param actionName The name of the action.
+     * @param actionHandler The action handler.
+     * @param actionConfig The action configuration.
+     */
+    private fun executeAction(actionName: String, actionHandler: GameAction, actionConfig: ActionConfig) {
+        try {
+            // Check if resources are available before execution
+            if (!actionHandler.hasResourcesAvailable(bot, actionConfig)) {
+                println("Action '$actionName' is out of resources. Setting on cooldown for ${actionConfig.cooldownDuration} minutes.")
+                actionCooldowns[actionName] = Instant.now().plus(actionConfig.cooldownDuration.toLong(), ChronoUnit.MINUTES)
+                return
+            }
+
+            val success = actionHandler.execute(bot, actionConfig)
+            if (success) {
+                println("Action '$actionName' completed successfully.")
+                // Increment run count
+                actionRunCounts[actionName] = (actionRunCounts[actionName] ?: 0) + 1
+
+                // Check if we need to set cooldown after execution
+                if (!actionHandler.hasResourcesAvailable(bot, actionConfig)) {
+                    println("Action '$actionName' is now out of resources. Setting on cooldown for ${actionConfig.cooldownDuration} minutes.")
+                    actionCooldowns[actionName] = Instant.now().plus(actionConfig.cooldownDuration.toLong(), ChronoUnit.MINUTES)
+                }
+            } else {
+                println("Action '$actionName' failed or did not complete fully.")
+                // Decide if sequence should stop on failure, or continue
+                // For now, we'll continue
+            }
+        } catch (e: Exception) {
+            println("Error executing action '$actionName': ${e.message}")
+            e.printStackTrace()
+            // Decide on error handling, e.g., stop sequence or log and continue
+        }
+    }
+
+    /**
+     * Gets the run count limit for an action based on its configuration.
+     * @param config The action configuration.
+     * @return The run count limit, or 0 if unlimited.
+     */
+    private fun getRunCountLimit(config: ActionConfig): Int {
+        return when (config) {
+            is QuestActionConfig -> config.repeatCount
+            is RaidActionConfig -> config.runCount
+            is PvpActionConfig -> config.ticketsToUse
+            else -> 1 // Default to 1 for other action types
+        }
     }
 }
-

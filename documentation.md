@@ -147,6 +147,9 @@ The bot uses OpenCV for template matching:
    - `quest`: Templates for quest-related actions
    - `pvp`: Templates for PvP-related actions
    - `gvg`: Templates for GvG-related actions
+   - `worldboss`: Templates for world boss-related actions
+   - `invasion`: Templates for invasion-related actions
+   - `expedition`: Templates for expedition-related actions
    - `ui`: Common UI elements and home screen templates
 2. The `Bot` class loads templates and provides methods to:
    - Find templates on the screen with configurable matching thresholds

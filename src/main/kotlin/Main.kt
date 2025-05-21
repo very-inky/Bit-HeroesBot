@@ -156,13 +156,13 @@ fun main(args: Array<String>) {
         actionConfigs = mapOf(
             "PvP" to PvpActionConfig(
                 enabled = true,
-                commonActionTemplates = listOf("templates/buttons/pvp_button.png"),
+                commonActionTemplates = listOf("templates/pvp/pvp_button.png"),
                 ticketsToUse = 5,
                 opponentRank = 3
             ),
             "GvG" to GvgActionConfig(
                 enabled = true,
-                commonActionTemplates = listOf("templates/buttons/gvg_button.png"),
+                commonActionTemplates = listOf("templates/gvg/gvg_button.png"),
                 badgeChoice = 4,
                 opponentChoice = 2
             ),
@@ -301,7 +301,7 @@ fun main(args: Array<String>) {
                 val count = bot.loadTemplatesFromDirectory(templatesDir)
                 println("Registered $count template images with the bot.")
 
-                val categories = listOf("raid", "quest", "pvp", "gvg", "ui")
+                val categories = listOf("raid", "quest", "pvp", "gvg", "worldboss", "invasion", "expedition", "ui")
                 categories.forEach { category ->
                     val templates = bot.getTemplatesByCategory(category)
                     if (templates.isNotEmpty()) {

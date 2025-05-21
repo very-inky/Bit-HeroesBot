@@ -142,13 +142,46 @@ The bot supports multiple characters and accounts:
 
 The bot uses OpenCV for template matching:
 
-1. Template images are stored in the `templates` directory with subdirectories for categories (buttons, menus, characters, items)
+1. Template images are stored in the `templates` directory with subdirectories organized by action type:
+   - `raid`: Templates for raid-related actions
+   - `quest`: Templates for quest-related actions
+   - `pvp`: Templates for PvP-related actions
+   - `gvg`: Templates for GvG-related actions
+   - `ui`: Common UI elements and home screen templates
 2. The `Bot` class loads templates and provides methods to:
    - Find templates on the screen with configurable matching thresholds
    - Click on matched templates
    - Perform other screen interactions
    - Scale templates based on screen resolution and DPI
+   - Get detailed matching information (scale, confidence, etc.)
 3. Template registration system tracks original dimensions and DPI for proper scaling
+
+### Pattern Test Mode
+
+The bot includes a pattern test mode that allows testing template matching without running the full automation:
+
+1. Run the bot with the `--test-pattern` argument to enter pattern test mode:
+   ```
+   java -jar your-bot.jar --test-pattern [template-path]
+   ```
+
+2. If a specific template path is provided, the bot will test only that template:
+   ```
+   java -jar your-bot.jar --test-pattern templates/quest/Untitled.png
+   ```
+
+3. If a directory path is provided, the bot will test all templates in that directory:
+   ```
+   java -jar your-bot.jar --test-pattern templates/quest
+   ```
+
+4. The pattern test mode displays comprehensive information about each match:
+   - Whether the template was found
+   - The position where it was found
+   - The scale at which it was found
+   - The confidence value of the match
+   - The current screen resolution
+   - The system DPI scaling
 
 ## Current Implementation Status
 
@@ -160,6 +193,9 @@ The bot uses OpenCV for template matching:
 4. ✅ Action manager with cooldown and rotation logic
 5. ✅ Resource checking with cooldown management
 6. ✅ Template matching for screen recognition
+   - ✅ Multi-scale template matching with DPI awareness
+   - ✅ Detailed template matching results (scale, confidence, etc.)
+   - ✅ Pattern test mode for testing templates without running the bot
 7. ✅ Quest action implementation (placeholder)
 8. ✅ Raid action implementation (placeholder)
 9. ✅ Account switching functionality
@@ -221,7 +257,7 @@ val dailyFarmingConfig = BotConfig(
     actionConfigs = mapOf(
         "Quest" to QuestActionConfig(
             enabled = true,
-            commonActionTemplates = listOf("templates/buttons/Untitled.png"),
+            commonActionTemplates = listOf("templates/quest/Untitled.png"),
             dungeonTargets = listOf(
                 QuestActionConfig.DungeonTarget(zoneNumber = 1, dungeonNumber = 2, enabled = true),
                 QuestActionConfig.DungeonTarget(zoneNumber = 6, dungeonNumber = 3, enabled = true)
@@ -285,7 +321,7 @@ val pveCharacterConfig = BotConfig(
     actionConfigs = mapOf(
         "Quest" to QuestActionConfig(
             enabled = true,
-            commonActionTemplates = listOf("templates/buttons/quest_button.png"),
+            commonActionTemplates = listOf("templates/quest/quest_button.png"),
             dungeonTargets = listOf(
                 QuestActionConfig.DungeonTarget(zoneNumber = 7, dungeonNumber = 3, enabled = true),
                 QuestActionConfig.DungeonTarget(zoneNumber = 8, dungeonNumber = 5, enabled = true)
@@ -295,7 +331,7 @@ val pveCharacterConfig = BotConfig(
         ),
         "Raid" to RaidActionConfig(
             enabled = true,
-            commonActionTemplates = listOf("templates/buttons/raid_button.png"),
+            commonActionTemplates = listOf("templates/raid/raid_button.png"),
             raidTargets = listOf(
                 RaidActionConfig.RaidTarget(raidName = "DragonLord", difficulty = "Heroic", enabled = true)
             ),
@@ -319,19 +355,19 @@ val pvpCharacterConfig = BotConfig(
     actionConfigs = mapOf(
         "PvP" to PvpActionConfig(
             enabled = true,
-            commonActionTemplates = listOf("templates/buttons/pvp_button.png"),
+            commonActionTemplates = listOf("templates/pvp/pvp_button.png"),
             ticketsToUse = 5, // Use all 5 tickets
             opponentRank = 3 // Target rank 3 opponents
         ),
         "GvG" to GvgActionConfig(
             enabled = true,
-            commonActionTemplates = listOf("templates/buttons/gvg_button.png"),
+            commonActionTemplates = listOf("templates/gvg/gvg_button.png"),
             badgeChoice = 4, // Use badge type 4
             opponentChoice = 2 // Target opponent 2
         ),
         "Quest" to QuestActionConfig(
             enabled = true,
-            commonActionTemplates = listOf("templates/buttons/quest_button.png"),
+            commonActionTemplates = listOf("templates/quest/quest_button.png"),
             dungeonTargets = listOf(
                 QuestActionConfig.DungeonTarget(zoneNumber = 10, dungeonNumber = 1, enabled = true)
             ),

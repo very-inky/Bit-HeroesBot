@@ -30,6 +30,17 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
     )
 
     /**
+     * Class to store comprehensive template matching results
+     */
+    data class TemplateMatchResult(
+        val location: Point?,
+        val scale: Double,
+        val confidence: Double,
+        val screenResolution: Pair<Int, Int>,
+        val dpi: Double
+    )
+
+    /**
      * Initialize the bot
      */
     fun initialize() {
@@ -202,6 +213,78 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
     }
 
     /**
+     * Find a template image within the screen and return detailed information
+     * @param templatePath The path to the template image
+     * @param minScale The minimum scale to try (default is 0.5)
+     * @param maxScale The maximum scale to try (default is 2.0)
+     * @param scaleStep The step size between scales (default is 0.1)
+     * @param confidenceThreshold The minimum confidence threshold (default is 0.66)
+     * @return A TemplateMatchResult containing comprehensive information about the match
+     */
+    fun findTemplateDetailed(
+        templatePath: String,
+        minScale: Double = 0.5,
+        maxScale: Double = 2.0,
+        scaleStep: Double = 0.1,
+        confidenceThreshold: Double = 0.66
+    ): TemplateMatchResult {
+        val screen = captureScreen()
+        val template = Imgcodecs.imread(templatePath)
+        val dpi = getSystemDPIScaling()
+        val screenRes = Pair(screenSize.width, screenSize.height)
+
+        if (template.empty()) {
+            println("Could not load template image: $templatePath")
+            return TemplateMatchResult(null, 1.0, 0.0, screenRes, dpi)
+        }
+
+        // Register the template if it's not already registered
+        if (!templateInfo.containsKey(templatePath)) {
+            registerTemplate(templatePath)
+        }
+
+        var bestMatch: Point? = null
+        var bestScale = 1.0
+        var bestConfidence = 0.0
+
+        // Try different scales
+        var currentScale = minScale
+        while (currentScale <= maxScale) {
+            // Resize the template according to the current scale
+            val scaledTemplate = Mat()
+            val newSize = Size(template.width() * currentScale, template.height() * currentScale)
+            Imgproc.resize(template, scaledTemplate, newSize, 0.0, 0.0, Imgproc.INTER_LINEAR)
+
+            // Skip if the scaled template is larger than the screen
+            if (scaledTemplate.width() > screen.width() || scaledTemplate.height() > screen.height()) {
+                currentScale += scaleStep
+                continue
+            }
+
+            val result = Mat()
+            Imgproc.matchTemplate(screen, scaledTemplate, result, Imgproc.TM_CCOEFF_NORMED)
+
+            val mmr = Core.minMaxLoc(result)
+
+            // If this match is better than our previous best, update it
+            if (mmr.maxVal > bestConfidence) {
+                bestConfidence = mmr.maxVal
+                bestMatch = mmr.maxLoc
+                bestScale = currentScale
+            }
+
+            currentScale += scaleStep
+        }
+
+        // If the best match confidence is too low, return result with null location
+        if (bestConfidence < confidenceThreshold) {
+            return TemplateMatchResult(null, bestScale, bestConfidence, screenRes, dpi)
+        }
+
+        return TemplateMatchResult(bestMatch, bestScale, bestConfidence, screenRes, dpi)
+    }
+
+    /**
      * Click at a specific location
      * @param x The x coordinate
      * @param y The y coordinate
@@ -265,6 +348,14 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
         graphics.dispose()
 
         return dpi
+    }
+
+    /**
+     * Get the current screen resolution
+     * @return A Pair containing the width and height of the screen
+     */
+    fun getScreenResolution(): Pair<Int, Int> {
+        return Pair(screenSize.width, screenSize.height)
     }
 
     /**
@@ -353,7 +444,7 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
 
     /**
      * Get all registered template paths that belong to a specific category (subdirectory).
-     * @param category The name of the subdirectory (e.g., "buttons", "menus").
+     * @param category The name of the subdirectory (e.g., "raid", "quest", "pvp", "gvg", "ui").
      * @return A list of template paths matching the category.
      */
     fun getTemplatesByCategory(category: String): List<String> {

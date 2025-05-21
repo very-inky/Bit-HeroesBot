@@ -10,11 +10,92 @@ import java.io.File
 import java.nio.file.Paths
 import java.util.UUID
 
-fun main() {
+fun main(args: Array<String>) {
     println("Starting OpenCV Bot...")
+
+    // Check if we're in pattern test mode
+    val isPatternTestMode = args.isNotEmpty() && args[0] == "--test-pattern"
 
     // Load OpenCV native library
     loadOpenCVNativeLibrary()
+
+    if (isPatternTestMode) {
+        // Get the template path from arguments or use a default
+        val templatePath = if (args.size > 1) args[1] else "templates"
+
+        // Create a simple bot instance without full configuration
+        val bot = Bot(BotConfig(
+            configId = "test-config",
+            configName = "Test Config",
+            characterId = "test-character",
+            description = "Configuration for pattern testing",
+            actionSequence = emptyList(),
+            actionConfigs = emptyMap()
+        ))
+
+        bot.initialize()
+
+        // Display screen information
+        val screenSize = bot.getScreenResolution()
+        val dpi = bot.getSystemDPIScaling()
+        println("Screen Resolution: ${screenSize.first}x${screenSize.second}")
+        println("System DPI Scaling: ${dpi * 100}%")
+
+        // Check if we're testing a specific template or a directory
+        val file = File(templatePath)
+        if (file.isFile) {
+            // Test a specific template
+            println("Testing specific template: $templatePath")
+            val result = bot.findTemplateDetailed(templatePath)
+
+            if (result.location != null) {
+                println("✅ Found template at position: ${result.location}")
+                println("   Scale: ${result.scale}")
+                println("   Confidence: ${result.confidence}")
+                println("   Screen Resolution: ${result.screenResolution.first}x${result.screenResolution.second}")
+                println("   DPI Scaling: ${result.dpi * 100}%")
+            } else {
+                println("❌ Could not find template")
+                println("   Best scale attempted: ${result.scale}")
+                println("   Best confidence: ${result.confidence}")
+                println("   Screen Resolution: ${result.screenResolution.first}x${result.screenResolution.second}")
+                println("   DPI Scaling: ${result.dpi * 100}%")
+            }
+        } else {
+            // Load templates from directory
+            println("Loading templates from: $templatePath")
+            val count = bot.loadTemplatesFromDirectory(templatePath)
+            println("Loaded $count templates")
+
+            // Get all templates
+            val allTemplates = bot.getAllTemplates()
+            println("Available templates: ${allTemplates.joinToString("\n")}")
+
+            // Test each template
+            println("\nTesting templates on current screen:")
+            allTemplates.forEach { template ->
+                val result = bot.findTemplateDetailed(template)
+
+                if (result.location != null) {
+                    println("✅ Found template: $template")
+                    println("   Position: ${result.location}")
+                    println("   Scale: ${result.scale}")
+                    println("   Confidence: ${result.confidence}")
+                } else {
+                    println("❌ Could not find template: $template")
+                    println("   Best scale attempted: ${result.scale}")
+                    println("   Best confidence: ${result.confidence}")
+                }
+            }
+
+            // Print screen information once for all templates
+            println("\nScreen Resolution: ${screenSize.first}x${screenSize.second}")
+            println("System DPI Scaling: ${dpi * 100}%")
+        }
+
+        println("\nPattern test completed")
+        return
+    }
 
     // --- Configuration Setup ---
     // Create a configuration manager to handle multiple configurations
@@ -42,7 +123,7 @@ fun main() {
         actionConfigs = mapOf(
             "Quest" to QuestActionConfig(
                 enabled = true,
-                commonActionTemplates = listOf("templates/buttons/Untitled.png"),
+                commonActionTemplates = listOf("templates/quest/Untitled.png"),
                 dungeonTargets = listOf(
                     QuestActionConfig.DungeonTarget(zoneNumber = 1, dungeonNumber = 2, enabled = true),
                     QuestActionConfig.DungeonTarget(zoneNumber = 6, dungeonNumber = 3, enabled = true)
@@ -87,7 +168,7 @@ fun main() {
             ),
             "Quest" to QuestActionConfig(
                 enabled = true,
-                commonActionTemplates = listOf("templates/buttons/Untitled.png"),
+                commonActionTemplates = listOf("templates/quest/Untitled.png"),
                 dungeonTargets = listOf(
                     QuestActionConfig.DungeonTarget(zoneNumber = 10, dungeonNumber = 1, enabled = true)
                 ),
@@ -154,7 +235,7 @@ fun main() {
         actionConfigs = mapOf(
             "Quest" to QuestActionConfig(
                 enabled = true,
-                commonActionTemplates = listOf("templates/buttons/Untitled.png"),
+                commonActionTemplates = listOf("templates/quest/Untitled.png"),
                 dungeonTargets = listOf(
                     QuestActionConfig.DungeonTarget(zoneNumber = 5, dungeonNumber = 1, enabled = true)
                 ),
@@ -220,7 +301,7 @@ fun main() {
                 val count = bot.loadTemplatesFromDirectory(templatesDir)
                 println("Registered $count template images with the bot.")
 
-                val categories = listOf("buttons", "menus", "characters", "items", "common")
+                val categories = listOf("raid", "quest", "pvp", "gvg", "ui")
                 categories.forEach { category ->
                     val templates = bot.getTemplatesByCategory(category)
                     if (templates.isNotEmpty()) {

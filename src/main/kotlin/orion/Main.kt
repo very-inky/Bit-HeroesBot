@@ -10,18 +10,87 @@ import java.io.File
 import java.nio.file.Paths
 import java.util.UUID
 import java.util.Vector
+import orion.utils.PathUtils
 
 fun main(args: Array<String>) {
     println("Starting OpenCV Bot...")
-    // Check if we're in pattern test mode
-    val isPatternTestMode = args.isNotEmpty() && args[0] == "--test-pattern"
+
+    // Process command-line arguments
+    val isPatternTestMode = args.contains("--test-pattern")
+    val isCoroutineTestMode = args.contains("--test-coroutines")
+
+    // Check if we should use coroutines for zone detection
+    val useMoreThreads = args.contains("--morethreads")
+    if (useMoreThreads) {
+        println("╔════════════════════════════════════════════════════════════════╗")
+        println("║ OPTIMIZATION: Using coroutines for parallel zone detection     ║")
+        println("║ (--morethreads flag detected)                                  ║")
+        println("║                                                                ║")
+        println("║ This should improve performance when determining the current   ║")
+        println("║ zone in quest actions by checking multiple zone templates      ║")
+        println("║ simultaneously instead of sequentially.                        ║")
+        println("╚════════════════════════════════════════════════════════════════╝")
+        orion.actions.QuestAction.useCoroutines = true
+    } else {
+        println("Using sequential zone detection (use --morethreads flag to enable parallel processing)")
+    }
+
+    // Check if we should use coroutines for OpenCV template matching
+    val useOpenCVThreads = args.contains("--opencvthreads")
+    if (useOpenCVThreads) {
+        println("╔════════════════════════════════════════════════════════════════╗")
+        println("║ OPTIMIZATION: Using coroutines for parallel template matching  ║")
+        println("║ (--opencvthreads flag detected)                                ║")
+        println("║                                                                ║")
+        println("║ This should improve performance when matching templates with   ║")
+        println("║ multiple scales by checking all scales simultaneously instead  ║")
+        println("║ of sequentially.                                               ║")
+        println("╚════════════════════════════════════════════════════════════════╝")
+        orion.Bot.useCoroutinesForTemplateMatching = true
+    } else {
+        println("Using sequential template matching (use --opencvthreads flag to enable parallel processing)")
+    }
+
+    // Test if coroutines are working properly
+    if (isCoroutineTestMode) {
+        println("╔════════════════════════════════════════════════════════════════╗")
+        println("║ COROUTINE TEST MODE                                            ║")
+        println("║ Testing if coroutines are working properly...                  ║")
+        println("╚════════════════════════════════════════════════════════════════╝")
+
+        val coroutinesWorking = CoroutineTest.runTest()
+
+        if (coroutinesWorking) {
+            println("╔════════════════════════════════════════════════════════════════╗")
+            println("║ COROUTINE TEST PASSED                                          ║")
+            println("║ Coroutines are working properly!                               ║")
+            println("╚════════════════════════════════════════════════════════════════╝")
+        } else {
+            println("╔════════════════════════════════════════════════════════════════╗")
+            println("║ COROUTINE TEST FAILED                                          ║")
+            println("║ Coroutines are NOT working properly!                           ║")
+            println("╚════════════════════════════════════════════════════════════════╝")
+        }
+
+        // Exit after the test
+        return
+    }
 
     // Load OpenCV native library - full functionality is required
     loadOpenCVNativeLibrary()
 
     if (isPatternTestMode) {
         // Get the template path from arguments or use a default
-        val templatePath = if (args.size > 1) args[1] else "templates"
+        val templatePath = if (args.contains("--test-pattern")) {
+            val testPatternIndex = args.indexOf("--test-pattern")
+            if (testPatternIndex < args.size - 1 && !args[testPatternIndex + 1].startsWith("--")) {
+                args[testPatternIndex + 1]
+            } else {
+                "templates"
+            }
+        } else {
+            "templates"
+        }
 
         // Create a simple bot instance without full configuration
         val bot = Bot(BotConfig(
@@ -123,7 +192,7 @@ fun main(args: Array<String>) {
         actionConfigs = mapOf(
             "Quest" to QuestActionConfig(
                 enabled = true,
-                commonActionTemplates = listOf("templates/quest/Untitled.png"),
+                commonActionTemplates = listOf(PathUtils.templatePath("quest", "Untitled.png")),
                 dungeonTargets = listOf(
                     QuestActionConfig.DungeonTarget(zoneNumber = 1, dungeonNumber = 2, enabled = true),
                     QuestActionConfig.DungeonTarget(zoneNumber = 6, dungeonNumber = 3, enabled = true)
@@ -156,19 +225,19 @@ fun main(args: Array<String>) {
         actionConfigs = mapOf(
             "PvP" to PvpActionConfig(
                 enabled = true,
-                commonActionTemplates = listOf("templates/pvp/pvp_button.png"),
+                commonActionTemplates = listOf(PathUtils.templatePath("pvp", "pvp_button.png")),
                 ticketsToUse = 5,
                 opponentRank = 3
             ),
             "GvG" to GvgActionConfig(
                 enabled = true,
-                commonActionTemplates = listOf("templates/gvg/gvg_button.png"),
+                commonActionTemplates = listOf(PathUtils.templatePath("gvg", "gvg_button.png")),
                 badgeChoice = 4,
                 opponentChoice = 2
             ),
             "Quest" to QuestActionConfig(
                 enabled = true,
-                commonActionTemplates = listOf("templates/quest/Untitled.png"),
+                commonActionTemplates = listOf(PathUtils.templatePath("quest", "Untitled.png")),
                 dungeonTargets = listOf(
                     QuestActionConfig.DungeonTarget(zoneNumber = 10, dungeonNumber = 1, enabled = true)
                 ),
@@ -235,7 +304,7 @@ fun main(args: Array<String>) {
         actionConfigs = mapOf(
             "Quest" to QuestActionConfig(
                 enabled = true,
-                commonActionTemplates = listOf("templates/quest/Untitled.png"),
+                commonActionTemplates = listOf(PathUtils.templatePath("quest", "Untitled.png")),
                 dungeonTargets = listOf(
                     QuestActionConfig.DungeonTarget(zoneNumber = 5, dungeonNumber = 1, enabled = true)
                 ),
@@ -365,12 +434,12 @@ fun loadOpenCVNativeLibrary() {
 
         // Create the full path to where the library should be stored
         val resourcesPath = if (archDirectory.isEmpty()) {
-            "src/main/resources/natives/$osDirectory"
+            PathUtils.buildPath("src", "main", "resources", "natives", osDirectory)
         } else {
-            "src/main/resources/natives/$osDirectory/$archDirectory"
+            PathUtils.buildPath("src", "main", "resources", "natives", osDirectory, archDirectory)
         }
 
-        val libraryPath = "$resourcesPath/$libraryFileName"
+        val libraryPath = PathUtils.buildPath(resourcesPath, libraryFileName)
         val libraryFile = File(libraryPath)
 
         // Check if the library already exists in the resources folder
@@ -439,12 +508,16 @@ fun loadOpenCVNativeLibrary() {
                 } else {
                     println("Failed to create resources directory. Will try alternative approach.")
                     // Try to create each directory in the path individually
-                    val path = resourcesPath.replace('\\', '/')
-                    val dirs = path.split('/')
+                    val path = PathUtils.normalizePath(resourcesPath)
+                    val dirs = path.split(File.separatorChar)
                     var currentPath = ""
                     for (dir in dirs) {
                         if (dir.isEmpty()) continue
-                        currentPath += "$dir/"
+                        currentPath = if (currentPath.isEmpty()) {
+                            dir
+                        } else {
+                            PathUtils.buildPath(currentPath, dir)
+                        }
                         val currentDir = File(currentPath)
                         if (!currentDir.exists()) {
                             val success = currentDir.mkdir()

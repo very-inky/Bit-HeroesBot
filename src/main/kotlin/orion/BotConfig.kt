@@ -1,5 +1,7 @@
 package orion
 
+import orion.utils.PathUtils
+
 // Sealed class for action configurations
 sealed class ActionConfig {
     abstract val enabled: Boolean
@@ -21,8 +23,8 @@ data class QuestActionConfig(
     override val enabled: Boolean = true,
     override val commonActionTemplates: List<String> = emptyList(),
     override val specificTemplates: List<String> = emptyList(),
-    override val commonTemplateDirectories: List<String> = listOf("templates/ui"),
-    override val specificTemplateDirectories: List<String> = listOf("templates/quest"),
+    override val commonTemplateDirectories: List<String> = listOf(PathUtils.templatePath("ui")),
+    override val specificTemplateDirectories: List<String> = listOf(PathUtils.templatePath("quest")),
     override val useDirectoryBasedTemplates: Boolean = true,
     val dungeonTargets: List<DungeonTarget> = emptyList(), // Specify dungeons with zone and dungeon numbers
     val repeatCount: Int = 1, // How many times to cycle through quests or a specific quest
@@ -32,6 +34,7 @@ data class QuestActionConfig(
     data class DungeonTarget(
         val zoneNumber: Int, // e.g., 1, 2, 3, etc.
         val dungeonNumber: Int, // e.g., 1, 2, 3, etc.
+        val difficulty: String = "heroic", // Preferred difficulty: "heroic", "hard", or "normal"
         val enabled: Boolean = true
     )
 }
@@ -40,8 +43,8 @@ data class PvpActionConfig(
     override val enabled: Boolean = true,
     override val commonActionTemplates: List<String> = emptyList(),
     override val specificTemplates: List<String> = emptyList(),
-    override val commonTemplateDirectories: List<String> = listOf("templates/ui"),
-    override val specificTemplateDirectories: List<String> = listOf("templates/pvp"),
+    override val commonTemplateDirectories: List<String> = listOf(PathUtils.templatePath("ui")),
+    override val specificTemplateDirectories: List<String> = listOf(PathUtils.templatePath("pvp")),
     override val useDirectoryBasedTemplates: Boolean = true,
     val ticketsToUse: Int = 5, // Number of tickets to use (1-5)
     val opponentRank: Int = 2, // Which opponent to fight (1-4)
@@ -52,8 +55,8 @@ data class GvgActionConfig(
     override val enabled: Boolean = true,
     override val commonActionTemplates: List<String> = emptyList(),
     override val specificTemplates: List<String> = emptyList(),
-    override val commonTemplateDirectories: List<String> = listOf("templates/ui"),
-    override val specificTemplateDirectories: List<String> = listOf("templates/gvg"),
+    override val commonTemplateDirectories: List<String> = listOf(PathUtils.templatePath("ui")),
+    override val specificTemplateDirectories: List<String> = listOf(PathUtils.templatePath("gvg")),
     override val useDirectoryBasedTemplates: Boolean = true,
     val badgeChoice: Int = 5, // 1-5
     val opponentChoice: Int = 3 // 1-4
@@ -63,8 +66,8 @@ data class WorldBossActionConfig(
     override val enabled: Boolean = true,
     override val commonActionTemplates: List<String> = emptyList(),
     override val specificTemplates: List<String> = emptyList(),
-    override val commonTemplateDirectories: List<String> = listOf("templates/ui"),
-    override val specificTemplateDirectories: List<String> = listOf("templates/worldboss"),
+    override val commonTemplateDirectories: List<String> = listOf(PathUtils.templatePath("ui")),
+    override val specificTemplateDirectories: List<String> = listOf(PathUtils.templatePath("worldboss")),
     override val useDirectoryBasedTemplates: Boolean = true
     // Add specific WorldBoss settings if any, e.g., targetBossName, specificLootFilters
 ) : ActionConfig()
@@ -73,8 +76,8 @@ data class RaidActionConfig(
     override val enabled: Boolean = true,
     override val commonActionTemplates: List<String> = emptyList(), // For finding raid menu, selecting difficulty etc.
     override val specificTemplates: List<String> = emptyList(),
-    override val commonTemplateDirectories: List<String> = listOf("templates/ui"),
-    override val specificTemplateDirectories: List<String> = listOf("templates/raid"),
+    override val commonTemplateDirectories: List<String> = listOf(PathUtils.templatePath("ui")),
+    override val specificTemplateDirectories: List<String> = listOf(PathUtils.templatePath("raid")),
     override val useDirectoryBasedTemplates: Boolean = true,
     val raidTargets: List<RaidTarget> = emptyList(), // Specific raids
     val runCount: Int = 3, // Number of times to run each raid target

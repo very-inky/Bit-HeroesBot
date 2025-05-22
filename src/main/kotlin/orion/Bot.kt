@@ -58,11 +58,24 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
     /**
      * Capture a screenshot of the entire screen
      * @return The screenshot as a Mat object
+     * @throws UnsatisfiedLinkError if OpenCV functionality is not available
      */
     fun captureScreen(): Mat {
-        val screenRect = Rectangle(0, 0, screenSize.width, screenSize.height)
-        val screenCapture = robot.createScreenCapture(screenRect)
-        return bufferedImageToMat(screenCapture)
+        try {
+            val screenRect = Rectangle(0, 0, screenSize.width, screenSize.height)
+            val screenCapture = robot.createScreenCapture(screenRect)
+            val mat = bufferedImageToMat(screenCapture)
+            if (mat == null) {
+                throw UnsatisfiedLinkError("Failed to convert screen capture to Mat. OpenCV functionality may not be fully available.")
+            }
+            return mat
+        } catch (e: UnsatisfiedLinkError) {
+            println("Error: OpenCV functionality not fully available. Cannot capture screen: ${e.message}")
+            throw e
+        } catch (e: Exception) {
+            println("Error capturing screen: ${e.message}")
+            throw RuntimeException("Failed to capture screen", e)
+        }
     }
 
     /**
@@ -72,61 +85,116 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
      * @param width The width of the region
      * @param height The height of the region
      * @return The screenshot as a Mat object
+     * @throws UnsatisfiedLinkError if OpenCV functionality is not available
      */
     fun captureRegion(x: Int, y: Int, width: Int, height: Int): Mat {
-        val regionRect = Rectangle(x, y, width, height)
-        val regionCapture = robot.createScreenCapture(regionRect)
-        return bufferedImageToMat(regionCapture)
+        try {
+            val regionRect = Rectangle(x, y, width, height)
+            val regionCapture = robot.createScreenCapture(regionRect)
+            val mat = bufferedImageToMat(regionCapture)
+            if (mat == null) {
+                throw UnsatisfiedLinkError("Failed to convert region capture to Mat. OpenCV functionality may not be fully available.")
+            }
+            return mat
+        } catch (e: UnsatisfiedLinkError) {
+            println("Error: OpenCV functionality not fully available. Cannot capture region: ${e.message}")
+            throw e
+        } catch (e: Exception) {
+            println("Error capturing region: ${e.message}")
+            throw RuntimeException("Failed to capture region", e)
+        }
     }
 
     /**
      * Convert a BufferedImage to a Mat object
      * @param image The BufferedImage to convert
      * @return The converted Mat object
+     * @throws UnsatisfiedLinkError if OpenCV functionality is not available
      */
     private fun bufferedImageToMat(image: BufferedImage): Mat {
-        val mat = Mat(image.height, image.width, CvType.CV_8UC3)
-        val data = ByteArray(image.width * image.height * 3)
+        try {
+            val mat = Mat(image.height, image.width, CvType.CV_8UC3)
+            val data = ByteArray(image.width * image.height * 3)
 
-        var index = 0
-        for (y in 0 until image.height) {
-            for (x in 0 until image.width) {
-                val rgb = image.getRGB(x, y)
-                data[index++] = (rgb and 0xFF).toByte() // Blue
-                data[index++] = (rgb shr 8 and 0xFF).toByte() // Green
-                data[index++] = (rgb shr 16 and 0xFF).toByte() // Red
+            var index = 0
+            for (y in 0 until image.height) {
+                for (x in 0 until image.width) {
+                    val rgb = image.getRGB(x, y)
+                    data[index++] = (rgb and 0xFF).toByte() // Blue
+                    data[index++] = (rgb shr 8 and 0xFF).toByte() // Green
+                    data[index++] = (rgb shr 16 and 0xFF).toByte() // Red
+                }
             }
-        }
 
-        mat.put(0, 0, data)
-        return mat
+            mat.put(0, 0, data)
+            return mat
+        } catch (e: UnsatisfiedLinkError) {
+            println("Error: OpenCV functionality not fully available. Cannot convert image to Mat: ${e.message}")
+            throw e
+        } catch (e: Exception) {
+            println("Error converting image to Mat: ${e.message}")
+            throw RuntimeException("Failed to convert image to Mat", e)
+        }
     }
 
     /**
      * Save a Mat object as an image file
      * @param mat The Mat object to save
      * @param filename The filename to save to
+     * @return True if the image was saved successfully
+     * @throws UnsatisfiedLinkError if OpenCV functionality is not available
+     * @throws IllegalArgumentException if mat is null
+     * @throws RuntimeException if there's an error saving the image
      */
-    fun saveImage(mat: Mat, filename: String) {
-        Imgcodecs.imwrite(filename, mat)
+    fun saveImage(mat: Mat, filename: String): Boolean {
+        try {
+            val result = Imgcodecs.imwrite(filename, mat)
+            if (result) {
+                println("Image saved successfully: $filename")
+            } else {
+                println("Failed to save image: $filename")
+                throw RuntimeException("Failed to save image: $filename")
+            }
+            return result
+        } catch (e: UnsatisfiedLinkError) {
+            println("Error: OpenCV functionality not fully available. Cannot save image: ${e.message}")
+            throw e
+        } catch (e: Exception) {
+            println("Error saving image: ${e.message}")
+            throw RuntimeException("Failed to save image: $filename", e)
+        }
     }
 
     /**
      * Register a template image with its original resolution information
      * @param templatePath The path to the template image
      * @param dpi The DPI of the screen where the template was captured (default is 96.0)
+     * @return True if the template was registered successfully
+     * @throws UnsatisfiedLinkError if OpenCV functionality is not available
+     * @throws RuntimeException if there's an error registering the template
      */
-    fun registerTemplate(templatePath: String, dpi: Double = 96.0) {
-        val template = Imgcodecs.imread(templatePath)
-        if (!template.empty()) {
-            templateInfo[templatePath] = TemplateInfo(
-                originalWidth = template.width(),
-                originalHeight = template.height(),
-                originalDPI = dpi
-            )
-            println("Registered template: $templatePath (${template.width()}x${template.height()} at ${dpi}DPI)")
-        } else {
-            println("Could not load template image for registration: $templatePath")
+    fun registerTemplate(templatePath: String, dpi: Double = 96.0): Boolean {
+        try {
+            val template = Imgcodecs.imread(templatePath)
+            if (!template.empty()) {
+                templateInfo[templatePath] = TemplateInfo(
+                    originalWidth = template.width(),
+                    originalHeight = template.height(),
+                    originalDPI = dpi
+                )
+                println("Registered template: $templatePath (${template.width()}x${template.height()} at ${dpi}DPI)")
+                return true
+            } else {
+                val errorMsg = "Could not load template image for registration: $templatePath"
+                println(errorMsg)
+                throw RuntimeException(errorMsg)
+            }
+        } catch (e: UnsatisfiedLinkError) {
+            println("Error: OpenCV functionality not fully available. Cannot register template: ${e.message}")
+            throw e
+        } catch (e: Exception) {
+            println("Error registering template: ${e.message}")
+            throw RuntimeException("Failed to register template: $templatePath", e)
         }
     }
 
@@ -137,7 +205,9 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
      * @param maxScale The maximum scale to try (default is 2.0)
      * @param scaleStep The step size between scales (default is 0.1)
      * @param confidenceThreshold The minimum confidence threshold (default is 0.66)
-     * @return The location and scale of the template image, or null if not found
+     * @return The location and scale of the template image, or null if not found with sufficient confidence
+     * @throws UnsatisfiedLinkError if OpenCV functionality is not available
+     * @throws RuntimeException if there's an error during template matching
      */
     fun findTemplateMultiScale(
         templatePath: String,
@@ -146,68 +216,89 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
         scaleStep: Double = 0.1,
         confidenceThreshold: Double = 0.66 // Adjusted default threshold
     ): Pair<Point, Double>? {
-        val screen = captureScreen()
-        val template = Imgcodecs.imread(templatePath)
+        try {
+            val screen = captureScreen() // This will throw if OpenCV is not available
+            val template = Imgcodecs.imread(templatePath)
 
-        if (template.empty()) {
-            println("Could not load template image: $templatePath")
-            return null
-        }
+            if (template.empty()) {
+                val errorMsg = "Could not load template image: $templatePath"
+                println(errorMsg)
+                throw RuntimeException(errorMsg)
+            }
 
-        // Register the template if it's not already registered
-        if (!templateInfo.containsKey(templatePath)) {
-            registerTemplate(templatePath)
-        }
+            // Register the template if it's not already registered
+            if (!templateInfo.containsKey(templatePath)) {
+                // This will throw if registration fails
+                registerTemplate(templatePath)
+            }
 
-        var bestMatch: Point? = null
-        var bestScale = 1.0
-        var bestConfidence = 0.0
+            var bestMatch: Point? = null
+            var bestScale = 1.0
+            var bestConfidence = 0.0
 
-        // Try different scales
-        var currentScale = minScale
-        while (currentScale <= maxScale) {
-            // Resize the template according to the current scale
-            val scaledTemplate = Mat()
-            val newSize = Size(template.width() * currentScale, template.height() * currentScale)
-            Imgproc.resize(template, scaledTemplate, newSize, 0.0, 0.0, Imgproc.INTER_LINEAR)
+            // Try different scales
+            var currentScale = minScale
+            while (currentScale <= maxScale) {
+                try {
+                    // Resize the template according to the current scale
+                    val scaledTemplate = Mat()
+                    val newSize = Size(template.width() * currentScale, template.height() * currentScale)
+                    Imgproc.resize(template, scaledTemplate, newSize, 0.0, 0.0, Imgproc.INTER_LINEAR)
 
-            // Skip if the scaled template is larger than the screen
-            if (scaledTemplate.width() > screen.width() || scaledTemplate.height() > screen.height()) {
+                    // Skip if the scaled template is larger than the screen
+                    if (scaledTemplate.width() > screen.width() || scaledTemplate.height() > screen.height()) {
+                        currentScale += scaleStep
+                        continue
+                    }
+
+                    val result = Mat()
+                    Imgproc.matchTemplate(screen, scaledTemplate, result, Imgproc.TM_CCOEFF_NORMED)
+
+                    val mmr = Core.minMaxLoc(result)
+
+                    // If this match is better than our previous best, update it
+                    if (mmr.maxVal > bestConfidence) {
+                        bestConfidence = mmr.maxVal
+                        bestMatch = mmr.maxLoc
+                        bestScale = currentScale
+                    }
+                } catch (e: UnsatisfiedLinkError) {
+                    println("Error: OpenCV functionality not fully available during template matching: ${e.message}")
+                    throw e
+                } catch (e: Exception) {
+                    println("Error during template matching: ${e.message}")
+                    // Continue to the next scale
+                }
+
                 currentScale += scaleStep
-                continue
             }
 
-            val result = Mat()
-            Imgproc.matchTemplate(screen, scaledTemplate, result, Imgproc.TM_CCOEFF_NORMED)
-
-            val mmr = Core.minMaxLoc(result)
-
-            // If this match is better than our previous best, update it
-            if (mmr.maxVal > bestConfidence) {
-                bestConfidence = mmr.maxVal
-                bestMatch = mmr.maxLoc
-                bestScale = currentScale
+            // If the best match confidence is too low, return null
+            if (bestConfidence < confidenceThreshold || bestMatch == null) {
+                return null
             }
 
-            currentScale += scaleStep
+            println("Found template at scale: $bestScale with confidence: $bestConfidence")
+            return Pair(bestMatch, bestScale)
+        } catch (e: UnsatisfiedLinkError) {
+            println("Error: OpenCV functionality not fully available. Cannot find template: ${e.message}")
+            throw e
+        } catch (e: Exception) {
+            println("Error finding template: ${e.message}")
+            throw RuntimeException("Failed to find template: $templatePath", e)
         }
-
-        // If the best match confidence is too low, return null
-        if (bestConfidence < confidenceThreshold) {
-            return null
-        }
-
-        println("Found template at scale: $bestScale with confidence: $bestConfidence")
-        return Pair(bestMatch!!, bestScale)
     }
 
     /**
      * Find a template image within the screen
      * @param templatePath The path to the template image
-     * @return The location of the template image, or null if not found
+     * @return The location of the template image, or null if not found with sufficient confidence
+     * @throws UnsatisfiedLinkError if OpenCV functionality is not available
+     * @throws RuntimeException if there's an error during template matching
      */
     fun findTemplate(templatePath: String): Point? {
         // Use the multiscale version and return just the point
+        // This will throw exceptions if OpenCV is not available
         val result = findTemplateMultiScale(templatePath)
         return result?.first
     }
@@ -220,6 +311,8 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
      * @param scaleStep The step size between scales (default is 0.1)
      * @param confidenceThreshold The minimum confidence threshold (default is 0.66)
      * @return A TemplateMatchResult containing comprehensive information about the match
+     * @throws UnsatisfiedLinkError if OpenCV functionality is not available
+     * @throws RuntimeException if there's an error during template matching
      */
     fun findTemplateDetailed(
         templatePath: String,
@@ -228,18 +321,21 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
         scaleStep: Double = 0.1,
         confidenceThreshold: Double = 0.66
     ): TemplateMatchResult {
-        val screen = captureScreen()
-        val template = Imgcodecs.imread(templatePath)
         val dpi = getSystemDPIScaling()
         val screenRes = Pair(screenSize.width, screenSize.height)
 
+        val screen = captureScreen() // This will throw if OpenCV is not available
+        val template = Imgcodecs.imread(templatePath)
+
         if (template.empty()) {
-            println("Could not load template image: $templatePath")
-            return TemplateMatchResult(null, 1.0, 0.0, screenRes, dpi)
+            val errorMsg = "Could not load template image: $templatePath"
+            println(errorMsg)
+            throw RuntimeException(errorMsg)
         }
 
         // Register the template if it's not already registered
         if (!templateInfo.containsKey(templatePath)) {
+            // This will throw if registration fails
             registerTemplate(templatePath)
         }
 
@@ -250,33 +346,41 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
         // Try different scales
         var currentScale = minScale
         while (currentScale <= maxScale) {
-            // Resize the template according to the current scale
-            val scaledTemplate = Mat()
-            val newSize = Size(template.width() * currentScale, template.height() * currentScale)
-            Imgproc.resize(template, scaledTemplate, newSize, 0.0, 0.0, Imgproc.INTER_LINEAR)
+            try {
+                // Resize the template according to the current scale
+                val scaledTemplate = Mat()
+                val newSize = Size(template.width() * currentScale, template.height() * currentScale)
+                Imgproc.resize(template, scaledTemplate, newSize, 0.0, 0.0, Imgproc.INTER_LINEAR)
 
-            // Skip if the scaled template is larger than the screen
-            if (scaledTemplate.width() > screen.width() || scaledTemplate.height() > screen.height()) {
-                currentScale += scaleStep
-                continue
-            }
+                // Skip if the scaled template is larger than the screen
+                if (scaledTemplate.width() > screen.width() || scaledTemplate.height() > screen.height()) {
+                    currentScale += scaleStep
+                    continue
+                }
 
-            val result = Mat()
-            Imgproc.matchTemplate(screen, scaledTemplate, result, Imgproc.TM_CCOEFF_NORMED)
+                val result = Mat()
+                Imgproc.matchTemplate(screen, scaledTemplate, result, Imgproc.TM_CCOEFF_NORMED)
 
-            val mmr = Core.minMaxLoc(result)
+                val mmr = Core.minMaxLoc(result)
 
-            // If this match is better than our previous best, update it
-            if (mmr.maxVal > bestConfidence) {
-                bestConfidence = mmr.maxVal
-                bestMatch = mmr.maxLoc
-                bestScale = currentScale
+                // If this match is better than our previous best, update it
+                if (mmr.maxVal > bestConfidence) {
+                    bestConfidence = mmr.maxVal
+                    bestMatch = mmr.maxLoc
+                    bestScale = currentScale
+                }
+            } catch (e: UnsatisfiedLinkError) {
+                println("Error: OpenCV functionality not fully available during template matching: ${e.message}")
+                throw e
+            } catch (e: Exception) {
+                println("Error during template matching: ${e.message}")
+                // Continue to the next scale
             }
 
             currentScale += scaleStep
         }
 
-        // If the best match confidence is too low, return result with null location
+        // If the best match confidence is too low, return null for the location
         if (bestConfidence < confidenceThreshold) {
             return TemplateMatchResult(null, bestScale, bestConfidence, screenRes, dpi)
         }
@@ -299,23 +403,33 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
     /**
      * Click on a template image if found
      * @param templatePath The path to the template image
-     * @return True if the template was found and clicked, false otherwise
+     * @return True if the template was found and clicked, false if the template was not found with sufficient confidence
+     * @throws UnsatisfiedLinkError if OpenCV functionality is not available
+     * @throws RuntimeException if there's an error during template matching or clicking
      */
     fun clickOnTemplate(templatePath: String): Boolean {
+        // This will throw if OpenCV is not available
         val result = findTemplateMultiScale(templatePath)
         if (result != null) {
             val (location, scale) = result
-            // val template = Imgcodecs.imread(templatePath) // No need to reload
 
             val info = templateInfo[templatePath]
             if (info == null) {
                 // Attempt to register if not found, could be a dynamic template
+                // This will throw if registration fails
                 registerTemplate(templatePath, getSystemDPIScaling())
+
                 val newInfo = templateInfo[templatePath]
                 if (newInfo == null) {
-                    println("Template info not found for $templatePath and could not register.")
-                    return false
+                    println("Template info not found for $templatePath after registration.")
+                    // Still try to click at the location even without template info
+                    val x = location.x.toInt()
+                    val y = location.y.toInt()
+                    click(x, y)
+                    println("Clicked at template location without dimensions: ($x, $y)")
+                    return true
                 }
+
                 // Calculate the center of the template, taking scale into account
                 val x = location.x.toInt() + (newInfo.originalWidth * scale / 2).toInt()
                 val y = location.y.toInt() + (newInfo.originalHeight * scale / 2).toInt()
@@ -330,6 +444,8 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
             click(x, y)
             return true
         }
+
+        println("Could not find template: $templatePath")
         return false
     }
 
@@ -419,12 +535,15 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
      * @param directoryPath The path to the directory containing template images
      * @param recursive Whether to search subdirectories recursively (default is true)
      * @return The number of templates loaded
+     * @throws UnsatisfiedLinkError if OpenCV functionality is not available
+     * @throws RuntimeException if there's an error loading templates
      */
     fun loadTemplatesFromDirectory(directoryPath: String, recursive: Boolean = true): Int {
         val directory = File(directoryPath)
         if (!directory.exists() || !directory.isDirectory) {
-            println("Template directory does not exist or is not a directory: $directoryPath")
-            return 0
+            val errorMsg = "Template directory does not exist or is not a directory: $directoryPath"
+            println(errorMsg)
+            throw RuntimeException(errorMsg)
         }
 
         var count = 0
@@ -433,9 +552,18 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
         val files = if (recursive) directory.walkTopDown() else directory.listFiles()?.asSequence() ?: emptySequence()
 
         files.filter { it.isFile && (it.extension.lowercase() == "png" || it.extension.lowercase() == "jpg" || it.extension.lowercase() == "jpeg") }.forEach { file ->
-            // Pass the fetched DPI to registerTemplate
-            registerTemplate(file.absolutePath, currentDPI)
-            count++
+            try {
+                // Pass the fetched DPI to registerTemplate
+                // This will throw if registration fails
+                registerTemplate(file.absolutePath, currentDPI)
+                count++
+            } catch (e: UnsatisfiedLinkError) {
+                println("Error: OpenCV functionality not fully available. Cannot register template ${file.name}: ${e.message}")
+                throw e
+            } catch (e: Exception) {
+                println("Error registering template ${file.name}: ${e.message}")
+                // Continue with other templates instead of failing the entire operation
+            }
         }
 
         println("Loaded $count templates from $directoryPath using system DPI: $currentDPI")

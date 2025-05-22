@@ -4,8 +4,9 @@ import orion.Bot
 import orion.GameAction
 import orion.ActionConfig
 import orion.RaidActionConfig
+import orion.BaseGameAction
 
-class RaidAction : GameAction {
+class RaidAction : BaseGameAction() {
     // Track the number of consecutive resource checks
     private var resourceCheckCount = 0
 
@@ -21,29 +22,42 @@ class RaidAction : GameAction {
         }
 
         println("--- Executing Raid Action ---")
+
+        // Load templates from directories if enabled
+        val (commonTemplates, specificTemplates) = loadTemplates(bot, config)
+
+        println("Loaded ${commonTemplates.size} common templates and ${specificTemplates.size} specific templates")
         println("Run Count: ${config.runCount}")
+
+        // First, navigate to the raid area using common templates
+        if (!findAndClickAnyTemplate(bot, commonTemplates, "raid navigation button")) {
+            println("Failed to navigate to raid area. Aborting.")
+            return false
+        }
+
         config.raidTargets.forEachIndexed { index, target ->
             if (target.enabled) {
                 println("Target ${index + 1}: ${target.raidName} (${target.difficulty})")
-                // Placeholder:
-                // 1. Use bot to navigate to raid lobby (using config.commonActionTemplates).
-                // 2. Find and select target.raidName.
-                // 3. Select target.difficulty.
-                // 4. Start raid.
-                // 5. Monitor raid completion.
+
+                // In a real implementation, you would:
+                // 1. Find and click on raid-specific templates for this raid
+                // 2. Select the difficulty
+                // 3. Start the raid
+                // 4. Wait for completion
+                // 5. Collect rewards
+
+                // For now, just try to click on any specific template as a demonstration
+                if (findAndClickAnyTemplate(bot, specificTemplates, "raid-specific button for ${target.raidName}")) {
+                    println("Successfully interacted with raid-specific UI element for ${target.raidName}")
+                } else {
+                    println("Failed to interact with raid-specific UI elements for ${target.raidName}")
+                }
             }
         }
 
-        if (config.commonActionTemplates.isNotEmpty()) {
-            val firstTemplate = config.commonActionTemplates.first()
-            println("Attempting to find and click a common raid template: $firstTemplate")
-            if (bot.clickOnTemplate(firstTemplate)) {
-                println("Clicked on common raid template: $firstTemplate")
-            } else {
-                println("Failed to find or click common raid template: $firstTemplate")
-            }
-        } else {
-            println("No common raid templates specified to click for this example.")
+        // Check if no raid targets were specified
+        if (config.raidTargets.isEmpty()) {
+            println("No raid targets specified. Nothing to do.")
         }
 
         println("--- Raid Action Finished (Placeholder) ---")

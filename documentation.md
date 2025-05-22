@@ -138,26 +138,46 @@ The bot supports multiple characters and accounts:
 5. Account switching functionality allows for automated alt account management
 6. Configuration validation ensures integrity of the active setup
 
-## Template Matching System
+## OpenCV Integration and Template Matching System
 
-The bot uses OpenCV for template matching:
+The bot requires OpenCV with full functionality for image recognition and template matching:
 
-1. Template images are stored in the `templates` directory with subdirectories organized by action type:
-   - `raid`: Templates for raid-related actions
-   - `quest`: Templates for quest-related actions
-   - `pvp`: Templates for PvP-related actions
-   - `gvg`: Templates for GvG-related actions
-   - `worldboss`: Templates for world boss-related actions
-   - `invasion`: Templates for invasion-related actions
-   - `expedition`: Templates for expedition-related actions
-   - `ui`: Common UI elements and home screen templates
-2. The `Bot` class loads templates and provides methods to:
-   - Find templates on the screen with configurable matching thresholds
-   - Click on matched templates
-   - Perform other screen interactions
-   - Scale templates based on screen resolution and DPI
-   - Get detailed matching information (scale, confidence, etc.)
-3. Template registration system tracks original dimensions and DPI for proper scaling
+1. **OpenCV Loading Mechanism**:
+   - The bot automatically loads the OpenCV native library at startup
+   - If the library is not present or only partially loaded, it will download the complete library
+   - The bot requires full OpenCV functionality and will not run in partial functionality mode
+   - If full functionality cannot be loaded, the bot will throw an exception and exit
+   - OpenCL should enable by default. This requires you have GPU drivers propely installed. This is easy on Windows but Linux users should make sure they have necessary openCL functionality working.
+2. **Template Matching System**:
+   - Template images are stored in the `templates` directory with subdirectories organized by action type:
+     - `raid`: Templates for raid-related actions
+     - `quest`: Templates for quest-related actions
+     - `pvp`: Templates for PvP-related actions
+     - `gvg`: Templates for GvG-related actions
+     - `worldboss`: Templates for world boss-related actions
+     - `invasion`: Templates for invasion-related actions
+     - `expedition`: Templates for expedition-related actions
+     - `ui`: Common UI elements used across all actions
+     - `characters`: Character-specific templates
+   - The `Bot` class loads templates and provides methods to:
+     - Find templates on the screen with configurable matching thresholds
+     - Click on matched templates
+     - Perform other screen interactions
+     - Scale templates based on screen resolution and DPI
+     - Get detailed matching information (scale, confidence, etc.)
+   - Template registration system tracks original dimensions and DPI for proper scaling
+
+3. **Template Loading Process**:
+   - Each action configuration specifies which template directories to use:
+     - `commonTemplateDirectories`: Directories containing common UI elements (default: `templates/ui`)
+     - `specificTemplateDirectories`: Directories containing action-specific templates (e.g., `templates/quest`)
+   - The `BaseGameAction.loadTemplates()` method:
+     - Loads common templates from `commonTemplateDirectories`
+     - Loads specific templates from `specificTemplateDirectories`
+     - Adds any explicitly specified templates from `commonActionTemplates` and `specificTemplates`
+     - Returns a pair of (common templates, specific templates) for the action to use
+   - Templates are loaded recursively from directories, including all subdirectories
+   - The bot uses `getTemplatesByCategory()` to filter templates by category based on directory names
 
 ### Pattern Test Mode
 
@@ -165,7 +185,7 @@ The bot includes a pattern test mode that allows testing template matching witho
 
 1. Run the bot with the `--test-pattern` argument to enter pattern test mode:
    ```
-   java -jar your-bot.jar --test-pattern [template-path]
+   java -jar your-bot.jar --test-pattern [template-path] (omit the path to test all detected templates!)
    ```
 
 2. If a specific template path is provided, the bot will test only that template:
@@ -173,7 +193,7 @@ The bot includes a pattern test mode that allows testing template matching witho
    java -jar your-bot.jar --test-pattern templates/quest/Untitled.png
    ```
 
-3. If a directory path is provided, the bot will test all templates in that directory:
+3. If a directory path is provided, the bot will test all templates in that one directory:
    ```
    java -jar your-bot.jar --test-pattern templates/quest
    ```
@@ -233,8 +253,25 @@ The bot includes a pattern test mode that allows testing template matching witho
 
 1. Create characters and configurations using the ConfigManager
 2. Set the active character and configuration
-3. Place template images in the `templates` directory
-4. Run the application to start the bot with the active configuration
+3. Organize template images in the `templates` directory:
+   - Place common UI elements in `templates/ui/`
+   - Place action-specific templates in their respective directories:
+     - Quest templates in `templates/quest/`
+     - Raid templates in `templates/raid/`
+     - PvP templates in `templates/pvp/`
+     - GvG templates in `templates/gvg/`
+     - etc.
+   - Use PNG format for best results
+   - Name templates descriptively (e.g., `quest_button.png`, `raid_heroic_button.png`)
+4. Configure actions to use the appropriate template directories:
+   ```kotlin
+   QuestActionConfig(
+       commonTemplateDirectories = listOf("templates/ui"),
+       specificTemplateDirectories = listOf("templates/quest"),
+       useDirectoryBasedTemplates = true
+   )
+   ```
+5. Run the application to start the bot with the active configuration
 
 ## Example Configuration
 
@@ -260,7 +297,11 @@ val dailyFarmingConfig = BotConfig(
     actionConfigs = mapOf(
         "Quest" to QuestActionConfig(
             enabled = true,
-            commonActionTemplates = listOf("templates/quest/Untitled.png"),
+            commonTemplateDirectories = listOf("templates/ui"),
+            specificTemplateDirectories = listOf("templates/quest"),
+            useDirectoryBasedTemplates = true,
+            commonActionTemplates = listOf("templates/ui/quest_button.png"),
+            specificTemplates = listOf("templates/quest/dungeon_enter.png"),
             dungeonTargets = listOf(
                 QuestActionConfig.DungeonTarget(zoneNumber = 1, dungeonNumber = 2, enabled = true),
                 QuestActionConfig.DungeonTarget(zoneNumber = 6, dungeonNumber = 3, enabled = true)
@@ -270,7 +311,11 @@ val dailyFarmingConfig = BotConfig(
         ),
         "Raid" to RaidActionConfig(
             enabled = true,
-            commonActionTemplates = emptyList(),
+            commonTemplateDirectories = listOf("templates/ui"),
+            specificTemplateDirectories = listOf("templates/raid"),
+            useDirectoryBasedTemplates = true,
+            commonActionTemplates = listOf("templates/ui/raid_button.png"),
+            specificTemplates = listOf("templates/raid/heroic_difficulty.png"),
             raidTargets = listOf(
                 RaidActionConfig.RaidTarget(raidName = "SomeRaidBoss", difficulty = "Heroic", enabled = true)
             ),
@@ -324,7 +369,11 @@ val pveCharacterConfig = BotConfig(
     actionConfigs = mapOf(
         "Quest" to QuestActionConfig(
             enabled = true,
-            commonActionTemplates = listOf("templates/quest/quest_button.png"),
+            commonTemplateDirectories = listOf("templates/ui"),
+            specificTemplateDirectories = listOf("templates/quest"),
+            useDirectoryBasedTemplates = true,
+            commonActionTemplates = listOf("templates/ui/quest_button.png"),
+            specificTemplates = listOf("templates/quest/zone_7.png", "templates/quest/zone_8.png"),
             dungeonTargets = listOf(
                 QuestActionConfig.DungeonTarget(zoneNumber = 7, dungeonNumber = 3, enabled = true),
                 QuestActionConfig.DungeonTarget(zoneNumber = 8, dungeonNumber = 5, enabled = true)
@@ -334,7 +383,11 @@ val pveCharacterConfig = BotConfig(
         ),
         "Raid" to RaidActionConfig(
             enabled = true,
-            commonActionTemplates = listOf("templates/raid/raid_button.png"),
+            commonTemplateDirectories = listOf("templates/ui"),
+            specificTemplateDirectories = listOf("templates/raid"),
+            useDirectoryBasedTemplates = true,
+            commonActionTemplates = listOf("templates/ui/raid_button.png"),
+            specificTemplates = listOf("templates/raid/dragonlord.png", "templates/raid/heroic_difficulty.png"),
             raidTargets = listOf(
                 RaidActionConfig.RaidTarget(raidName = "DragonLord", difficulty = "Heroic", enabled = true)
             ),
@@ -358,19 +411,31 @@ val pvpCharacterConfig = BotConfig(
     actionConfigs = mapOf(
         "PvP" to PvpActionConfig(
             enabled = true,
-            commonActionTemplates = listOf("templates/pvp/pvp_button.png"),
+            commonTemplateDirectories = listOf("templates/ui"),
+            specificTemplateDirectories = listOf("templates/pvp"),
+            useDirectoryBasedTemplates = true,
+            commonActionTemplates = listOf("templates/ui/pvp_button.png"),
+            specificTemplates = listOf("templates/pvp/opponent_rank_3.png"),
             ticketsToUse = 5, // Use all 5 tickets
             opponentRank = 3 // Target rank 3 opponents
         ),
         "GvG" to GvgActionConfig(
             enabled = true,
-            commonActionTemplates = listOf("templates/gvg/gvg_button.png"),
+            commonTemplateDirectories = listOf("templates/ui"),
+            specificTemplateDirectories = listOf("templates/gvg"),
+            useDirectoryBasedTemplates = true,
+            commonActionTemplates = listOf("templates/ui/gvg_button.png"),
+            specificTemplates = listOf("templates/gvg/badge_4.png", "templates/gvg/opponent_2.png"),
             badgeChoice = 4, // Use badge type 4
             opponentChoice = 2 // Target opponent 2
         ),
         "Quest" to QuestActionConfig(
             enabled = true,
-            commonActionTemplates = listOf("templates/quest/quest_button.png"),
+            commonTemplateDirectories = listOf("templates/ui"),
+            specificTemplateDirectories = listOf("templates/quest"),
+            useDirectoryBasedTemplates = true,
+            commonActionTemplates = listOf("templates/ui/quest_button.png"),
+            specificTemplates = listOf("templates/quest/zone_10.png"),
             dungeonTargets = listOf(
                 QuestActionConfig.DungeonTarget(zoneNumber = 10, dungeonNumber = 1, enabled = true)
             ),

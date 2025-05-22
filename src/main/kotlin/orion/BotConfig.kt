@@ -7,6 +7,12 @@ sealed class ActionConfig {
     abstract val commonActionTemplates: List<String>
     // Specific templates for this action type
     abstract val specificTemplates: List<String>
+    // Template directories for automatic loading
+    abstract val commonTemplateDirectories: List<String>
+    // Action-specific template directories
+    abstract val specificTemplateDirectories: List<String>
+    // Whether to use directory-based template loading (true) or individual templates (false)
+    abstract val useDirectoryBasedTemplates: Boolean
     // Cooldown duration in minutes when resources are depleted
     open val cooldownDuration: Int = 20
 }
@@ -15,9 +21,10 @@ data class QuestActionConfig(
     override val enabled: Boolean = true,
     override val commonActionTemplates: List<String> = emptyList(),
     override val specificTemplates: List<String> = emptyList(),
-    val desiredZones: List<String> = emptyList(), // Legacy support: e.g., ["Zone5Pattern"]
-    val desiredDungeons: List<String> = emptyList(), // Legacy support: e.g., ["Dungeon3"]
-    val dungeonTargets: List<DungeonTarget> = emptyList(), // New way to specify dungeons with zone and dungeon numbers
+    override val commonTemplateDirectories: List<String> = listOf("templates/ui"),
+    override val specificTemplateDirectories: List<String> = listOf("templates/quest"),
+    override val useDirectoryBasedTemplates: Boolean = true,
+    val dungeonTargets: List<DungeonTarget> = emptyList(), // Specify dungeons with zone and dungeon numbers
     val repeatCount: Int = 1, // How many times to cycle through quests or a specific quest
     override val cooldownDuration: Int = 20 // Cooldown duration in minutes when resources are depleted
 ) : ActionConfig() {
@@ -33,6 +40,9 @@ data class PvpActionConfig(
     override val enabled: Boolean = true,
     override val commonActionTemplates: List<String> = emptyList(),
     override val specificTemplates: List<String> = emptyList(),
+    override val commonTemplateDirectories: List<String> = listOf("templates/ui"),
+    override val specificTemplateDirectories: List<String> = listOf("templates/pvp"),
+    override val useDirectoryBasedTemplates: Boolean = true,
     val ticketsToUse: Int = 5, // Number of tickets to use (1-5)
     val opponentRank: Int = 2, // Which opponent to fight (1-4)
     val autoSelectOpponent: Boolean = false // Whether to automatically select opponents or use specified rank
@@ -42,6 +52,9 @@ data class GvgActionConfig(
     override val enabled: Boolean = true,
     override val commonActionTemplates: List<String> = emptyList(),
     override val specificTemplates: List<String> = emptyList(),
+    override val commonTemplateDirectories: List<String> = listOf("templates/ui"),
+    override val specificTemplateDirectories: List<String> = listOf("templates/gvg"),
+    override val useDirectoryBasedTemplates: Boolean = true,
     val badgeChoice: Int = 5, // 1-5
     val opponentChoice: Int = 3 // 1-4
 ) : ActionConfig()
@@ -49,7 +62,10 @@ data class GvgActionConfig(
 data class WorldBossActionConfig(
     override val enabled: Boolean = true,
     override val commonActionTemplates: List<String> = emptyList(),
-    override val specificTemplates: List<String> = emptyList()
+    override val specificTemplates: List<String> = emptyList(),
+    override val commonTemplateDirectories: List<String> = listOf("templates/ui"),
+    override val specificTemplateDirectories: List<String> = listOf("templates/worldboss"),
+    override val useDirectoryBasedTemplates: Boolean = true
     // Add specific WorldBoss settings if any, e.g., targetBossName, specificLootFilters
 ) : ActionConfig()
 
@@ -57,6 +73,9 @@ data class RaidActionConfig(
     override val enabled: Boolean = true,
     override val commonActionTemplates: List<String> = emptyList(), // For finding raid menu, selecting difficulty etc.
     override val specificTemplates: List<String> = emptyList(),
+    override val commonTemplateDirectories: List<String> = listOf("templates/ui"),
+    override val specificTemplateDirectories: List<String> = listOf("templates/raid"),
+    override val useDirectoryBasedTemplates: Boolean = true,
     val raidTargets: List<RaidTarget> = emptyList(), // Specific raids
     val runCount: Int = 3, // Number of times to run each raid target
     override val cooldownDuration: Int = 20 // Cooldown duration in minutes when resources are depleted

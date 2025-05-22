@@ -37,13 +37,12 @@ class QuestActionTest {
     }
 
     @Test
-    fun testQuestConfigWithLegacyConfig() {
-        // Create a QuestActionConfig with legacy configuration
+    fun testQuestConfigWithTemplates() {
+        // Create a QuestActionConfig with specific templates
         val questConfig = QuestActionConfig(
             enabled = true,
             commonActionTemplates = listOf("templates/ui/quest_button.png"),
-            desiredZones = listOf("Zone1"),
-            desiredDungeons = listOf("Dungeon2"),
+            specificTemplates = listOf("templates/quest/specific_dungeon.png"),
             repeatCount = 1
         )
 
@@ -51,10 +50,8 @@ class QuestActionTest {
         assertTrue(questConfig.enabled)
         assertEquals(1, questConfig.commonActionTemplates.size)
         assertEquals("templates/ui/quest_button.png", questConfig.commonActionTemplates[0])
-        assertEquals(1, questConfig.desiredZones.size)
-        assertEquals("Zone1", questConfig.desiredZones[0])
-        assertEquals(1, questConfig.desiredDungeons.size)
-        assertEquals("Dungeon2", questConfig.desiredDungeons[0])
+        assertEquals(1, questConfig.specificTemplates.size)
+        assertEquals("templates/quest/specific_dungeon.png", questConfig.specificTemplates[0])
         assertEquals(1, questConfig.repeatCount)
     }
 

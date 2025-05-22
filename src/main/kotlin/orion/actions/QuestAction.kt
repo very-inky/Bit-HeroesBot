@@ -4,8 +4,9 @@ import orion.Bot
 import orion.GameAction
 import orion.ActionConfig
 import orion.QuestActionConfig
+import orion.BaseGameAction
 
-class QuestAction : GameAction {
+class QuestAction : BaseGameAction() {
     // Track the number of consecutive resource checks
     private var resourceCheckCount = 0
 
@@ -22,12 +23,11 @@ class QuestAction : GameAction {
 
         println("--- Executing Quest Action ---")
 
-        // Log legacy configuration if present
-        if (config.desiredZones.isNotEmpty() || config.desiredDungeons.isNotEmpty()) {
-            println("Legacy Configuration:")
-            println("  Desired Zones: ${config.desiredZones.joinToString()}")
-            println("  Desired Dungeons: ${config.desiredDungeons.joinToString()}")
-        }
+        // Load templates from directories if enabled
+        val (commonTemplates, specificTemplates) = loadTemplates(bot, config)
+
+        println("Loaded ${commonTemplates.size} common templates and ${specificTemplates.size} specific templates")
+
 
         // Log new dungeon targets configuration
         if (config.dungeonTargets.isNotEmpty()) {
@@ -39,34 +39,34 @@ class QuestAction : GameAction {
 
         println("Repeat Count: ${config.repeatCount}")
 
-        // Placeholder logic:
-        // In a real scenario, you would:
-        // 1. Use bot.findTemplate and bot.clickOnTemplate with config.commonActionTemplates to navigate to the quest area.
-        // 2. Loop based on repeatCount.
-        // 3. For each dungeon target in dungeonTargets (or legacy zones/dungeons if dungeonTargets is empty):
-        //    - Try to find and click templates specific to that zone/dungeon.
-        //    - Use bot.clickOnTemplate for quest start, complete, etc. buttons.
+        // First, navigate to the quest area using common templates
+        if (!findAndClickAnyTemplate(bot, commonTemplates, "quest navigation button")) {
+            println("Failed to navigate to quest area. Aborting.")
+            return false
+        }
 
         // Process dungeon targets if available
         if (config.dungeonTargets.isNotEmpty()) {
             println("Processing specific dungeon targets...")
             for (target in config.dungeonTargets.filter { it.enabled }) {
                 println("Attempting to run Zone ${target.zoneNumber}, Dungeon ${target.dungeonNumber}")
-                // Here you would implement the actual logic to navigate to and run the dungeon
-                // This is placeholder code
-            }
-        } 
-        // Fall back to legacy configuration if no dungeon targets
-        else if (config.commonActionTemplates.isNotEmpty()) {
-            val firstTemplate = config.commonActionTemplates.first()
-            println("Attempting to find and click a common quest template: $firstTemplate")
-            if (bot.clickOnTemplate(firstTemplate)) {
-                println("Clicked on common quest template: $firstTemplate")
-            } else {
-                println("Failed to find or click common quest template: $firstTemplate")
+
+                // In a real implementation, you would:
+                // 1. Find and click on zone-specific templates
+                // 2. Find and click on dungeon-specific templates
+                // 3. Start the dungeon
+                // 4. Wait for completion
+                // 5. Collect rewards
+
+                // For now, just try to click on any specific template as a demonstration
+                if (findAndClickAnyTemplate(bot, specificTemplates, "quest-specific button")) {
+                    println("Successfully interacted with quest-specific UI element")
+                } else {
+                    println("Failed to interact with quest-specific UI elements")
+                }
             }
         } else {
-            println("No quest targets or templates specified. Nothing to do.")
+            println("No dungeon targets specified. Nothing to do.")
         }
 
         println("--- Quest Action Finished (Placeholder) ---")

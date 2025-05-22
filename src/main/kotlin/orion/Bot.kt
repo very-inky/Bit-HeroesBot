@@ -9,6 +9,7 @@ import java.awt.Toolkit
 import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.ImageIO
+import orion.utils.PathUtils
 
 /**
  * Bot class that handles the game automation logic using OpenCV
@@ -577,13 +578,14 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
      */
     fun getTemplatesByCategory(category: String): List<String> {
         val categoryPath = "${File.separatorChar}$category${File.separatorChar}"
+        val templatesPath = PathUtils.buildPath("templates", category)
+
         return templateInfo.keys.filter { templatePath ->
-            // Normalize path separators for comparison
-            val normalizedTemplatePath = templatePath.replace("\\\\", "/").replace("/", File.separator)
+            // Normalize path separators for comparison using PathUtils
+            val normalizedTemplatePath = PathUtils.normalizePath(templatePath)
             normalizedTemplatePath.contains(categoryPath, ignoreCase = true) ||
             // Also check if the template is directly in a folder named like the category, relative to a base "templates" dir
-            normalizedTemplatePath.contains("templates$categoryPath", ignoreCase = true)
-
+            normalizedTemplatePath.contains(PathUtils.normalizePath(templatesPath), ignoreCase = true)
         }
     }
 

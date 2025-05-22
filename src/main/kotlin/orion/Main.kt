@@ -10,6 +10,7 @@ import java.io.File
 import java.nio.file.Paths
 import java.util.UUID
 import java.util.Vector
+import orion.utils.PathUtils
 
 fun main(args: Array<String>) {
     println("Starting OpenCV Bot...")
@@ -123,7 +124,7 @@ fun main(args: Array<String>) {
         actionConfigs = mapOf(
             "Quest" to QuestActionConfig(
                 enabled = true,
-                commonActionTemplates = listOf("templates/quest/Untitled.png"),
+                commonActionTemplates = listOf(PathUtils.templatePath("quest", "Untitled.png")),
                 dungeonTargets = listOf(
                     QuestActionConfig.DungeonTarget(zoneNumber = 1, dungeonNumber = 2, enabled = true),
                     QuestActionConfig.DungeonTarget(zoneNumber = 6, dungeonNumber = 3, enabled = true)
@@ -156,19 +157,19 @@ fun main(args: Array<String>) {
         actionConfigs = mapOf(
             "PvP" to PvpActionConfig(
                 enabled = true,
-                commonActionTemplates = listOf("templates/pvp/pvp_button.png"),
+                commonActionTemplates = listOf(PathUtils.templatePath("pvp", "pvp_button.png")),
                 ticketsToUse = 5,
                 opponentRank = 3
             ),
             "GvG" to GvgActionConfig(
                 enabled = true,
-                commonActionTemplates = listOf("templates/gvg/gvg_button.png"),
+                commonActionTemplates = listOf(PathUtils.templatePath("gvg", "gvg_button.png")),
                 badgeChoice = 4,
                 opponentChoice = 2
             ),
             "Quest" to QuestActionConfig(
                 enabled = true,
-                commonActionTemplates = listOf("templates/quest/Untitled.png"),
+                commonActionTemplates = listOf(PathUtils.templatePath("quest", "Untitled.png")),
                 dungeonTargets = listOf(
                     QuestActionConfig.DungeonTarget(zoneNumber = 10, dungeonNumber = 1, enabled = true)
                 ),
@@ -235,7 +236,7 @@ fun main(args: Array<String>) {
         actionConfigs = mapOf(
             "Quest" to QuestActionConfig(
                 enabled = true,
-                commonActionTemplates = listOf("templates/quest/Untitled.png"),
+                commonActionTemplates = listOf(PathUtils.templatePath("quest", "Untitled.png")),
                 dungeonTargets = listOf(
                     QuestActionConfig.DungeonTarget(zoneNumber = 5, dungeonNumber = 1, enabled = true)
                 ),
@@ -365,12 +366,12 @@ fun loadOpenCVNativeLibrary() {
 
         // Create the full path to where the library should be stored
         val resourcesPath = if (archDirectory.isEmpty()) {
-            "src/main/resources/natives/$osDirectory"
+            PathUtils.buildPath("src", "main", "resources", "natives", osDirectory)
         } else {
-            "src/main/resources/natives/$osDirectory/$archDirectory"
+            PathUtils.buildPath("src", "main", "resources", "natives", osDirectory, archDirectory)
         }
 
-        val libraryPath = "$resourcesPath/$libraryFileName"
+        val libraryPath = PathUtils.buildPath(resourcesPath, libraryFileName)
         val libraryFile = File(libraryPath)
 
         // Check if the library already exists in the resources folder
@@ -439,12 +440,16 @@ fun loadOpenCVNativeLibrary() {
                 } else {
                     println("Failed to create resources directory. Will try alternative approach.")
                     // Try to create each directory in the path individually
-                    val path = resourcesPath.replace('\\', '/')
-                    val dirs = path.split('/')
+                    val path = PathUtils.normalizePath(resourcesPath)
+                    val dirs = path.split(File.separatorChar)
                     var currentPath = ""
                     for (dir in dirs) {
                         if (dir.isEmpty()) continue
-                        currentPath += "$dir/"
+                        currentPath = if (currentPath.isEmpty()) {
+                            dir
+                        } else {
+                            PathUtils.buildPath(currentPath, dir)
+                        }
                         val currentDir = File(currentPath)
                         if (!currentDir.exists()) {
                             val success = currentDir.mkdir()

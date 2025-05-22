@@ -13,6 +13,7 @@ repositories {
 dependencies {
     testImplementation 'org.jetbrains.kotlin:kotlin-test'
     implementation("org.openpnp:opencv:4.9.0-0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
 }
 
 test {
@@ -24,4 +25,14 @@ kotlin {
 
 application {
     mainClass = 'orion.MainKt'
+}
+
+// Custom task to test if coroutines are working properly
+task testCoroutines(type: JavaExec) {
+    description = 'Tests if coroutines are working properly'
+    group = 'verification'
+
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'orion.MainKt'
+    args = ['--test-coroutines']
 }

@@ -34,6 +34,7 @@ data class QuestActionConfig(
     data class DungeonTarget(
         val zoneNumber: Int, // e.g., 1, 2, 3, etc.
         val dungeonNumber: Int, // e.g., 1, 2, 3, etc.
+        val difficulty: String = "heroic", // Preferred difficulty: "heroic", "hard", or "normal"
         val enabled: Boolean = true
     )
 }

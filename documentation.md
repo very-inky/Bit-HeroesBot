@@ -185,20 +185,37 @@ The bot includes a pattern test mode that allows testing template matching witho
 
 1. Run the bot with the `--test-pattern` argument to enter pattern test mode:
    ```
-   java -jar your-bot.jar --test-pattern [template-path] (omit the path to test all detected templates!)
+   # Using Gradle
+   gradlew run --args="--test-pattern [template-path]"
+
+   # Using JAR file
+   java -jar your-bot.jar --test-pattern [template-path]
    ```
+   Note: Omit the template-path to test all detected templates!
 
 2. If a specific template path is provided, the bot will test only that template:
    ```
-   java -jar your-bot.jar --test-pattern templates/quest/Untitled.png
+   gradlew run --args="--test-pattern templates/quest/questicon.png"
    ```
 
-3. If a directory path is provided, the bot will test all templates in that one directory:
+3. If a directory path is provided, the bot will test all templates in that directory:
    ```
-   java -jar your-bot.jar --test-pattern templates/quest
+   gradlew run --args="--test-pattern templates/quest"
    ```
 
-4. The pattern test mode displays comprehensive information about each match:
+4. You can combine the `--test-pattern` flag with optimization flags for faster template testing:
+   ```
+   # Test with parallel zone detection
+   gradlew run --args="--test-pattern templates/quest --morethreads"
+
+   # Test with parallel template matching
+   gradlew run --args="--test-pattern templates/quest --opencvthreads"
+
+   # Test with both optimizations
+   gradlew run --args="--test-pattern templates/quest --morethreads --opencvthreads"
+   ```
+
+5. The pattern test mode displays comprehensive information about each match:
    - Whether the template was found
    - The position where it was found
    - The scale at which it was found

@@ -11,6 +11,7 @@ import java.io.File
 import javax.imageio.ImageIO
 import kotlinx.coroutines.*
 import orion.utils.PathUtils
+import java.awt.event.KeyEvent // Added import for KeyEvent
 
 /**
  * Bot class that handles the game automation logic using OpenCV
@@ -21,6 +22,9 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
 
     // Store information about template images
     private val templateInfo = mutableMapOf<String, TemplateInfo>()
+
+    // Flag for session-wide autopilot check
+    private var autopilotEngagementAttemptedThisSession = false
 
     companion object {
         /**
@@ -228,76 +232,87 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
         scaleStep: Double = 0.1,
         confidenceThreshold: Double = 0.74 // Adjusted default threshold, was 0.66
     ): Pair<Point, Double>? {
-        try {
-            val screen = captureScreen() // This will throw if OpenCV is not available
-            val template = Imgcodecs.imread(templatePath)
-
-            if (template.empty()) {
-                val errorMsg = "Could not load template image: $templatePath"
-                println(errorMsg)
-                throw RuntimeException(errorMsg)
+        if (useCoroutinesForTemplateMatching) {
+            // Use the coroutine-based detailed finder
+            val detailedResult = findTemplateDetailed(templatePath, minScale, maxScale, scaleStep, confidenceThreshold)
+            return if (detailedResult.location != null) {
+                Pair(detailedResult.location, detailedResult.scale)
+            } else {
+                null
             }
+        } else {
+            // Original sequential implementation
+            try {
+                val screen = captureScreen() // This will throw if OpenCV is not available
+                val template = Imgcodecs.imread(templatePath)
 
-            // Register the template if it's not already registered
-            if (!templateInfo.containsKey(templatePath)) {
-                // This will throw if registration fails
-                registerTemplate(templatePath)
-            }
-
-            var bestMatch: Point? = null
-            var bestScale = 1.0
-            var bestConfidence = 0.0
-
-            // Try different scales
-            var currentScale = minScale
-            while (currentScale <= maxScale) {
-                try {
-                    // Resize the template according to the current scale
-                    val scaledTemplate = Mat()
-                    val newSize = Size(template.width() * currentScale, template.height() * currentScale)
-                    Imgproc.resize(template, scaledTemplate, newSize, 0.0, 0.0, Imgproc.INTER_LINEAR)
-
-                    // Skip if the scaled template is larger than the screen
-                    if (scaledTemplate.width() > screen.width() || scaledTemplate.height() > screen.height()) {
-                        currentScale += scaleStep
-                        continue
-                    }
-
-                    val result = Mat()
-                    Imgproc.matchTemplate(screen, scaledTemplate, result, Imgproc.TM_CCOEFF_NORMED)
-
-                    val mmr = Core.minMaxLoc(result)
-
-                    // If this match is better than our previous best, update it
-                    if (mmr.maxVal > bestConfidence) {
-                        bestConfidence = mmr.maxVal
-                        bestMatch = mmr.maxLoc
-                        bestScale = currentScale
-                    }
-                } catch (e: UnsatisfiedLinkError) {
-                    println("Error: OpenCV functionality not fully available during template matching: ${e.message}")
-                    throw e
-                } catch (e: Exception) {
-                    println("Error during template matching: ${e.message}")
-                    // Continue to the next scale
+                if (template.empty()) {
+                    val errorMsg = "Could not load template image: $templatePath"
+                    println(errorMsg)
+                    throw RuntimeException(errorMsg)
                 }
 
-                currentScale += scaleStep
-            }
+                // Register the template if it's not already registered
+                if (!templateInfo.containsKey(templatePath)) {
+                    // This will throw if registration fails
+                    registerTemplate(templatePath)
+                }
 
-            // If the best match confidence is too low, return null
-            if (bestConfidence < confidenceThreshold || bestMatch == null) {
-                return null
-            }
+                var bestMatch: Point? = null
+                var bestScale = 1.0
+                var bestConfidence = 0.0
 
-            println("Found template at scale: $bestScale with confidence: $bestConfidence")
-            return Pair(bestMatch, bestScale)
-        } catch (e: UnsatisfiedLinkError) {
-            println("Error: OpenCV functionality not fully available. Cannot find template: ${e.message}")
-            throw e
-        } catch (e: Exception) {
-            println("Error finding template: ${e.message}")
-            throw RuntimeException("Failed to find template: $templatePath", e)
+                // Try different scales
+                var currentScale = minScale
+                while (currentScale <= maxScale) {
+                    try {
+                        // Resize the template according to the current scale
+                        val scaledTemplate = Mat()
+                        val newSize = Size(template.width() * currentScale, template.height() * currentScale)
+                        Imgproc.resize(template, scaledTemplate, newSize, 0.0, 0.0, Imgproc.INTER_LINEAR)
+
+                        // Skip if the scaled template is larger than the screen
+                        if (scaledTemplate.width() > screen.width() || scaledTemplate.height() > screen.height()) {
+                            currentScale += scaleStep
+                            continue
+                        }
+
+                        val result = Mat()
+                        Imgproc.matchTemplate(screen, scaledTemplate, result, Imgproc.TM_CCOEFF_NORMED)
+
+                        val mmr = Core.minMaxLoc(result)
+
+                        // If this match is better than our previous best, update it
+                        if (mmr.maxVal > bestConfidence) {
+                            bestConfidence = mmr.maxVal
+                            bestMatch = mmr.maxLoc
+                            bestScale = currentScale
+                        }
+                    } catch (e: UnsatisfiedLinkError) {
+                        println("Error: OpenCV functionality not fully available during template matching: ${e.message}")
+                        throw e
+                    } catch (e: Exception) {
+                        println("Error during template matching: ${e.message}")
+                        // Continue to the next scale
+                    }
+
+                    currentScale += scaleStep
+                }
+
+                // If the best match confidence is too low, return null
+                if (bestConfidence < confidenceThreshold || bestMatch == null) {
+                    return null
+                }
+
+                println("Found template at scale: $bestScale with confidence: $bestConfidence (Sequential)")
+                return Pair(bestMatch, bestScale)
+            } catch (e: UnsatisfiedLinkError) {
+                println("Error: OpenCV functionality not fully available. Cannot find template: ${e.message}")
+                throw e
+            } catch (e: Exception) {
+                println("Error finding template: ${e.message}")
+                throw RuntimeException("Failed to find template: $templatePath", e)
+            }
         }
     }
 
@@ -524,6 +539,68 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
     }
 
     /**
+     * Sends a key press and release.
+     * @param keyCode The java.awt.event.KeyEvent constant for the key.
+     */
+    fun pressKey(keyCode: Int) {
+        try {
+            robot.keyPress(keyCode)
+            robot.delay(50) // Small delay between press and release
+            robot.keyRelease(keyCode)
+            println("Sent key press: ${KeyEvent.getKeyText(keyCode)}")
+        } catch (e: Exception) {
+            println("Error pressing key ${KeyEvent.getKeyText(keyCode)}: ${e.message}")
+        }
+    }
+
+    /**
+     * Ensures autopilot is engaged, only attempts once per session.
+     * Looks for 'autopiloton.png'. If not found, looks for 'autopilotoff.png'.
+     * If 'autopilotoff.png' is found, presses the SPACE key to toggle it.
+     */
+    suspend fun ensureAutopilotEngagedOnce() {
+        if (autopilotEngagementAttemptedThisSession) {
+            println("Autopilot check already attempted this session.")
+            return
+        }
+        autopilotEngagementAttemptedThisSession = true // Mark as attempted for this session
+
+        println("Performing one-time autopilot check for this session...")
+        val autopilotOnTemplate = PathUtils.templatePath("ui", "autopiloton.png")
+        val autopilotOffTemplate = PathUtils.templatePath("ui", "autopilotoff.png")
+
+        // Check if templates exist before trying to find them
+        if (!File(autopilotOnTemplate).exists()) {
+            println("Warning: Autopilot ON template not found at $autopilotOnTemplate")
+            // Decide if you want to proceed or handle this as an error
+        }
+        if (!File(autopilotOffTemplate).exists()) {
+            println("Warning: Autopilot OFF template not found at $autopilotOffTemplate")
+            // Decide if you want to proceed or handle this as an error
+        }
+
+        if (findTemplate(autopilotOnTemplate) != null) {
+            println("Autopilot is already ON.")
+            return
+        }
+
+        if (findTemplate(autopilotOffTemplate) != null) {
+            println("Autopilot is OFF. Attempting to toggle it ON by pressing SPACE.")
+            pressKey(KeyEvent.VK_SPACE)
+            delay(1000) // Wait a second for the game to react
+
+            // Verify if it turned on
+            if (findTemplate(autopilotOnTemplate) != null) {
+                println("Autopilot successfully toggled ON.")
+            } else {
+                println("Failed to verify Autopilot turned ON after pressing SPACE. It might still be off or the template is not found.")
+            }
+        } else {
+            println("Could not determine autopilot state (neither ON nor OFF template found, or templates do not exist). Manual check might be needed.")
+        }
+    }
+
+    /**
      * Click on a template image if found
      * @param templatePath The path to the template image
      * @return True if the template was found and clicked, false if the template was not found with sufficient confidence
@@ -639,11 +716,10 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
 
         println("\nBot run method finished. Further actions would be orchestrated based on the config.")
     }
-
     /**
-     * Create a template directory if it doesn't exist
-     * @param directoryPath The path to the template directory
-     * @return True if the directory exists or was created successfully, false otherwise
+     * Create a directory for storing templates
+     * @param directoryPath The path to the directory to create
+     * @return True if the directory was created successfully, false if it already exists or could not be created
      */
     fun createTemplateDirectory(directoryPath: String): Boolean {
         val directory = File(directoryPath)
@@ -730,3 +806,4 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
         return templateInfo.keys.toList()
     }
 }
+

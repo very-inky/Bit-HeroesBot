@@ -174,7 +174,7 @@ fun main(args: Array<String>) {
     val heroCharacterId = UUID.randomUUID().toString()
     val heroCharacter = CharacterConfig(
         characterId = heroCharacterId,
-        characterName = "MyAwesomeHero"
+        characterName = "VeryInky"
     )
     configManager.addCharacter(heroCharacter)
     println("Added character: ${heroCharacter.characterName} (ID: ${heroCharacter.characterId})")
@@ -232,16 +232,16 @@ fun main(args: Array<String>) {
             "GvG" to GvgActionConfig(
                 enabled = true,
                 commonActionTemplates = listOf(PathUtils.templatePath("gvg", "gvg_button.png")),
-                badgeChoice = 4,
+                badgeChoice = 5,
                 opponentChoice = 2
             ),
             "Quest" to QuestActionConfig(
                 enabled = true,
                 commonActionTemplates = listOf(PathUtils.templatePath("quest", "Untitled.png")),
                 dungeonTargets = listOf(
-                    QuestActionConfig.DungeonTarget(zoneNumber = 10, dungeonNumber = 1, enabled = true)
+                    QuestActionConfig.DungeonTarget(zoneNumber = 1, dungeonNumber = 1, enabled = true)
                 ),
-                repeatCount = 3 // Only run 3 times
+                repeatCount = 0 // Only run 3 times
             )
         )
     )

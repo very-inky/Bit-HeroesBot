@@ -218,6 +218,16 @@ See the [documentation](documentation.md) for detailed information on:
 - Template matching system
 - Testing templates
 
+## Current Development Focus
+
+The current development focus is on full quest action automation, specifically:
+
+1. **Monitor Function / ActionRunning Loop**: Implementing a monitoring system that continuously checks the game state
+2. **Rerun Functionality**: Adding the ability to rerun quests or raids without backing out to setup
+3. **UI Responsiveness**: Ensuring the bot doesn't process checks faster than the UI can update
+
+For more detailed information on the current state of the project and development priorities, see [devnotes.md](devnotes.md).
+
 ## License
 
 [License information]

@@ -51,7 +51,8 @@ class BotConfigTest {
         // Create a BotConfig with multiple actions
         val botConfig = BotConfig(
             configId = "test_config",
-            characterName = "TestHero",
+            configName = "Test Config",
+            characterId = "test_hero_id",
             actionSequence = listOf("Quest", "PVP"),
             actionConfigs = mapOf(
                 "Quest" to QuestActionConfig(
@@ -70,7 +71,8 @@ class BotConfigTest {
 
         // Verify the configuration
         assertEquals("test_config", botConfig.configId)
-        assertEquals("TestHero", botConfig.characterName)
+        assertEquals("Test Config", botConfig.configName)
+        assertEquals("test_hero_id", botConfig.characterId)
         assertEquals(2, botConfig.actionSequence.size)
         assertEquals("Quest", botConfig.actionSequence[0])
         assertEquals("PVP", botConfig.actionSequence[1])

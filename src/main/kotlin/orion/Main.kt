@@ -1,0 +1,882 @@
+package orion
+
+import orion.actions.QuestAction // Updated import
+import orion.actions.RaidAction  // Updated import
+// BotConfig, QuestActionConfig, PvpActionConfig, RaidActionConfig, RaidTarget, ActionManager
+// are now expected to be available if they are in the 'orion' package or subpackages.
+// Ensure their package declarations are also 'orion' or 'orion.something'
+import org.opencv.core.Core
+import java.io.File
+import java.nio.file.Paths
+import java.util.UUID
+import java.util.Vector
+
+fun main(args: Array<String>) {
+    println("Starting OpenCV Bot...")
+    // Check if we're in pattern test mode
+    val isPatternTestMode = args.isNotEmpty() && args[0] == "--test-pattern"
+
+    // Load OpenCV native library - full functionality is required
+    loadOpenCVNativeLibrary()
+
+    if (isPatternTestMode) {
+        // Get the template path from arguments or use a default
+        val templatePath = if (args.size > 1) args[1] else "templates"
+
+        // Create a simple bot instance without full configuration
+        val bot = Bot(BotConfig(
+            configId = "test-config",
+            configName = "Test Config",
+            characterId = "test-character",
+            description = "Configuration for pattern testing",
+            actionSequence = emptyList(),
+            actionConfigs = emptyMap()
+        ))
+
+        bot.initialize()
+
+        // Display screen information
+        val screenSize = bot.getScreenResolution()
+        val dpi = bot.getSystemDPIScaling()
+        println("Screen Resolution: ${screenSize.first}x${screenSize.second}")
+        println("System DPI Scaling: ${dpi * 100}%")
+
+        // Check if we're testing a specific template or a directory
+        val file = File(templatePath)
+        if (file.isFile) {
+            // Test a specific template
+            println("Testing specific template: $templatePath")
+            val result = bot.findTemplateDetailed(templatePath)
+
+            if (result.location != null) {
+                println("✅ Found template at position: ${result.location}")
+                println("   Scale: ${result.scale}")
+                println("   Confidence: ${result.confidence}")
+                println("   Screen Resolution: ${result.screenResolution.first}x${result.screenResolution.second}")
+                println("   DPI Scaling: ${result.dpi * 100}%")
+            } else {
+                println("❌ Could not find template")
+                println("   Best scale attempted: ${result.scale}")
+                println("   Best confidence: ${result.confidence}")
+                println("   Screen Resolution: ${result.screenResolution.first}x${result.screenResolution.second}")
+                println("   DPI Scaling: ${result.dpi * 100}%")
+            }
+        } else {
+            // Load templates from directory
+            println("Loading templates from: $templatePath")
+            val count = bot.loadTemplatesFromDirectory(templatePath)
+            println("Loaded $count templates")
+
+            // Get all templates
+            val allTemplates = bot.getAllTemplates()
+            println("Available templates: ${allTemplates.joinToString("\n")}")
+
+            // Test each template
+            println("\nTesting templates on current screen:")
+            allTemplates.forEach { template ->
+                val result = bot.findTemplateDetailed(template)
+
+                if (result.location != null) {
+                    println("✅ Found template: $template")
+                    println("   Position: ${result.location}")
+                    println("   Scale: ${result.scale}")
+                    println("   Confidence: ${result.confidence}")
+                } else {
+                    println("❌ Could not find template: $template")
+                    println("   Best scale attempted: ${result.scale}")
+                    println("   Best confidence: ${result.confidence}")
+                }
+            }
+
+            // Print screen information once for all templates
+            println("\nScreen Resolution: ${screenSize.first}x${screenSize.second}")
+            println("System DPI Scaling: ${dpi * 100}%")
+        }
+
+        println("\nPattern test completed")
+        return
+    }
+
+    // --- Configuration Setup ---
+    // Create a configuration manager to handle multiple configurations
+    val configManager = ConfigManager()
+
+    // Create a character
+    val heroCharacterId = UUID.randomUUID().toString()
+    val heroCharacter = CharacterConfig(
+        characterId = heroCharacterId,
+        characterName = "MyAwesomeHero"
+    )
+    configManager.addCharacter(heroCharacter)
+    println("Added character: ${heroCharacter.characterName} (ID: ${heroCharacter.characterId})")
+
+    // Create multiple configurations for the character
+
+    // Daily Farming Configuration
+    val dailyFarmingConfigId = UUID.randomUUID().toString()
+    val dailyFarmingConfig = BotConfig(
+        configId = dailyFarmingConfigId,
+        configName = "Daily Farming",
+        characterId = heroCharacterId,
+        description = "Configuration for daily farming tasks",
+        actionSequence = listOf("Quest", "Raid"),
+        actionConfigs = mapOf(
+            "Quest" to QuestActionConfig(
+                enabled = true,
+                commonActionTemplates = listOf("templates/quest/Untitled.png"),
+                dungeonTargets = listOf(
+                    QuestActionConfig.DungeonTarget(zoneNumber = 1, dungeonNumber = 2, enabled = true),
+                    QuestActionConfig.DungeonTarget(zoneNumber = 6, dungeonNumber = 3, enabled = true)
+                ),
+                repeatCount = 0, // Run until out of resources
+                cooldownDuration = 1 // 1 minute cooldown for testing
+            ),
+            "Raid" to RaidActionConfig(
+                enabled = true,
+                commonActionTemplates = emptyList(),
+                raidTargets = listOf(
+                    RaidActionConfig.RaidTarget(raidName = "SomeRaidBoss", difficulty = "Heroic", enabled = true)
+                ),
+                runCount = 0, // Run until out of resources
+                cooldownDuration = 1 // 1 minute cooldown for testing
+            )
+        )
+    )
+    configManager.addConfig(dailyFarmingConfig)
+    println("Added configuration: ${dailyFarmingConfig.configName} (ID: ${dailyFarmingConfig.configId})")
+
+    // PvP Focus Configuration
+    val pvpFocusConfigId = UUID.randomUUID().toString()
+    val pvpFocusConfig = BotConfig(
+        configId = pvpFocusConfigId,
+        configName = "PvP Focus",
+        characterId = heroCharacterId,
+        description = "Configuration focused on PvP activities",
+        actionSequence = listOf("PvP", "GvG", "Quest"),
+        actionConfigs = mapOf(
+            "PvP" to PvpActionConfig(
+                enabled = true,
+                commonActionTemplates = listOf("templates/pvp/pvp_button.png"),
+                ticketsToUse = 5,
+                opponentRank = 3
+            ),
+            "GvG" to GvgActionConfig(
+                enabled = true,
+                commonActionTemplates = listOf("templates/gvg/gvg_button.png"),
+                badgeChoice = 4,
+                opponentChoice = 2
+            ),
+            "Quest" to QuestActionConfig(
+                enabled = true,
+                commonActionTemplates = listOf("templates/quest/Untitled.png"),
+                dungeonTargets = listOf(
+                    QuestActionConfig.DungeonTarget(zoneNumber = 10, dungeonNumber = 1, enabled = true)
+                ),
+                repeatCount = 3 // Only run 3 times
+            )
+        )
+    )
+    configManager.addConfig(pvpFocusConfig)
+    println("Added configuration: ${pvpFocusConfig.configName} (ID: ${pvpFocusConfig.configId})")
+
+    // --- Demonstrate Character Activation and Account Switching ---
+    println("\n=== Character Activation and Account Management ===")
+
+    // Activate the hero character
+    try {
+        configManager.setActiveCharacter(heroCharacterId)
+        println("Activated character: ${configManager.getActiveCharacter()?.characterName}")
+    } catch (e: IllegalStateException) {
+        println("Error activating character: ${e.message}")
+    }
+
+    // Set the active configuration
+    try {
+        configManager.setActiveConfig(dailyFarmingConfig.configId)
+        println("Set active configuration to: ${dailyFarmingConfig.configName}")
+    } catch (e: IllegalStateException) {
+        println("Error setting active configuration: ${e.message}")
+    }
+
+    // Validate the configuration
+    try {
+        configManager.validateConfiguration()
+        println("Configuration validated successfully.")
+    } catch (e: IllegalStateException) {
+        println("Configuration validation failed: ${e.message}")
+    }
+
+    // Create a second account with a character
+    println("\n--- Creating Second Account ---")
+    val secondAccountId = "account2"
+    val altCharacterId = UUID.randomUUID().toString()
+    val altCharacter = CharacterConfig(
+        characterId = altCharacterId,
+        characterName = "AltHero",
+        accountId = secondAccountId,
+        isActive = false // Not active by default
+    )
+
+    try {
+        configManager.addCharacter(altCharacter)
+        println("Added character: ${altCharacter.characterName} (ID: ${altCharacter.characterId}) to account: $secondAccountId")
+    } catch (e: IllegalStateException) {
+        println("Error adding character: ${e.message}")
+    }
+
+    // Create a configuration for the alt character
+    val altConfigId = UUID.randomUUID().toString()
+    val altConfig = BotConfig(
+        configId = altConfigId,
+        configName = "Alt Farming",
+        characterId = altCharacterId,
+        description = "Configuration for alt character farming",
+        actionSequence = listOf("Quest"),
+        actionConfigs = mapOf(
+            "Quest" to QuestActionConfig(
+                enabled = true,
+                commonActionTemplates = listOf("templates/quest/Untitled.png"),
+                dungeonTargets = listOf(
+                    QuestActionConfig.DungeonTarget(zoneNumber = 5, dungeonNumber = 1, enabled = true)
+                ),
+                repeatCount = 5
+            )
+        )
+    )
+
+    configManager.addConfig(altConfig)
+    println("Added configuration: ${altConfig.configName} (ID: ${altConfig.configId}) for character: ${altCharacter.characterName}")
+
+    // Demonstrate account switching
+    println("\n--- Switching Accounts ---")
+    println("Current active character: ${configManager.getActiveCharacter()?.characterName}")
+    println("Current active config: ${configManager.getActiveConfig()?.configName}")
+
+    try {
+        // Switch to the second account
+        configManager.switchAccount(secondAccountId)
+        println("Switched to account: $secondAccountId")
+        println("New active character: ${configManager.getActiveCharacter()?.characterName}")
+        println("New active config: ${configManager.getActiveConfig()?.configName}")
+
+        // Switch back to the first account
+        configManager.switchAccount("default", heroCharacterId, pvpFocusConfig.configId)
+        println("Switched back to default account with specific character and config")
+        println("Active character: ${configManager.getActiveCharacter()?.characterName}")
+        println("Active config: ${configManager.getActiveConfig()?.configName}")
+    } catch (e: IllegalStateException) {
+        println("Error switching accounts: ${e.message}")
+    }
+
+    // Demonstrate error handling for multiple active characters
+    println("\n--- Error Handling for Multiple Active Characters ---")
+    try {
+        // Try to add a character that's already active when another character is active
+        val conflictCharacter = CharacterConfig(
+            characterId = UUID.randomUUID().toString(),
+            characterName = "ConflictHero",
+            isActive = true
+        )
+        configManager.addCharacter(conflictCharacter)
+        println("Added character: ${conflictCharacter.characterName}")
+    } catch (e: IllegalStateException) {
+        println("Expected error caught: ${e.message}")
+    }
+
+    // Get the active configuration for running the bot
+    val activeConfig = configManager.getActiveConfig()
+    if (activeConfig != null) {
+        println("\n=== Running Bot with Active Configuration ===")
+        println("Active configuration: ${activeConfig.configName} for character: ${configManager.getCharacter(activeConfig.characterId)?.characterName}")
+
+        // Create and initialize the bot with the active configuration and ConfigManager
+        val bot = Bot(activeConfig, configManager)
+        bot.initialize()
+
+        // Check if templates directory exists and load templates
+        val templatesDir = "templates"
+        if (bot.createTemplateDirectory(templatesDir)) {
+            if (File(templatesDir).exists()) {
+                println("Loading all available templates from directory: $templatesDir")
+                val count = bot.loadTemplatesFromDirectory(templatesDir)
+                println("Registered $count template images with the bot.")
+
+                val categories = listOf("raid", "quest", "pvp", "gvg", "worldboss", "invasion", "expedition", "ui")
+                categories.forEach { category ->
+                    val templates = bot.getTemplatesByCategory(category)
+                    if (templates.isNotEmpty()) {
+                        println("Category '$category' contains: ${templates.size} templates: ${templates.joinToString()}")
+                    }
+                }
+            }
+        } else {
+            println("Could not create or access templates directory: $templatesDir. Bot may not find templates.")
+        }
+
+        // Use ActionManager to run the sequence with ConfigManager
+        val actionManager = ActionManager(bot, activeConfig, configManager)
+        actionManager.runActionSequence()
+    } else {
+        println("No active configuration found. Cannot start the bot.")
+    }
+
+    println("\nMain function finished.")
+}
+
+/**
+ * Load the OpenCV native library
+ * 
+ * This function ensures that the full OpenCV native library is loaded with all functionality.
+ * If the library is not present or only partially loaded, it will download the complete library
+ * and store it in the appropriate resources folder for future use.
+ * 
+ * The function will throw an exception if full functionality is not available, as the bot
+ * requires full OpenCV functionality to work properly.
+ */
+fun loadOpenCVNativeLibrary() {
+    try {
+        // Get system information for debugging
+        val osName = System.getProperty("os.name")
+        val osArch = System.getProperty("os.arch")
+        println("Operating System: $osName")
+        println("Architecture: $osArch")
+        println("Current directory: ${Paths.get("").toAbsolutePath()}")
+
+        // Determine the appropriate library path based on OS and architecture
+        val osDirectory = when {
+            osName.contains("Windows", ignoreCase = true) -> "windows"
+            osName.contains("Linux", ignoreCase = true) -> "linux"
+            osName.contains("Mac", ignoreCase = true) -> "macos"
+            else -> throw UnsatisfiedLinkError("Unsupported operating system: $osName")
+        }
+
+        val archDirectory = when {
+            osArch.contains("64") && osDirectory != "macos" -> "x64"
+            osDirectory != "macos" -> "x86"
+            else -> "" // macOS doesn't have separate architecture directories
+        }
+
+        val libraryFileName = when {
+            osDirectory == "windows" -> "opencv_java490.dll"
+            osDirectory == "linux" -> "libopencv_java490.so"
+            osDirectory == "macos" -> "libopencv_java490.dylib"
+            else -> throw UnsatisfiedLinkError("Unsupported operating system: $osName")
+        }
+
+        // Create the full path to where the library should be stored
+        val resourcesPath = if (archDirectory.isEmpty()) {
+            "src/main/resources/natives/$osDirectory"
+        } else {
+            "src/main/resources/natives/$osDirectory/$archDirectory"
+        }
+
+        val libraryPath = "$resourcesPath/$libraryFileName"
+        val libraryFile = File(libraryPath)
+
+        // Check if the library already exists in the resources folder
+        var fullFunctionality = false
+        if (libraryFile.exists()) {
+            println("Found existing OpenCV library in resources: $libraryPath")
+            try {
+                // Try to load the library from resources
+                System.load(libraryFile.absolutePath)
+
+                // Verify that we have full functionality
+                try {
+                    val buildInfo = Core.getBuildInformation()
+                    println("OpenCV fully loaded with all functionality from resources")
+                    fullFunctionality = true
+
+                    // Check OpenCL status
+                    val openCLInfo = if (buildInfo.contains("OpenCL:") || buildInfo.contains("OpenCL")) {
+                        val openCLLine = buildInfo.lines().find { it.contains("OpenCL:") || it.contains("OpenCL") }
+                        openCLLine ?: "OpenCL information not found in build info"
+                    } else {
+                        "OpenCL information not found in build info"
+                    }
+                    println("OpenCL status: $openCLInfo")
+
+                    // Successfully loaded with full functionality, return
+                    return
+                } catch (e: UnsatisfiedLinkError) {
+                    println("Warning: OpenCV is partially loaded from resources. Full functionality is not available.")
+                    println("Error: ${e.message}")
+                    println("Will attempt to download a complete version...")
+
+                    // Delete the existing library file since it doesn't provide full functionality
+                    libraryFile.delete()
+                    println("Deleted existing library file that didn't provide full functionality")
+                }
+            } catch (e: UnsatisfiedLinkError) {
+                println("Failed to load existing OpenCV library from resources: ${e.message}")
+                println("Will attempt to download a fresh copy...")
+
+                // Delete the existing library file since it couldn't be loaded
+                libraryFile.delete()
+                println("Deleted existing library file that couldn't be loaded")
+            }
+        }
+
+        // If we get here, we need to download the library
+        println("Attempting to download and install OpenCV with full functionality...")
+
+        // First, ensure the resources directory structure exists
+        val resourcesDir = File(resourcesPath)
+        if (!resourcesDir.exists()) {
+            println("Creating resources directory structure: ${resourcesDir.absolutePath}")
+            try {
+                // Create parent directories first
+                val parentDir = resourcesDir.parentFile
+                if (parentDir != null && !parentDir.exists()) {
+                    val parentCreated = parentDir.mkdirs()
+                    println("Created parent directory: $parentCreated")
+                }
+
+                // Now create the resources directory
+                val created = resourcesDir.mkdirs()
+                if (created) {
+                    println("Successfully created resources directory")
+                } else {
+                    println("Failed to create resources directory. Will try alternative approach.")
+                    // Try to create each directory in the path individually
+                    val path = resourcesPath.replace('\\', '/')
+                    val dirs = path.split('/')
+                    var currentPath = ""
+                    for (dir in dirs) {
+                        if (dir.isEmpty()) continue
+                        currentPath += "$dir/"
+                        val currentDir = File(currentPath)
+                        if (!currentDir.exists()) {
+                            val success = currentDir.mkdir()
+                            println("Creating directory $currentPath: $success")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                println("ERROR: Failed to create resources directory: ${e.message}")
+                e.printStackTrace()
+            }
+        }
+
+        // Verify that the resources directory exists
+        if (!resourcesDir.exists()) {
+            println("WARNING: Resources directory does not exist and could not be created: ${resourcesDir.absolutePath}")
+            println("Will attempt to continue with download and use alternative storage location if needed.")
+        } else {
+            println("Resources directory exists: ${resourcesDir.absolutePath}")
+        }
+
+        // Clear any previous OpenPnP properties
+        System.clearProperty("org.openpnp.opencv.forceDownload")
+        System.clearProperty("org.openpnp.opencv.cacheDirectory")
+
+        // Force a fresh download using OpenPnP
+        System.setProperty("org.openpnp.opencv.forceDownload", "true")
+
+        // Set up the OpenPnP cache directory
+        val userHome = System.getProperty("user.home")
+        val openpnpDir = File("$userHome/.openpnp/opencv")
+        if (openpnpDir.exists()) {
+            println("OpenPnP cache directory exists at: ${openpnpDir.absolutePath}")
+            println("Contents:")
+            openpnpDir.listFiles()?.forEach { file ->
+                println("  - ${file.name} (${file.length()} bytes)")
+            }
+
+            // Clean the OpenPnP cache directory to ensure a fresh download
+            println("Cleaning OpenPnP cache directory...")
+            openpnpDir.listFiles()?.forEach { file ->
+                file.delete()
+            }
+        } else {
+            println("OpenPnP cache directory does not exist at: ${openpnpDir.absolutePath}")
+            println("Creating directory...")
+            openpnpDir.mkdirs()
+        }
+
+        // Use a dedicated directory for the download
+        val downloadDir = File("${System.getProperty("user.home")}/.opencv_download")
+        if (downloadDir.exists()) {
+            println("Cleaning existing download directory: ${downloadDir.absolutePath}")
+            downloadDir.listFiles()?.forEach { file ->
+                file.delete()
+            }
+        } else {
+            println("Creating download directory: ${downloadDir.absolutePath}")
+            downloadDir.mkdirs()
+        }
+        System.setProperty("org.openpnp.opencv.cacheDirectory", downloadDir.absolutePath)
+
+        println("Using download directory: ${downloadDir.absolutePath}")
+
+        // Directly download the OpenCV library from the Maven repository
+        val mavenUrl = when {
+            osDirectory == "windows" && archDirectory == "x64" -> 
+                "https://repo1.maven.org/maven2/org/openpnp/opencv/4.9.0-0/opencv-4.9.0-0.jar"
+            osDirectory == "windows" && archDirectory == "x86" -> 
+                "https://repo1.maven.org/maven2/org/openpnp/opencv/4.9.0-0/opencv-4.9.0-0.jar"
+            osDirectory == "linux" && archDirectory == "x64" -> 
+                "https://repo1.maven.org/maven2/org/openpnp/opencv/4.9.0-0/opencv-4.9.0-0.jar"
+            osDirectory == "linux" && archDirectory == "x86" -> 
+                "https://repo1.maven.org/maven2/org/openpnp/opencv/4.9.0-0/opencv-4.9.0-0.jar"
+            osDirectory == "macos" -> 
+                "https://repo1.maven.org/maven2/org/openpnp/opencv/4.9.0-0/opencv-4.9.0-0.jar"
+            else -> throw UnsatisfiedLinkError("Unsupported operating system/architecture: $osName/$osArch")
+        }
+
+        println("Downloading OpenCV library from Maven repository: $mavenUrl")
+        val jarFile = File(downloadDir, "opencv-4.9.0-0.jar")
+
+        try {
+            // Download the JAR file
+            val connection = java.net.URL(mavenUrl).openConnection()
+            connection.connect()
+            val inputStream = connection.getInputStream()
+            val outputStream = jarFile.outputStream()
+            inputStream.copyTo(outputStream)
+            inputStream.close()
+            outputStream.close()
+
+            println("Successfully downloaded OpenCV library: ${jarFile.absolutePath}")
+            println("File size: ${jarFile.length()} bytes")
+
+            // Extract the native library from the JAR file
+            val jarInputStream = java.util.jar.JarInputStream(jarFile.inputStream())
+            var entry = jarInputStream.nextJarEntry
+            var foundLibrary = false
+
+            while (entry != null) {
+                // Check if this entry is the correct native library for our architecture
+                val isCorrectLibrary = when {
+                    osDirectory == "windows" && archDirectory == "x64" && 
+                    entry.name.contains("windows/x86_64") && entry.name.contains(libraryFileName) -> true
+                    osDirectory == "windows" && archDirectory == "x86" && 
+                    entry.name.contains("windows/x86_32") && entry.name.contains(libraryFileName) -> true
+                    osDirectory == "linux" && archDirectory == "x64" && 
+                    entry.name.contains("linux/x86_64") && entry.name.contains(libraryFileName) -> true
+                    osDirectory == "linux" && archDirectory == "x86" && 
+                    entry.name.contains("linux/x86_32") && entry.name.contains(libraryFileName) -> true
+                    osDirectory == "macos" && 
+                    entry.name.contains("macosx") && entry.name.contains(libraryFileName) -> true
+                    else -> false
+                }
+
+                if (isCorrectLibrary) {
+                    println("Found native library in JAR: ${entry.name}")
+                    val nativeLibFile = File(downloadDir, libraryFileName)
+                    val entryInputStream = jarInputStream
+                    val entryOutputStream = nativeLibFile.outputStream()
+                    entryInputStream.copyTo(entryOutputStream)
+                    entryOutputStream.close()
+
+                    println("Extracted native library: ${nativeLibFile.absolutePath}")
+                    println("File size: ${nativeLibFile.length()} bytes")
+
+                    // Copy the native library to the resources folder
+                    println("Copying library to resources: $libraryPath")
+                    try {
+                        // Create a backup of the file first
+                        val backupFile = File("${nativeLibFile.absolutePath}.backup")
+                        nativeLibFile.copyTo(backupFile, overwrite = true)
+                        println("Created backup of library file: ${backupFile.absolutePath}")
+
+                        // Now copy to the resources folder
+                        nativeLibFile.copyTo(libraryFile, overwrite = true)
+                        println("Successfully copied library to resources")
+
+                        // Verify that the library file exists in the resources folder
+                        if (libraryFile.exists()) {
+                            println("Verified that library file exists in resources: ${libraryFile.absolutePath}")
+                            println("File size: ${libraryFile.length()} bytes")
+
+                            // Try to load the library from resources to verify it works
+                            try {
+                                println("Loading library from resources to verify it works...")
+                                System.load(libraryFile.absolutePath)
+                                println("Successfully loaded library from resources")
+
+                                // Verify that we have full functionality
+                                try {
+                                    val buildInfo = Core.getBuildInformation()
+                                    println("OpenCV fully loaded with all functionality from resources")
+                                    fullFunctionality = true
+
+                                    // Check OpenCL status
+                                    val openCLInfo = if (buildInfo.contains("OpenCL:") || buildInfo.contains("OpenCL")) {
+                                        val openCLLine = buildInfo.lines().find { it.contains("OpenCL:") || it.contains("OpenCL") }
+                                        openCLLine ?: "OpenCL information not found in build info"
+                                    } else {
+                                        "OpenCL information not found in build info"
+                                    }
+                                    println("OpenCL status: $openCLInfo")
+
+                                    // Successfully loaded with full functionality, return
+                                    foundLibrary = true
+                                    break
+                                } catch (e: UnsatisfiedLinkError) {
+                                    println("Warning: OpenCV is partially loaded from resources. Full functionality is not available.")
+                                    println("Error: ${e.message}")
+                                }
+                            } catch (e: Exception) {
+                                println("ERROR: Failed to load library from resources: ${e.message}")
+                                e.printStackTrace()
+                                println("Will try to use the original extracted file")
+
+                                // Try to load the library from the original extracted file
+                                println("Loading library from original extracted file...")
+                                System.load(nativeLibFile.absolutePath)
+                                println("Successfully loaded library from original extracted file")
+
+                                // Verify that we have full functionality
+                                try {
+                                    val buildInfo = Core.getBuildInformation()
+                                    println("OpenCV fully loaded with all functionality from original extracted file")
+                                    fullFunctionality = true
+
+                                    // Successfully loaded with full functionality, return
+                                    foundLibrary = true
+                                    break
+                                } catch (e: UnsatisfiedLinkError) {
+                                    println("Warning: OpenCV is partially loaded from original extracted file. Full functionality is not available.")
+                                    println("Error: ${e.message}")
+                                }
+                            }
+                        } else {
+                            println("ERROR: Library file does not exist in resources after copy: ${libraryFile.absolutePath}")
+                            println("Will try to use the original extracted file")
+
+                            // Try to load the library from the original extracted file
+                            println("Loading library from original extracted file...")
+                            System.load(nativeLibFile.absolutePath)
+                            println("Successfully loaded library from original extracted file")
+
+                            // Verify that we have full functionality
+                            try {
+                                val buildInfo = Core.getBuildInformation()
+                                println("OpenCV fully loaded with all functionality from original extracted file")
+                                fullFunctionality = true
+
+                                // Successfully loaded with full functionality, return
+                                foundLibrary = true
+                                break
+                            } catch (e: UnsatisfiedLinkError) {
+                                println("Warning: OpenCV is partially loaded from original extracted file. Full functionality is not available.")
+                                println("Error: ${e.message}")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        println("ERROR: Failed to copy library to resources: ${e.message}")
+                        e.printStackTrace()
+                        println("Will try to use the original extracted file")
+
+                        // Try to load the library from the original extracted file
+                        println("Loading library from original extracted file...")
+                        System.load(nativeLibFile.absolutePath)
+                        println("Successfully loaded library from original extracted file")
+
+                        // Verify that we have full functionality
+                        try {
+                            val buildInfo = Core.getBuildInformation()
+                            println("OpenCV fully loaded with all functionality from original extracted file")
+                            fullFunctionality = true
+
+                            // Successfully loaded with full functionality, return
+                            foundLibrary = true
+                            break
+                        } catch (e: UnsatisfiedLinkError) {
+                            println("Warning: OpenCV is partially loaded from original extracted file. Full functionality is not available.")
+                            println("Error: ${e.message}")
+                        }
+                    }
+                }
+                entry = jarInputStream.nextJarEntry
+            }
+
+            jarInputStream.close()
+
+            if (!foundLibrary) {
+                println("ERROR: Could not find native library in downloaded JAR file")
+            }
+        } catch (e: Exception) {
+            println("ERROR: Failed to download or extract OpenCV library: ${e.message}")
+            e.printStackTrace()
+        }
+
+        // If direct download failed, try using OpenPnP's automatic loading mechanism
+        if (!fullFunctionality) {
+            println("Direct download failed or didn't provide full functionality. Trying OpenPnP's automatic loading...")
+
+            try {
+                val openCvVersion = Core.VERSION
+                println("OpenCV Version: $openCvVersion")
+
+                // Verify that we have full functionality
+                try {
+                    val buildInfo = Core.getBuildInformation()
+                    println("OpenCV fully loaded with all functionality after OpenPnP automatic loading")
+                    fullFunctionality = true
+
+                    // Now we need to copy the downloaded library to our resources folder
+                    // First, find the downloaded library file
+                    val downloadedFiles = downloadDir.listFiles()
+                    if (downloadedFiles != null && downloadedFiles.isNotEmpty()) {
+                        println("OpenPnP downloaded ${downloadedFiles.size} files:")
+                        downloadedFiles.forEach { file ->
+                            println("  - ${file.name} (${file.length()} bytes)")
+                        }
+
+                        // Look for the native library file
+                        val nativeLibFile = downloadedFiles.find { file -> 
+                            file.name.contains("opencv_java", ignoreCase = true) && 
+                            (file.name.endsWith(".dll") || file.name.endsWith(".so") || file.name.endsWith(".dylib")) 
+                        }
+
+                        if (nativeLibFile != null) {
+                            println("Found downloaded native library: ${nativeLibFile.absolutePath}")
+
+                            // Check if the resources directory exists again (it might have been created by OpenPnP)
+                            if (!resourcesDir.exists()) {
+                                println("Resources directory still does not exist. Attempting to create it again...")
+                                try {
+                                    // Create the full directory path
+                                    val created = resourcesDir.mkdirs()
+                                    if (created) {
+                                        println("Successfully created resources directory on second attempt")
+                                    } else {
+                                        println("Failed to create resources directory on second attempt")
+                                    }
+                                } catch (e: Exception) {
+                                    println("ERROR: Failed to create resources directory on second attempt: ${e.message}")
+                                    e.printStackTrace()
+                                }
+                            }
+
+                            // Verify that the resources directory exists
+                            if (!resourcesDir.exists()) {
+                                println("ERROR: Resources directory does not exist and could not be created: ${resourcesDir.absolutePath}")
+                                println("Will try to use the OpenPnP cache directory instead")
+
+                                // Try to copy the library to the OpenPnP cache directory
+                                val openpnpLibFile = File(openpnpDir, libraryFileName)
+                                println("Copying library to OpenPnP cache: ${openpnpLibFile.absolutePath}")
+                                try {
+                                    nativeLibFile.copyTo(openpnpLibFile, overwrite = true)
+                                    println("Successfully copied library to OpenPnP cache")
+
+                                    // Try to load the library from the OpenPnP cache
+                                    println("Loading library from OpenPnP cache...")
+                                    System.load(openpnpLibFile.absolutePath)
+                                    println("Successfully loaded library from OpenPnP cache")
+
+                                    return
+                                } catch (e: Exception) {
+                                    println("ERROR: Failed to copy library to OpenPnP cache: ${e.message}")
+                                    e.printStackTrace()
+                                    println("Will try to use the original downloaded file")
+
+                                    // Try to load the library from the original downloaded file
+                                    println("Loading library from original downloaded file...")
+                                    System.load(nativeLibFile.absolutePath)
+                                    println("Successfully loaded library from original downloaded file")
+
+                                    return
+                                }
+                            }
+
+                            // Copy the library file to the resources folder
+                            println("Copying library to resources: $libraryPath")
+                            try {
+                                // Create a backup of the file first
+                                val backupFile = File("${nativeLibFile.absolutePath}.backup")
+                                nativeLibFile.copyTo(backupFile, overwrite = true)
+                                println("Created backup of library file: ${backupFile.absolutePath}")
+
+                                // Now copy to the resources folder
+                                nativeLibFile.copyTo(libraryFile, overwrite = true)
+                                println("Successfully copied library to resources")
+
+                                // Verify that the library file exists in the resources folder
+                                if (libraryFile.exists()) {
+                                    println("Verified that library file exists in resources: ${libraryFile.absolutePath}")
+                                    println("File size: ${libraryFile.length()} bytes")
+
+                                    // Try to load the library from resources to verify it works
+                                    try {
+                                        println("Loading library from resources to verify it works...")
+                                        System.load(libraryFile.absolutePath)
+                                        println("Successfully loaded library from resources")
+                                    } catch (e: Exception) {
+                                        println("ERROR: Failed to load library from resources: ${e.message}")
+                                        e.printStackTrace()
+                                        println("Will try to use the original downloaded file")
+
+                                        // Try to load the library from the original downloaded file
+                                        println("Loading library from original downloaded file...")
+                                        System.load(nativeLibFile.absolutePath)
+                                        println("Successfully loaded library from original downloaded file")
+                                    }
+                                } else {
+                                    println("ERROR: Library file does not exist in resources after copy: ${libraryFile.absolutePath}")
+                                    println("Will try to use the original downloaded file")
+
+                                    // Try to load the library from the original downloaded file
+                                    println("Loading library from original downloaded file...")
+                                    System.load(nativeLibFile.absolutePath)
+                                    println("Successfully loaded library from original downloaded file")
+                                }
+
+                                // Check OpenCL status
+                                val openCLInfo = if (buildInfo.contains("OpenCL:") || buildInfo.contains("OpenCL")) {
+                                    val openCLLine = buildInfo.lines().find { it.contains("OpenCL:") || it.contains("OpenCL") }
+                                    openCLLine ?: "OpenCL information not found in build info"
+                                } else {
+                                    "OpenCL information not found in build info"
+                                }
+                                println("OpenCL status: $openCLInfo")
+
+                                // Successfully loaded with full functionality, return
+                                return
+                            } catch (e: Exception) {
+                                println("ERROR: Failed to copy library to resources: ${e.message}")
+                                e.printStackTrace()
+                                println("Will try to use the original downloaded file")
+
+                                // Try to load the library from the original downloaded file
+                                println("Loading library from original downloaded file...")
+                                System.load(nativeLibFile.absolutePath)
+                                println("Successfully loaded library from original downloaded file")
+
+                                return
+                            }
+                        } else {
+                            println("ERROR: No native library file found in the download directory")
+                        }
+                    } else {
+                        println("ERROR: No files were downloaded by OpenPnP")
+                    }
+                } catch (e: UnsatisfiedLinkError) {
+                    println("ERROR: OpenCV is partially loaded. Full functionality is not available.")
+                    println("Error: ${e.message}")
+                }
+            } catch (e: Exception) {
+                println("ERROR: Failed to download and load OpenCV: ${e.message}")
+                e.printStackTrace()
+            }
+        }
+
+        // If we get here, we failed to load OpenCV with full functionality
+        if (!fullFunctionality) {
+            throw UnsatisfiedLinkError("Failed to load OpenCV with full functionality. The bot requires full OpenCV functionality to work properly.")
+        }
+    } catch (e: UnsatisfiedLinkError) {
+        println("ERROR: Failed to load OpenCV native library: ${e.message}")
+        println("Make sure the OpenCV native library is in the correct location")
+        println("Current directory: ${Paths.get("").toAbsolutePath()}")
+        e.printStackTrace()
+        throw e // Rethrow to allow tests to fail properly
+    } catch (e: Exception) {
+        println("ERROR: Error loading OpenCV: ${e.message}")
+        e.printStackTrace()
+        throw e // Rethrow to allow tests to fail properly
+    }
+}

@@ -236,7 +236,10 @@ The bot includes a pattern test mode that allows testing template matching witho
    - ✅ Multi-scale template matching with DPI awareness
    - ✅ Detailed template matching results (scale, confidence, etc.)
    - ✅ Pattern test mode for testing templates without running the bot
-7. ✅ Quest action implementation (placeholder)
+   - ✅ Coroutines for parallel template matching with `--opencvthreads` flag
+7. ✅ Quest action implementation with zone navigation and dungeon selection
+   - ✅ Coroutines for parallel zone detection with `--morethreads` flag
+   - ✅ Optimized zone navigation based on current zone detection
 8. ✅ Raid action implementation (placeholder)
 9. ✅ Account switching functionality
 
@@ -245,26 +248,35 @@ The bot includes a pattern test mode that allows testing template matching witho
 1. ⚠️ Resource checking (currently simulated, needs real screen recognition)
 2. ⚠️ Error handling and recovery
 3. ⚠️ PvP and GvG action configurations (defined but handlers not implemented)
+4. ⚠️ UI responsiveness (some checks process too quickly for the UI to update)
 
 ### Pending Implementation
 
-1. ❌ PvP action implementation
-2. ❌ GvG action implementation
-3. ❌ World Boss action implementation
-4. ❌ Trials action implementation
-5. ❌ Expedition action implementation
-6. ❌ Gauntlet action implementation
-7. ❌ Logging system
-8. ❌ UI for configuration
+1. ❌ Monitor function / ActionRunning loop for continuous game state monitoring
+2. ❌ Rerun functionality for quests and raids without backing out to setup
+3. ❌ PvP action implementation
+4. ❌ GvG action implementation
+5. ❌ World Boss action implementation
+6. ❌ Trials action implementation
+7. ❌ Expedition action implementation
+8. ❌ Gauntlet action implementation
+9. ❌ Logging system
+10. ❌ UI for configuration
 
 ## Current Priorities
 
-1. **Complete Action Implementations**: Implement the remaining game actions (PvP, GvG, etc.)
-2. **Improve Resource Detection**: Replace simulated resource checking with actual screen recognition
-3. **Error Handling**: Enhance error recovery mechanisms
-4. **Testing Framework**: Develop a testing framework for actions
-5. **Configuration UI**: Create a user interface for configuration management
-6. **Multi-Account Automation**: Enhance account switching with automatic login
+1. **Implement Monitor Function / ActionRunning Loop**: Create a continuous monitoring system that checks for various game states and responds to changes in the game UI in real-time
+2. **Implement Rerun Functionality**: Add the ability to rerun quests or raids without backing out to setup, improving efficiency by eliminating unnecessary navigation
+3. **Improve UI Responsiveness**: Add appropriate delays to ensure the bot doesn't process checks faster than the UI can update, particularly for resource checks
+4. **Fix OutOfResource Check**: Address the issue in QuestAction.kt where the bot processes the outofresource check too quickly for the UI to update
+5. **Improve Error Handling**: Enhance error detection and recovery mechanisms
+6. **Complete Action Implementations**: Implement the remaining game actions (PvP, GvG, etc.)
+7. **Improve Resource Detection**: Replace simulated resource checking with actual screen recognition
+8. **Testing Framework**: Develop a testing framework for actions
+9. **Configuration UI**: Create a user interface for configuration management
+10. **Multi-Account Automation**: Enhance account switching with automatic login
+
+For more detailed information on the current state of the project and development priorities, see [devnotes.md](devnotes.md).
 
 ## Usage
 

@@ -59,6 +59,15 @@ The main focus is on full quest action automation, specifically:
 
 ## Technical Notes
 
+### Memory Management for OpenCV Mat Objects
+- OpenCV's Mat objects use native memory that must be explicitly released
+- These objects are not automatically managed by Java's garbage collector
+- Recent fixes:
+  - Added proper release() calls for all Mat objects in methods that use them internally
+  - Updated documentation for methods that return Mat objects to indicate caller responsibility
+  - Fixed memory leaks in template matching methods
+- Always call `mat.release()` when you're done with a Mat object that was returned from a method
+
 ### Coroutines Implementation
 - The bot uses Kotlin coroutines for parallel processing
 - Two main areas of parallelization:

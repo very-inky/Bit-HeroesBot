@@ -63,6 +63,11 @@ class OpenCVLoadingTest {
             assertEquals(1.0, mmr.minVal, 0.001, "Min value should be 1.0")
             assertEquals(5.0, mmr.maxVal, 0.001, "Max value should be 5.0")
 
+            // Release Mat objects to free native memory
+            mat.release()
+            resizedMat.release()
+            testMat.release()
+
             println("[DEBUG_LOG] Full OpenCV functionality is available and working correctly")
         } catch (e: UnsatisfiedLinkError) {
             println("[DEBUG_LOG] ERROR: OpenCV is not fully loaded. Full functionality is required.")
@@ -144,6 +149,11 @@ class OpenCVLoadingTest {
 
             // Verify the result
             assertNotNull(mmr, "MinMaxLocResult should not be null")
+
+            // Release Mat objects to free native memory
+            mat.release()
+            template.release()
+            result.release()
 
             println("[DEBUG_LOG] Bot functionality test passed with full OpenCV functionality")
         } catch (e: UnsatisfiedLinkError) {

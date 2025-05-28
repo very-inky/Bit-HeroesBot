@@ -1,7 +1,7 @@
 package orion
 
-import orion.actions.QuestAction // Updated import
-import orion.actions.RaidAction  // Updated import
+import orion.actions.QuestAction
+import orion.actions.RaidAction
 // BotConfig, QuestActionConfig, PvpActionConfig, RaidActionConfig, RaidTarget, ActionManager
 // are now expected to be available if they are in the 'orion' package or subpackages.
 // Ensure their package declarations are also 'orion' or 'orion.something'
@@ -9,7 +9,7 @@ import org.opencv.core.Core
 import java.io.File
 import java.nio.file.Paths
 import java.util.UUID
-import java.util.Vector
+import java.util.Vector //unused
 import orion.utils.PathUtils
 
 fun main(args: Array<String>) {
@@ -464,7 +464,8 @@ fun loadOpenCVNativeLibrary() {
                         "OpenCL information not found in build info"
                     }
                     println("OpenCL status: $openCLInfo")
-
+                    // OpenCL status reporting YES (NVD3D11) is not indicative of what vendor you are using.
+                    // openCV uses Nvidia's openCL implementation, but this is vendor neutral
                     // Successfully loaded with full functionality, return
                     return
                 } catch (e: UnsatisfiedLinkError) {

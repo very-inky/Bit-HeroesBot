@@ -56,6 +56,186 @@ This project is a game automation bot built in Kotlin using OpenCV for image rec
            └──────────┘     └──────────┘  └──────────┘ └──────────┘   └──────────┘
 ```
 
+### Detailed Component Interactions
+
+#### Main Component Call Flow
+
+The following diagram illustrates the detailed call flow between components during bot initialization and execution:
+
+```
+┌─────────┐          ┌───────────────┐          ┌────────────────┐          ┌─────────────┐          ┌────────────┐
+│  Main   │          │ ConfigManager │          │      Bot       │          │ActionManager│          │ GameAction │
+└────┬────┘          └───────┬───────┘          └────────┬───────┘          └──────┬──────┘          └──────┬─────┘
+     │                       │                           │                          │                        │
+     │ 1. Initialize         │                           │                          │                        │
+     │ ConfigManager         │                           │                          │                        │
+     │─────────────────────>│                           │                          │                        │
+     │                       │                           │                          │                        │
+     │ 2. Add Characters     │                           │                          │                        │
+     │ and Configs           │                           │                          │                        │
+     │─────────────────────>│                           │                          │                        │
+     │                       │                           │                          │                        │
+     │ 3. Set Active         │                           │                          │                        │
+     │ Character & Config    │                           │                          │                        │
+     │─────────────────────>│                           │                          │                        │
+     │                       │                           │                          │                        │
+     │ 4. Get Active Config  │                           │                          │                        │
+     │─────────────────────>│                           │                          │                        │
+     │<─────────────────────│                           │                          │                        │
+     │                       │                           │                          │                        │
+     │ 5. Create Bot with    │                           │                          │                        │
+     │ Active Config         │                           │                          │                        │
+     │───────────────────────────────────────────────────>                          │                        │
+     │                       │                           │                          │                        │
+     │ 6. Initialize Bot     │                           │                          │                        │
+     │───────────────────────────────────────────────────>                          │                        │
+     │                       │                           │                          │                        │
+     │ 7. Create ActionManager                           │                          │                        │
+     │ with Bot and Config   │                           │                          │                        │
+     │─────────────────────────────────────────────────────────────────────────────>│                        │
+     │                       │                           │                          │                        │
+     │ 8. Run Action Sequence│                           │                          │                        │
+     │─────────────────────────────────────────────────────────────────────────────>│                        │
+     │                       │                           │                          │                        │
+     │                       │                           │                          │ 9. For each action     │
+     │                       │                           │                          │ in sequence:           │
+     │                       │                           │                          │                        │
+     │                       │                           │                          │ 9.1 Check if action    │
+     │                       │                           │                          │ can be executed        │
+     │                       │                           │                          │─┐                      │
+     │                       │                           │                          │ │                      │
+     │                       │                           │                          │<┘                      │
+     │                       │                           │                          │                        │
+     │                       │                           │                          │ 9.2 Create action      │
+     │                       │                           │                          │ handler                │
+     │                       │                           │                          │─────────────────────────>
+     │                       │                           │                          │                        │
+     │                       │                           │                          │ 9.3 Check resources    │
+     │                       │                           │                          │─────────────────────────>
+     │                       │                           │                          │<─────────────────────────
+     │                       │                           │                          │                        │
+     │                       │                           │                          │ 9.4 Execute action     │
+     │                       │                           │                          │─────────────────────────>
+     │                       │                           │                          │                        │
+     │                       │                           │                          │                        │
+     │                       │                           │ 9.4.1 Load templates     │                        │
+     │                       │                           │<───────────────────────────────────────────────────
+     │                       │                           │                          │                        │
+     │                       │                           │ 9.4.2 Find templates     │                        │
+     │                       │                           │<───────────────────────────────────────────────────
+     │                       │                           │                          │                        │
+     │                       │                           │ 9.4.3 Click on templates │                        │
+     │                       │                           │<───────────────────────────────────────────────────
+     │                       │                           │                          │                        │
+     │                       │                           │                          │<─────────────────────────
+     │                       │                           │                          │                        │
+     │                       │                           │                          │ 9.5 Update run counts  │
+     │                       │                           │                          │─┐                      │
+     │                       │                           │                          │ │                      │
+     │                       │                           │                          │<┘                      │
+     │                       │                           │                          │                        │
+     │                       │                           │                          │ 9.6 Check resources    │
+     │                       │                           │                          │ again                  │
+     │                       │                           │                          │─────────────────────────>
+     │                       │                           │                          │<─────────────────────────
+     │                       │                           │                          │                        │
+     │                       │                           │                          │ 9.7 Set cooldown if    │
+     │                       │                           │                          │ resources depleted     │
+     │                       │                           │                          │─┐                      │
+     │                       │                           │                          │ │                      │
+     │                       │                           │                          │<┘                      │
+     │                       │                           │                          │                        │
+     │                       │                           │                          │ 9.8 Repeat for next    │
+     │                       │                           │                          │ action in sequence     │
+     │                       │                           │                          │─┐                      │
+     │                       │                           │                          │ │                      │
+     │                       │                           │                          │<┘                      │
+     │                       │                           │                          │                        │
+```
+
+#### Specific Action Execution Flow
+
+The following diagram shows the detailed execution flow for a specific action (using QuestAction as an example):
+
+```
+┌─────────────┐          ┌────────────┐          ┌─────────────┐          ┌────────────────┐
+│ActionManager│          │QuestAction │          │    Bot      │          │ BaseGameAction │
+└──────┬──────┘          └──────┬─────┘          └──────┬──────┘          └────────┬───────┘
+       │                        │                       │                          │
+       │ 1. executeAction()     │                       │                          │
+       │─────────────────────────>                      │                          │
+       │                        │                       │                          │
+       │ 2. hasResourcesAvailable()                     │                          │
+       │─────────────────────────>                      │                          │
+       │                        │                       │                          │
+       │                        │ 2.1 Check resources   │                          │
+       │                        │ using Bot             │                          │
+       │                        │──────────────────────>│                          │
+       │                        │<──────────────────────│                          │
+       │<─────────────────────────                      │                          │
+       │                        │                       │                          │
+       │ 3. execute()           │                       │                          │
+       │─────────────────────────>                      │                          │
+       │                        │                       │                          │
+       │                        │ 3.1 Load templates    │                          │
+       │                        │───────────────────────────────────────────────────>
+       │                        │<───────────────────────────────────────────────────
+       │                        │                       │                          │
+       │                        │ 3.2 Determine current │                          │
+       │                        │ zone                  │                          │
+       │                        │──────────────────────>│                          │
+       │                        │                       │                          │
+       │                        │                       │ 3.2.1 Capture screen     │
+       │                        │                       │─┐                        │
+       │                        │                       │ │                        │
+       │                        │                       │<┘                        │
+       │                        │                       │                          │
+       │                        │                       │ 3.2.2 Find templates     │
+       │                        │                       │─┐                        │
+       │                        │                       │ │                        │
+       │                        │                       │<┘                        │
+       │                        │<──────────────────────│                          │
+       │                        │                       │                          │
+       │                        │ 3.3 Navigate to       │                          │
+       │                        │ target zone           │                          │
+       │                        │──────────────────────>│                          │
+       │                        │                       │                          │
+       │                        │                       │ 3.3.1 Find and click     │
+       │                        │                       │ navigation buttons       │
+       │                        │                       │─┐                        │
+       │                        │                       │ │                        │
+       │                        │                       │<┘                        │
+       │                        │<──────────────────────│                          │
+       │                        │                       │                          │
+       │                        │ 3.4 Select and enter  │                          │
+       │                        │ dungeon               │                          │
+       │                        │──────────────────────>│                          │
+       │                        │                       │                          │
+       │                        │                       │ 3.4.1 Find and click     │
+       │                        │                       │ dungeon buttons          │
+       │                        │                       │─┐                        │
+       │                        │                       │ │                        │
+       │                        │                       │<┘                        │
+       │                        │<──────────────────────│                          │
+       │                        │                       │                          │
+       │                        │ 3.5 Complete dungeon  │                          │
+       │                        │ run                   │                          │
+       │                        │──────────────────────>│                          │
+       │                        │<──────────────────────│                          │
+       │<─────────────────────────                      │                          │
+       │                        │                       │                          │
+       │ 4. hasResourcesAvailable()                     │                          │
+       │ (check again after run)│                       │                          │
+       │─────────────────────────>                      │                          │
+       │                        │                       │                          │
+       │                        │ 4.1 Check resources   │                          │
+       │                        │ using Bot             │                          │
+       │                        │──────────────────────>│                          │
+       │                        │<──────────────────────│                          │
+       │<─────────────────────────                      │                          │
+       │                        │                       │                          │
+```
+
 ## Configuration System
 
 The bot uses a multi-level configuration system:
@@ -148,7 +328,21 @@ The bot requires OpenCV with full functionality for image recognition and templa
    - The bot requires full OpenCV functionality and will not run in partial functionality mode
    - If full functionality cannot be loaded, the bot will throw an exception and exit
    - OpenCL should enable by default. This requires you have GPU drivers propely installed. This is easy on Windows but Linux users should make sure they have necessary openCL functionality working.
-2. **Template Matching System**:
+
+2. **Memory Management for OpenCV Mat Objects**:
+   - OpenCV's Mat objects are native resources that must be explicitly released when no longer needed
+   - These objects are not automatically managed by Java's garbage collector since they use native memory
+   - The bot handles memory management in two ways:
+     - Methods that use Mat objects internally release them before returning
+     - Methods that return Mat objects document that the caller is responsible for releasing them
+   - Always call `mat.release()` when you're done with a Mat object that was returned from a method
+   - Failure to release Mat objects will result in memory leaks and eventual performance degradation
+   - Key methods that return Mat objects and require caller to release:
+     - `captureScreen()`
+     - `captureRegion()`
+     - `bufferedImageToMat()`
+
+3. **Template Matching System**:
    - Template images are stored in the `templates` directory with subdirectories organized by action type:
      - `raid`: Templates for raid-related actions
      - `quest`: Templates for quest-related actions
@@ -215,7 +409,35 @@ The bot includes a pattern test mode that allows testing template matching witho
    gradlew run --args="--test-pattern templates/quest --morethreads --opencvthreads"
    ```
 
-5. The pattern test mode displays comprehensive information about each match:
+5. You can configure the number of threads used by the `--opencvthreads` flag by setting JVM system properties. Note the difference between:
+   - **Program arguments**: Passed directly to the application (e.g., `--opencvthreads`)
+   - **VM arguments**: JVM system properties that configure the Java Virtual Machine (e.g., `-Dkotlinx.coroutines.scheduler.max.pool.size=8`)
+
+   ```
+   # Limit to 8 threads (using Gradle)
+   # Program argument: --opencvthreads
+   # VM arguments: -Dkotlinx.coroutines.scheduler.max.pool.size=8 -Dkotlinx.coroutines.scheduler.core.pool.size=8
+   gradlew run --args="--opencvthreads" -Dkotlinx.coroutines.scheduler.max.pool.size=8 -Dkotlinx.coroutines.scheduler.core.pool.size=8
+
+   # Limit to 8 threads (using Java)
+   # Program argument: --opencvthreads
+   # VM arguments: -Dkotlinx.coroutines.scheduler.max.pool.size=8 -Dkotlinx.coroutines.scheduler.core.pool.size=8
+   java -Dkotlinx.coroutines.scheduler.max.pool.size=8 -Dkotlinx.coroutines.scheduler.core.pool.size=8 -jar your-bot.jar --opencvthreads
+
+   # Limit to 8 threads (using PowerShell)
+   # Program argument: --opencvthreads
+   # VM arguments: Set via JAVA_OPTS environment variable
+   $env:JAVA_OPTS="-Dkotlinx.coroutines.scheduler.max.pool.size=8 -Dkotlinx.coroutines.scheduler.core.pool.size=8"
+   gradlew run --args="--opencvthreads"
+
+   # In IntelliJ IDEA run configuration
+   # Program arguments field: --opencvthreads
+   # VM options field: -Dkotlinx.coroutines.scheduler.max.pool.size=8 -Dkotlinx.coroutines.scheduler.core.pool.size=8
+   ```
+
+   Note: Both VM properties must be set, and the max pool size must be greater than or equal to the core pool size. By default, the thread pool size equals the number of available processors, when the additional threads options are enabled, this is not ideal.
+
+6. The pattern test mode displays comprehensive information about each match:
    - Whether the template was found
    - The position where it was found
    - The scale at which it was found
@@ -262,6 +484,137 @@ The bot includes a pattern test mode that allows testing template matching witho
 8. ❌ Gauntlet action implementation
 9. ❌ Logging system
 10. ❌ UI for configuration
+
+## Detailed Component Descriptions
+
+### Main Components
+
+#### 1. Bot
+The Bot class is the central component responsible for screen capture, image recognition, and user input simulation:
+
+- **Key Responsibilities**:
+  - Screen capture and image processing
+  - Template registration and management
+  - Template matching with various methods (sequential and parallel)
+  - User input simulation (mouse clicks, key presses)
+  - System information retrieval (DPI scaling, screen resolution)
+
+- **Key Methods**:
+  - `initialize()`: Sets up the bot, loads OpenCV, and initializes resources
+  - `captureScreen()`: Captures the entire screen as a Mat object
+  - `findTemplateDetailed()`: Finds a template on the screen with detailed match information
+  - `clickOnTemplate()`: Finds and clicks on a template
+  - `loadTemplatesFromDirectory()`: Loads all templates from a directory
+
+- **Nested Classes**:
+  - `TemplateInfo`: Stores information about a template (original dimensions, DPI)
+  - `TemplateMatchResult`: Stores the result of a template match (location, scale, confidence)
+
+#### 2. ActionManager
+The ActionManager class manages the execution sequence of game actions:
+
+- **Key Responsibilities**:
+  - Processing actions in the sequence defined in the active BotConfig
+  - Tracking cooldowns for actions
+  - Tracking run counts for actions
+  - Checking if actions can be executed
+  - Creating appropriate action handlers
+  - Executing actions and handling results
+
+- **Key Methods**:
+  - `runActionSequence()`: Runs the action sequence defined in the config
+  - `canExecuteAction()`: Checks if an action can be executed
+  - `executeAction()`: Executes an action and handles the result
+  - `getRunCountLimit()`: Gets the run count limit for an action
+
+#### 3. GameAction Interface
+The GameAction interface defines the contract for all game actions:
+
+- **Key Methods**:
+  - `execute(bot: Bot, config: ActionConfig)`: Executes the specific game action
+  - `hasResourcesAvailable(bot: Bot, config: ActionConfig)`: Checks if resources are available
+
+#### 4. BaseGameAction
+The BaseGameAction class provides common functionality for all game actions:
+
+- **Key Responsibilities**:
+  - Template loading and management
+  - Template finding and interaction
+  - Common UI interaction patterns
+
+- **Key Methods**:
+  - `loadTemplates()`: Loads templates for an action from specified directories
+  - `findAnyTemplate()`: Searches for any template from a list on the screen
+  - `findAndClickTemplate()`: Finds a template on the screen and clicks it
+  - `findAndClickAnyTemplate()`: Finds and clicks any template from a list
+  - `findAndClickSpecificTemplate()`: Finds and clicks a specific template by name
+
+#### 5. Specific Action Implementations
+Specific action implementations (QuestAction, RaidAction, etc.) extend BaseGameAction and implement the GameAction interface:
+
+- **QuestAction**:
+  - Handles quest/dungeon actions
+  - Determines current zone
+  - Navigates between zones
+  - Selects and enters dungeons
+  - Checks for quest resources
+
+- **RaidAction**:
+  - Handles raid actions
+  - Selects raid bosses
+  - Chooses difficulty levels
+  - Executes raid battles
+  - Checks for raid resources
+
+#### 6. ConfigManager
+The ConfigManager class manages multiple characters and configurations:
+
+- **Key Responsibilities**:
+  - Maintaining multiple characters and configurations
+  - Ensuring only one character is active at a time
+  - Managing account switching
+  - Validating configuration integrity
+
+- **Key Methods**:
+  - `addCharacter()`: Adds a character to the manager
+  - `addConfig()`: Adds a configuration to the manager
+  - `setActiveCharacter()`: Sets the active character
+  - `setActiveConfig()`: Sets the active configuration
+  - `getActiveConfig()`: Gets the active configuration
+
+### Configuration Classes
+
+#### 1. CharacterConfig
+The CharacterConfig class contains character-specific settings:
+
+- **Key Properties**:
+  - `characterId`: Unique identifier for the character
+  - `characterName`: Name of the character
+  - `accountId`: Identifier for the account this character belongs to
+  - `isActive`: Whether this character is currently active
+
+#### 2. BotConfig
+The BotConfig class contains configuration settings for a specific task or farming goal:
+
+- **Key Properties**:
+  - `configId`: Unique identifier for this configuration
+  - `configName`: User-friendly name for this configuration
+  - `characterId`: Reference to the character this config belongs to
+  - `description`: Description of what this config is for
+  - `actionSequence`: Ordered list of actions to execute
+  - `actionConfigs`: Map of action-specific configurations
+  - `defaultAction`: Default action if none specified
+
+#### 3. ActionConfig
+The ActionConfig class is the base class for all action configurations:
+
+- **Key Properties**:
+  - `enabled`: Whether the action is enabled
+  - `commonTemplateDirectories`: Directories containing common UI elements
+  - `specificTemplateDirectories`: Directories containing action-specific templates
+  - `commonActionTemplates`: List of template images for common UI elements
+  - `specificTemplates`: List of template images specific to this action
+  - `cooldownDuration`: Duration in minutes for action cooldown when resources are depleted
 
 ## Current Priorities
 

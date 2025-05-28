@@ -277,4 +277,6 @@ For more detailed information on the current state of the project and developmen
 
 ## License
 
-[License information]
+This project is licensed under the GNU General Public License v3.0 (GPL-3.0) - see the [LICENSE](LICENSE) file for details.
+
+The GPL-3.0 is a strong copyleft license that requires anyone who distributes your code or a derivative work to make the source available under the same terms. This is particularly suitable for libraries and applications where you want to ensure that all modifications and derived works remain open source.

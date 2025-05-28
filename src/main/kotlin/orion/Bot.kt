@@ -69,7 +69,7 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
 
         println("Bot initialized for character: $characterName, using config: ${config.configName}")
         println("Screen size: ${screenSize.width}x${screenSize.height}")
-        //resolution can appear different if display scaling is utilized. Example, 4k with 150% scaling will appear as 2560x1440.
+        //Resolution can appear different if display scaling is utilized. Example, 4k with 150% scaling will appear as 2560x1440.
     }
 
     /**

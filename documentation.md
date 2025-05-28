@@ -328,7 +328,21 @@ The bot requires OpenCV with full functionality for image recognition and templa
    - The bot requires full OpenCV functionality and will not run in partial functionality mode
    - If full functionality cannot be loaded, the bot will throw an exception and exit
    - OpenCL should enable by default. This requires you have GPU drivers propely installed. This is easy on Windows but Linux users should make sure they have necessary openCL functionality working.
-2. **Template Matching System**:
+
+2. **Memory Management for OpenCV Mat Objects**:
+   - OpenCV's Mat objects are native resources that must be explicitly released when no longer needed
+   - These objects are not automatically managed by Java's garbage collector since they use native memory
+   - The bot handles memory management in two ways:
+     - Methods that use Mat objects internally release them before returning
+     - Methods that return Mat objects document that the caller is responsible for releasing them
+   - Always call `mat.release()` when you're done with a Mat object that was returned from a method
+   - Failure to release Mat objects will result in memory leaks and eventual performance degradation
+   - Key methods that return Mat objects and require caller to release:
+     - `captureScreen()`
+     - `captureRegion()`
+     - `bufferedImageToMat()`
+
+3. **Template Matching System**:
    - Template images are stored in the `templates` directory with subdirectories organized by action type:
      - `raid`: Templates for raid-related actions
      - `quest`: Templates for quest-related actions
@@ -395,7 +409,35 @@ The bot includes a pattern test mode that allows testing template matching witho
    gradlew run --args="--test-pattern templates/quest --morethreads --opencvthreads"
    ```
 
-5. The pattern test mode displays comprehensive information about each match:
+5. You can configure the number of threads used by the `--opencvthreads` flag by setting JVM system properties. Note the difference between:
+   - **Program arguments**: Passed directly to the application (e.g., `--opencvthreads`)
+   - **VM arguments**: JVM system properties that configure the Java Virtual Machine (e.g., `-Dkotlinx.coroutines.scheduler.max.pool.size=8`)
+
+   ```
+   # Limit to 8 threads (using Gradle)
+   # Program argument: --opencvthreads
+   # VM arguments: -Dkotlinx.coroutines.scheduler.max.pool.size=8 -Dkotlinx.coroutines.scheduler.core.pool.size=8
+   gradlew run --args="--opencvthreads" -Dkotlinx.coroutines.scheduler.max.pool.size=8 -Dkotlinx.coroutines.scheduler.core.pool.size=8
+
+   # Limit to 8 threads (using Java)
+   # Program argument: --opencvthreads
+   # VM arguments: -Dkotlinx.coroutines.scheduler.max.pool.size=8 -Dkotlinx.coroutines.scheduler.core.pool.size=8
+   java -Dkotlinx.coroutines.scheduler.max.pool.size=8 -Dkotlinx.coroutines.scheduler.core.pool.size=8 -jar your-bot.jar --opencvthreads
+
+   # Limit to 8 threads (using PowerShell)
+   # Program argument: --opencvthreads
+   # VM arguments: Set via JAVA_OPTS environment variable
+   $env:JAVA_OPTS="-Dkotlinx.coroutines.scheduler.max.pool.size=8 -Dkotlinx.coroutines.scheduler.core.pool.size=8"
+   gradlew run --args="--opencvthreads"
+
+   # In IntelliJ IDEA run configuration
+   # Program arguments field: --opencvthreads
+   # VM options field: -Dkotlinx.coroutines.scheduler.max.pool.size=8 -Dkotlinx.coroutines.scheduler.core.pool.size=8
+   ```
+
+   Note: Both VM properties must be set, and the max pool size must be greater than or equal to the core pool size. By default, the thread pool size equals the number of available processors, when the additional threads options are enabled, this is not ideal.
+
+6. The pattern test mode displays comprehensive information about each match:
    - Whether the template was found
    - The position where it was found
    - The scale at which it was found

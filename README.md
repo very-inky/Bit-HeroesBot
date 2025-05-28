@@ -43,6 +43,22 @@ The bot requires OpenCV for image recognition and template matching. The applica
 The bot will not run in partial functionality mode - it requires full OpenCV functionality to operate correctly.
 OpenCV should enable OpenCL by default (GPU hardware acceleration). This requires that you have drivers properly installed and openCL drivers properly working (Linux systems)
 
+### Memory Management for OpenCV Mat Objects
+
+OpenCV's Mat objects use native memory that must be explicitly released:
+
+- Mat objects are not automatically managed by Java's garbage collector
+- The bot handles memory management in two ways:
+  - Methods that use Mat objects internally release them before returning
+  - Methods that return Mat objects document that the caller is responsible for releasing them
+- Always call `mat.release()` when you're done with a Mat object that was returned from a method
+- Failure to release Mat objects will result in memory leaks
+
+Key methods that return Mat objects and require caller to release:
+- `captureScreen()`
+- `captureRegion()`
+- `bufferedImageToMat()`
+
 ## Coroutines for Parallel Processing
 
 This project uses Kotlin coroutines for parallel processing in two key areas:
@@ -100,6 +116,37 @@ gradlew run --args="--morethreads --opencvthreads"
 # On Linux/macOS
 ./gradlew run --args="--morethreads --opencvthreads"
 ```
+
+#### Configuring Thread Count for `--opencvthreads`
+
+By default, the `--opencvthreads` flag uses a thread pool with a size equal to the number of available processors. On systems with many cores/threads (e.g., 16 cores/32 threads), you might want to limit the number of threads used to reduce CPU usage.
+
+When configuring thread count, it's important to understand the difference between:
+- **Program arguments**: Passed directly to the application (e.g., `--opencvthreads`)
+- **VM arguments**: JVM system properties that configure the Java Virtual Machine (e.g., `-Dkotlinx.coroutines.scheduler.max.pool.size=8`)
+
+You can configure the thread count by setting JVM system properties:
+
+```bash
+# On Windows - Limit to 8 threads
+# Program argument: --opencvthreads
+# VM arguments: -Dkotlinx.coroutines.scheduler.max.pool.size=8 -Dkotlinx.coroutines.scheduler.core.pool.size=8
+gradlew run --args="--opencvthreads" -Dkotlinx.coroutines.scheduler.max.pool.size=8 -Dkotlinx.coroutines.scheduler.core.pool.size=8
+
+# On Linux/macOS - Limit to 8 threads
+# Program argument: --opencvthreads
+# VM arguments: -Dkotlinx.coroutines.scheduler.max.pool.size=8 -Dkotlinx.coroutines.scheduler.core.pool.size=8
+./gradlew run --args="--opencvthreads" -Dkotlinx.coroutines.scheduler.max.pool.size=8 -Dkotlinx.coroutines.scheduler.core.pool.size=8
+```
+
+In IntelliJ IDEA run configurations:
+- Add `--opencvthreads` to the **Program arguments** field
+- Add the following to the **VM options** field:
+```
+-Dkotlinx.coroutines.scheduler.max.pool.size=8 -Dkotlinx.coroutines.scheduler.core.pool.size=8
+```
+
+**Important**: Both VM properties must be set, and the max pool size must be greater than or equal to the core pool size.
 
 #### Template Testing Mode
 

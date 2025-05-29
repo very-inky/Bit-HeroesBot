@@ -225,11 +225,15 @@ class QuestAction : BaseGameAction() {
 
                 // Step 8: Click accept
                 println("Step 8: Clicking accept button")
-                if (!findAndClickSpecificTemplate(bot, config, "accept.png", "accept button")) {
+                if (!findAndClickSpecificTemplate(bot, config, "accept.png", "accept button", delayAfterClick = 2000)) {
                     println("Failed to find and click accept button. Skipping this dungeon.")
                     continue
                 }
                 println("Successfully clicked accept button")
+
+                // Add additional delay to ensure UI has time to show resource popup if needed
+                println("Waiting for UI to update after clicking accept button...")
+                Thread.sleep(2000)
 
                 // Check for out of resources message
                 val outOfResourcesPath = "${config.commonTemplateDirectories.first()}/outofresourcepopup.png"
@@ -647,8 +651,8 @@ class QuestAction : BaseGameAction() {
 
         for (i in 1..maxClicks) {
             bot.click(arrowLocation.x.toInt(), arrowLocation.y.toInt())
-            // Short delay between clicks to ensure they register
-            Thread.sleep(300)
+            // Longer delay after each click to allow UI to update
+            Thread.sleep(1000)
         }
 
         // Wait a moment for the screen to fully update after all clicks
@@ -743,8 +747,8 @@ class QuestAction : BaseGameAction() {
             println("Found arrow. Clicking it $clickCount times...")
             for (i in 1..clickCount) {
                 bot.click(arrowLocation.x.toInt(), arrowLocation.y.toInt())
-                // Short delay between clicks to ensure they register
-                Thread.sleep(300)
+                // Longer delay after each click to allow UI to update
+                Thread.sleep(1000)
             }
 
             // Wait a moment for the screen to fully update after all clicks

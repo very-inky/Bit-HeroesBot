@@ -8,6 +8,45 @@ import java.io.File
  */
 abstract class BaseGameAction : GameAction {
     /**
+     * Clicks on a template with retry mechanism and delay after successful click.
+     * This helps ensure the UI has time to update after a click and handles transient UI issues.
+     *
+     * @param bot The Bot instance to use for interacting with the game.
+     * @param templatePath The path to the template to click on.
+     * @param maxRetries The maximum number of retry attempts (default is 3).
+     * @param delayMs The delay in milliseconds after a successful click (default is 1000).
+     * @param retryDelayMs The delay in milliseconds between retry attempts (default is 300).
+     * @return True if the click was successful, false otherwise.
+     */
+    protected fun clickWithRetry(
+        bot: Bot,
+        templatePath: String,
+        maxRetries: Int = 3,
+        delayMs: Long = 1000,
+        retryDelayMs: Long = 300
+    ): Boolean {
+        repeat(maxRetries) { attempt ->
+            val location = bot.findTemplate(templatePath)
+            if (location != null) {
+                // Calculate click position (center of template)
+                bot.click(location.x.toInt(), location.y.toInt())
+                println("Successfully clicked on template: $templatePath (attempt ${attempt + 1})")
+                // Add delay after successful click to allow UI to update
+                Thread.sleep(delayMs)
+                return true
+            }
+
+            if (attempt < maxRetries - 1) {
+                println("Failed to find template: $templatePath (attempt ${attempt + 1}/$maxRetries). Retrying...")
+                // Add delay between retry attempts
+                Thread.sleep(retryDelayMs)
+            } else {
+                println("Failed to find template: $templatePath after $maxRetries attempts.")
+            }
+        }
+        return false
+    }
+    /**
      * Loads templates from the directories specified in the action configuration.
      * This method should be called at the beginning of the execute method.
      *
@@ -131,6 +170,7 @@ abstract class BaseGameAction : GameAction {
      * @param templates The list of template paths to try.
      * @param description A description of what we're trying to find and click (for logging).
      * @param maxAttempts The maximum number of attempts to find a template.
+     * @param delayAfterClick The delay in milliseconds after a successful click (default is 1000).
      * @return A Pair containing the template path that was found (or null if none was found) and 
      *         a boolean indicating whether the template was successfully clicked.
      */
@@ -138,7 +178,8 @@ abstract class BaseGameAction : GameAction {
         bot: Bot, 
         templates: List<String>, 
         description: String,
-        maxAttempts: Int = 3
+        maxAttempts: Int = 3,
+        delayAfterClick: Long = 1000
     ): Pair<String?, Boolean> {
         if (templates.isEmpty()) {
             println("No templates provided to findAndClickTemplate for $description")
@@ -154,8 +195,8 @@ abstract class BaseGameAction : GameAction {
                 if (location != null) {
                     println("Found template: $template for $description")
 
-                    // Now try to click it
-                    if (bot.clickOnTemplate(template)) {
+                    // Now try to click it with retry
+                    if (clickWithRetry(bot, template, 1, delayAfterClick)) { // Only 1 retry since we already found it
                         println("Successfully clicked on template: $template for $description")
                         return Pair(template, true)
                     } else {
@@ -182,13 +223,15 @@ abstract class BaseGameAction : GameAction {
      * @param templates The list of template paths to try.
      * @param description A description of what we're trying to click (for logging).
      * @param maxAttempts The maximum number of attempts to find and click a template.
+     * @param delayAfterClick The delay in milliseconds after a successful click (default is 1000).
      * @return True if a template was found and clicked, false otherwise.
      */
     protected fun findAndClickAnyTemplate(
         bot: Bot, 
         templates: List<String>, 
         description: String,
-        maxAttempts: Int = 3
+        maxAttempts: Int = 3,
+        delayAfterClick: Long = 1000
     ): Boolean {
         if (templates.isEmpty()) {
             println("No templates provided to findAndClickAnyTemplate for $description")
@@ -200,7 +243,7 @@ abstract class BaseGameAction : GameAction {
         var attempts = 0
         while (attempts < maxAttempts) {
             for (template in templates) {
-                if (bot.clickOnTemplate(template)) {
+                if (clickWithRetry(bot, template, 1, delayAfterClick)) { // Only 1 retry per template
                     println("Successfully clicked on template: $template for $description")
                     return true
                 }
@@ -208,7 +251,7 @@ abstract class BaseGameAction : GameAction {
             attempts++
             if (attempts < maxAttempts) {
                 println("Attempt $attempts failed. Waiting before retry...")
-                Thread.sleep(1000) // Wait 1 second before retrying
+                Thread.sleep(300) // Shorter wait between full attempts
             }
         }
 
@@ -224,6 +267,7 @@ abstract class BaseGameAction : GameAction {
      * @param templateName The name of the template file to look for (e.g., "questicon.png").
      * @param description A description of what we're trying to click (for logging).
      * @param maxAttempts The maximum number of attempts to find and click the template.
+     * @param delayAfterClick The delay in milliseconds after a successful click (default is 1000).
      * @return True if the template was found and clicked, false otherwise.
      */
     protected fun findAndClickSpecificTemplate(
@@ -231,7 +275,8 @@ abstract class BaseGameAction : GameAction {
         config: ActionConfig,
         templateName: String,
         description: String,
-        maxAttempts: Int = 3
+        maxAttempts: Int = 3,
+        delayAfterClick: Long = 1000
     ): Boolean {
         println("Looking for specific template: $templateName for $description")
 
@@ -242,7 +287,7 @@ abstract class BaseGameAction : GameAction {
 
             if (File(specificPath).exists()) {
                 println("Found template in action-specific directory: $specificPath")
-                if (bot.clickOnTemplate(specificPath)) {
+                if (clickWithRetry(bot, specificPath, maxAttempts, delayAfterClick)) {
                     println("Successfully clicked on template: $specificPath for $description")
                     return true
                 }
@@ -256,7 +301,7 @@ abstract class BaseGameAction : GameAction {
 
             if (File(commonPath).exists()) {
                 println("Found template in common directory: $commonPath")
-                if (bot.clickOnTemplate(commonPath)) {
+                if (clickWithRetry(bot, commonPath, maxAttempts, delayAfterClick)) {
                     println("Successfully clicked on template: $commonPath for $description")
                     return true
                 }
@@ -270,18 +315,10 @@ abstract class BaseGameAction : GameAction {
         if (matchingTemplates.isNotEmpty()) {
             println("Found ${matchingTemplates.size} matching templates for $templateName")
 
-            var attempts = 0
-            while (attempts < maxAttempts) {
-                for (template in matchingTemplates) {
-                    if (bot.clickOnTemplate(template)) {
-                        println("Successfully clicked on template: $template for $description")
-                        return true
-                    }
-                }
-                attempts++
-                if (attempts < maxAttempts) {
-                    println("Attempt $attempts failed. Waiting before retry...")
-                    Thread.sleep(1000) // Wait 1 second before retrying
+            for (template in matchingTemplates) {
+                if (clickWithRetry(bot, template, maxAttempts, delayAfterClick)) {
+                    println("Successfully clicked on template: $template for $description")
+                    return true
                 }
             }
         }

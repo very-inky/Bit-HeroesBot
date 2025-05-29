@@ -27,7 +27,7 @@ class RaidAction : BaseGameAction() {
 
         // Step 1: Interface Validation & Navigation - Find and click on raid navigation button
         println("Step 1: Interface Validation & Navigation")
-        if (!findAndClickSpecificTemplate(bot, config, "raidicon.png", "raid navigation button")) {
+        if (!findAndClickSpecificTemplate(bot, config, "raidicon.png", "raid navigation button", delayAfterClick = 1500)) {
             println("Failed to navigate to raid area. Aborting.")
             return false
         }
@@ -60,7 +60,7 @@ class RaidAction : BaseGameAction() {
 
             // Step 4: Click on the raid to select it
             println("Step 4: Raid Selection")
-            if (!findAndClickSpecificTemplate(bot, config, raidFileName, "raid ${target.raidName} button")) {
+            if (!findAndClickSpecificTemplate(bot, config, raidFileName, "raid ${target.raidName} button", delayAfterClick = 1500)) {
                 println("Failed to find and click raid ${target.raidName}, skipping this raid")
                 continue
             }
@@ -71,7 +71,7 @@ class RaidAction : BaseGameAction() {
             val difficultyId = target.difficulty.lowercase().replace(" ", "_")
             // Look for a specific difficulty template file like "heroic.png"
             val difficultyFileName = "${difficultyId}.png"
-            if (findAndClickSpecificTemplate(bot, config, difficultyFileName, "${target.difficulty} difficulty button")) {
+            if (findAndClickSpecificTemplate(bot, config, difficultyFileName, "${target.difficulty} difficulty button", delayAfterClick = 1500)) {
                 println("Successfully selected ${target.difficulty} difficulty")
             } else {
                 println("Failed to select ${target.difficulty} difficulty, continuing with default")
@@ -80,7 +80,7 @@ class RaidAction : BaseGameAction() {
             // Step 6: Team Composition Check (Optional)
             println("Step 6: Team Composition Check")
             // Look for a specific team template file like "add_team.png"
-            if (findAndClickSpecificTemplate(bot, config, "add_team.png", "add team button")) {
+            if (findAndClickSpecificTemplate(bot, config, "add_team.png", "add team button", delayAfterClick = 1500)) {
                 println("Successfully clicked add team button")
             } else {
                 println("No add team button found or failed to click, continuing")
@@ -89,16 +89,20 @@ class RaidAction : BaseGameAction() {
             // Step 7: Raid Initiation & Resource Check
             println("Step 7: Raid Initiation")
             // Look for a specific start raid template file like "start_raid.png"
-            if (findAndClickSpecificTemplate(bot, config, "start_raid.png", "start raid button")) {
+            if (findAndClickSpecificTemplate(bot, config, "start_raid.png", "start raid button", delayAfterClick = 2000)) {
                 println("Successfully started raid")
             } else {
                 // Try generic "start" template if raid-specific one isn't found
-                if (!findAndClickSpecificTemplate(bot, config, "start.png", "generic start button")) {
+                if (!findAndClickSpecificTemplate(bot, config, "start.png", "generic start button", delayAfterClick = 2000)) {
                     println("Failed to find and click start raid button, skipping this raid")
                     continue
                 }
                 println("Successfully started raid using generic start button")
             }
+
+            // Add additional delay to ensure UI has time to show resource popup if needed
+            println("Waiting for UI to update after clicking start raid button...")
+            Thread.sleep(2000)
 
             // Check for out of resources message
             // Look for a specific out of resources template file like "out_of_resources.png"
@@ -111,7 +115,7 @@ class RaidAction : BaseGameAction() {
             // Step 8: Post-Start Actions (Optional)
             println("Step 8: Post-Start Actions")
             // Look for a specific autopilot template file like "autopilot.png"
-            if (findAndClickSpecificTemplate(bot, config, "autopilot.png", "autopilot button")) {
+            if (findAndClickSpecificTemplate(bot, config, "autopilot.png", "autopilot button", delayAfterClick = 1500)) {
                 println("Successfully enabled autopilot")
             } else {
                 println("No autopilot button found or failed to click, continuing")

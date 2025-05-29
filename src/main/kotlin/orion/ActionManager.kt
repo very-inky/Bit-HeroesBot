@@ -94,6 +94,39 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
             return Pair(false, "Warning: No configuration found for action '$actionName'. Skipping.")
         }
 
+        // We don't have an action handler at this point, so we can't check resources
+        // Just check other conditions (enabled, cooldown, run count)
+        return actionMonitor(actionName, null, actionConfig, false)
+    }
+
+    /**
+     * Checks if an action is out of resources.
+     * @param actionHandler The action handler.
+     * @param actionConfig The action configuration.
+     * @param actionName The name of the action.
+     * @return True if the action is out of resources, false otherwise.
+     */
+    private fun isOutOfResources(actionHandler: GameAction, actionConfig: ActionConfig, actionName: String): Boolean {
+        val hasResources = actionHandler.hasResourcesAvailable(bot, actionConfig)
+        if (!hasResources) {
+            println("Action '$actionName' is out of resources. Setting on cooldown for ${actionConfig.cooldownDuration} minutes.")
+            actionCooldowns[actionName] = Instant.now().plus(actionConfig.cooldownDuration.toLong(), ChronoUnit.MINUTES)
+            return true
+        }
+        return false
+    }
+
+    /**
+     * Monitors an action for cooldowns, run counts, and resource availability.
+     * @param actionName The name of the action.
+     * @param actionHandler The action handler (optional if checkResources is false).
+     * @param actionConfig The action configuration.
+     * @param checkResources Whether to check for resource availability.
+     * @return A pair of (canExecute, reason) where canExecute is true if the action can be executed,
+     * and reason is a message explaining why it cannot be executed if canExecute is false.
+     */
+    fun actionMonitor(actionName: String, actionHandler: GameAction?, actionConfig: ActionConfig, checkResources: Boolean = true): Pair<Boolean, String> {
+        // Check if action is enabled
         if (!actionConfig.enabled) {
             return Pair(false, "Action '$actionName' is disabled in configuration. Skipping.")
         }
@@ -111,6 +144,11 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
             return Pair(false, "Action '$actionName' has reached its run count limit (${actionRunCounts[actionName]}/$runCount). Skipping.")
         }
 
+        // Check for resource availability if requested and actionHandler is provided
+        if (checkResources && actionHandler != null && isOutOfResources(actionHandler, actionConfig, actionName)) {
+            return Pair(false, "Action '$actionName' is out of resources. Skipping.")
+        }
+
         return Pair(true, "")
     }
 
@@ -122,10 +160,10 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
      */
     private fun executeAction(actionName: String, actionHandler: GameAction, actionConfig: ActionConfig) {
         try {
-            // Check if resources are available before execution
-            if (!actionHandler.hasResourcesAvailable(bot, actionConfig)) {
-                println("Action '$actionName' is out of resources. Setting on cooldown for ${actionConfig.cooldownDuration} minutes.")
-                actionCooldowns[actionName] = Instant.now().plus(actionConfig.cooldownDuration.toLong(), ChronoUnit.MINUTES)
+            // Check if action can be executed (including resource check)
+            val canExecute = actionMonitor(actionName, actionHandler, actionConfig)
+            if (!canExecute.first) {
+                println(canExecute.second)
                 return
             }
 
@@ -135,10 +173,10 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
                 // Increment run count
                 actionRunCounts[actionName] = (actionRunCounts[actionName] ?: 0) + 1
 
-                // Check if we need to set cooldown after execution
-                if (!actionHandler.hasResourcesAvailable(bot, actionConfig)) {
-                    println("Action '$actionName' is now out of resources. Setting on cooldown for ${actionConfig.cooldownDuration} minutes.")
-                    actionCooldowns[actionName] = Instant.now().plus(actionConfig.cooldownDuration.toLong(), ChronoUnit.MINUTES)
+                // Check if we need to set cooldown after execution due to resource depletion
+                val postExecutionCheck = actionMonitor(actionName, actionHandler, actionConfig)
+                if (!postExecutionCheck.first && postExecutionCheck.second.contains("out of resources")) {
+                    println(postExecutionCheck.second)
                 }
             } else {
                 println("Action '$actionName' failed or did not complete fully.")

@@ -279,13 +279,44 @@ The bot uses a multi-level configuration system:
 
 1. The `ActionManager` processes actions in the sequence defined in the active `BotConfig`.
 2. For each action:
-   - Check if the action can be executed (not on cooldown, has resources, not reached run limit)
+   - Use the `actionMonitor` function to check if the action can be executed (not disabled, not on cooldown, not reached run limit)
    - If executable, create the appropriate action handler
-   - Check resources before execution
+   - Use the `actionMonitor` function again with the handler to check resources before execution
    - Execute the action if resources are available
    - Update run counts after successful execution
-   - Check resources again after execution
-   - Set cooldown if resources are depleted
+   - Use the `actionMonitor` function again to check resources after execution
+   - Set cooldown if resources are depleted via the `isOutOfResources` function
+
+### Action Monitoring System
+
+The `ActionManager` includes a centralized monitoring system through the `actionMonitor` function:
+
+1. **Purpose**: Provides a single point for checking all conditions that might prevent an action from executing
+2. **Functionality**:
+   - Checks if the action is enabled in configuration
+   - Checks if the action is on cooldown
+   - Checks if the action has reached its run count limit
+   - Optionally checks if the action has available resources (when an action handler is provided)
+3. **Benefits**:
+   - Centralized logic for consistent monitoring across all actions
+   - Easier to add new checks in the future
+   - Provides detailed reasons why an action cannot be executed
+   - Can be called at different points in the action lifecycle (before execution, after execution)
+
+### Resource Management
+
+Resource availability is managed through the dedicated `isOutOfResources` function:
+
+1. **Purpose**: Separates resource checking logic from other monitoring concerns
+2. **Functionality**:
+   - Calls the action handler's `hasResourcesAvailable` method
+   - Sets cooldown for the action if resources are depleted
+   - Returns a boolean indicating resource status
+3. **Benefits**:
+   - Single responsibility for better code organization
+   - Reusable across different parts of the system
+   - Easier to test in isolation
+   - Consistent handling of resource depletion
 
 ### Action Rotation Logic
 
@@ -463,6 +494,9 @@ The bot includes a pattern test mode that allows testing template matching witho
 2. ✅ Multi-character and multi-account configuration system
 3. ✅ ConfigManager for managing multiple configurations
 4. ✅ Action manager with cooldown and rotation logic
+   - ✅ Centralized action monitoring system via `actionMonitor` function
+   - ✅ Dedicated resource checking via `isOutOfResources` function
+   - ✅ Comprehensive unit tests for monitoring and resource management
 5. ✅ Resource checking with cooldown management
 6. ✅ Template matching for screen recognition
    - ✅ Multi-scale template matching with DPI awareness
@@ -484,7 +518,7 @@ The bot includes a pattern test mode that allows testing template matching witho
 
 ### Pending Implementation
 
-1. ❌ Monitor function / ActionRunning loop for continuous game state monitoring
+1. ❌ ActionRunning loop for continuous game state monitoring in real-time
 2. ❌ Rerun functionality for quests and raids without backing out to setup
 3. ❌ PvP action implementation
 4. ❌ GvG action implementation
@@ -628,7 +662,14 @@ The ActionConfig class is the base class for all action configurations:
 
 ## Current Priorities
 
-1. **Implement Monitor Function / ActionRunning Loop**: Create a continuous monitoring system that checks for various game states and responds to changes in the game UI in real-time
+### Recently Completed
+1. **Action Monitoring System**: Implemented a centralized monitoring system via the `actionMonitor` function that checks for cooldowns, run counts, and resource availability
+2. **Resource Management**: Extracted resource availability check to a dedicated `isOutOfResources` function with improved separation of concerns
+3. **Action Handler Refactoring**: Updated action handlers to use the new monitoring system for improved consistency and maintainability
+4. **Unit Testing**: Added comprehensive unit tests for the new monitoring and resource management functions
+
+### Current Focus
+1. **Implement ActionRunning Loop**: Create a continuous monitoring system that checks for various game states and responds to changes in the game UI in real-time
 2. **Implement Rerun Functionality**: Add the ability to rerun quests or raids without backing out to setup, improving efficiency by eliminating unnecessary navigation
 3. **Improve UI Responsiveness**: Add appropriate delays to ensure the bot doesn't process checks faster than the UI can update, particularly for resource checks
 4. **Fix OutOfResource Check**: Address the issue in QuestAction.kt where the bot processes the outofresource check too quickly for the UI to update

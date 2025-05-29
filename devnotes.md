@@ -106,3 +106,19 @@ The main focus is on full quest action automation, specifically:
 - Each action has its own configuration and resource management
 - Actions are placed on cooldown when resources are depleted
 - The system tracks run counts and respects configured limits
+
+#### Recent Improvements to Action System
+- Extracted resource availability check to a dedicated function `isOutOfResources`
+  - Single responsibility: The function focuses solely on resource checks
+  - Reusability: Can be called from anywhere, including the action monitor or directly by actions
+  - Testability: Easier to write unit tests for resource logic
+- Added an `actionMonitor` function in ActionManager
+  - Centralizes monitoring logic (checking cooldowns, run counts, and resource availability)
+  - Extensibility: Easy to add more checks (e.g., error states, external conditions)
+  - Loose coupling: Actions can delegate monitoring to this function
+- Refactored action handlers to use the monitor function
+  - Consistency: All actions use the same monitoring logic
+  - Maintainability: Changes to monitoring only need to be made in one place
+- Added unit tests for the new functions
+  - Reliability: Ensures new logic works as intended
+  - Regression safety: Prevents future changes from breaking resource/monitoring logic

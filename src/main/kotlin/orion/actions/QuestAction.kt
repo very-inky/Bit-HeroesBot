@@ -33,11 +33,6 @@ class QuestAction : BaseGameAction() {
             return false
         }
 
-        if (!config.enabled) {
-            println("QuestAction is disabled in config.")
-            return false
-        }
-
         println("--- Executing Quest Action ---")
 
         // Load templates for navigation
@@ -57,10 +52,7 @@ class QuestAction : BaseGameAction() {
 
         // Step 1: Confirm quest availability and readiness
         println("Step 1: Confirming quest availability")
-        if (!hasResourcesAvailable(bot, config)) {
-            println("Quest resources not available or on cooldown. Aborting.")
-            return false
-        }
+        // Resource check is now handled by ActionManager.actionMonitor
         println("Quest resources available and ready")
 
         // Step 2: Find and click on quest icon

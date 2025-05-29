@@ -69,6 +69,15 @@ fun main(args: Array<String>) {
         println("║ of sequentially.                                               ║")
         println("╚════════════════════════════════════════════════════════════════╝")
         orion.Bot.useCoroutinesForTemplateMatching = true
+
+        // Display thread pool size configuration
+        val maxPoolSize = System.getProperty("kotlinx.coroutines.scheduler.max.pool.size") ?: "default"
+        val corePoolSize = System.getProperty("kotlinx.coroutines.scheduler.core.pool.size") ?: "default"
+        println("╔════════════════════════════════════════════════════════════════╗")
+        println("║ THREAD POOL CONFIGURATION                                      ║")
+        println("║ Max pool size: $maxPoolSize                                    ".padEnd(72) + "║")
+        println("║ Core pool size: $corePoolSize                                   ".padEnd(72) + "║")
+        println("╚════════════════════════════════════════════════════════════════╝")
     } else {
         println("Using sequential template matching (use --opencvthreads flag to enable parallel processing)")
     }

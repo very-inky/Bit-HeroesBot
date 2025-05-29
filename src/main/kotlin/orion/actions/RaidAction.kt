@@ -17,11 +17,6 @@ class RaidAction : BaseGameAction() {
             return false
         }
 
-        if (!config.enabled) {
-            println("RaidAction is disabled in config.")
-            return false
-        }
-
         println("--- Executing Raid Action ---")
 
         // Load only common templates for navigation

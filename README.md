@@ -58,10 +58,6 @@ OpenCV's Mat objects use native memory that must be explicitly released:
 - Always call `mat.release()` when you're done with a Mat object that was returned from a method
 - Failure to release Mat objects will result in memory leaks
 
-Key methods that return Mat objects and require caller to release:
-- `captureScreen()`
-- `captureRegion()`
-- `bufferedImageToMat()`
 
 ## Coroutines for Parallel Processing
 
@@ -301,9 +297,31 @@ See the [documentation](documentation.md) for detailed information on:
 
 ## Current Development Focus
 
+### Recent Improvements
+The following improvements have been implemented:
+
+1. **Action Monitoring System**: 
+   - Added an `actionMonitor` function in ActionManager that centralizes monitoring logic
+   - Checks for cooldowns, run counts, and resource availability
+   - Provides a consistent interface for all actions
+   - Makes it easier to add more checks in the future
+
+2. **Resource Management**:
+   - Extracted resource availability check to a dedicated `isOutOfResources` function
+   - Improved separation of concerns with single-responsibility functions
+   - Enhanced testability with unit tests for resource logic
+   - Allows resource checks to be called from anywhere in the codebase
+
+3. **Action Handler Refactoring**:
+   - Updated action handlers to use the new monitoring system
+   - Removed duplicate code for checking if actions are enabled
+   - Improved consistency across different action types
+   - Enhanced maintainability by centralizing monitoring logic
+
+### Ongoing Development
 The current development focus is on full quest action automation, specifically:
 
-1. **Monitor Function / ActionRunning Loop**: Implementing a monitoring system that continuously checks the game state
+1. **ActionRunning Loop**: Implementing a continuous monitoring system that checks the game state in real-time
 2. **Rerun Functionality**: Adding the ability to rerun quests or raids without backing out to setup
 3. **UI Responsiveness**: Ensuring the bot doesn't process checks faster than the UI can update
 

@@ -13,6 +13,9 @@
 ### Recent Fixes
 - Fixed an oversight in Bot.kt that now allows ALL findtemplate checks to use coroutines if the user has `--opencvthreads` enabled
 - This improves performance for all template matching operations throughout the application
+- Added shape-based template matching option (`--shapematching` flag) that uses TM_CCORR_NORMED instead of TM_CCOEFF_NORMED
+- Added grayscale template matching option (`--grayscale` flag) that converts images to grayscale before matching
+- Reverted from robot.createMultiResolutionScreenCapture to robot.createScreenCapture for better compatibility
 
 ### Current Issues
 - In QuestAction.kt, the bot processes the outofresource check too quickly for the UI to update
@@ -84,6 +87,19 @@ The main focus is on full quest action automation, specifically:
 - The bot loads templates from these directories based on the action being executed
 - Template matching is performed with scale checking to handle different screen resolutions
 - Coroutines can be used to check multiple scales in parallel for better performance
+- Enhanced template matching options:
+  - Shape-based matching (`--shapematching` flag): 
+    - Uses TM_CCORR_NORMED instead of TM_CCOEFF_NORMED for matching
+    - Focuses more on shapes and contours rather than exact pixel values
+    - Can be more robust to lighting changes and slight variations
+  - Grayscale matching (`--grayscale` flag):
+    - Converts both screen capture and template images to grayscale before matching
+    - Improves results when color variations might affect matching accuracy
+    - Can be more robust to lighting changes
+- Screen capture:
+  - Reverted from robot.createMultiResolutionScreenCapture to robot.createScreenCapture
+  - The multi-resolution approach was causing compatibility issues on some systems
+  - Standard screen capture provides more consistent results across different environments
 
 ### Action System
 - Actions are defined in the BotConfig and executed in sequence by the ActionManager

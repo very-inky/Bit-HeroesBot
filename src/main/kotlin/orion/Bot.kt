@@ -34,6 +34,22 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
          * the sequential approach, especially when there are many scales to check.
          */
         var useCoroutinesForTemplateMatching = false
+
+        /**
+         * Flag to determine whether to use shape matching instead of standard template matching.
+         * When enabled, the template matching will focus more on shapes and contours rather than
+         * exact pixel values, which can be more robust to lighting changes and slight variations.
+         * This uses TM_CCORR_NORMED instead of TM_CCOEFF_NORMED for matching.
+         */
+        var useShapeMatching = false
+
+        /**
+         * Flag to determine whether to convert images to grayscale before template matching.
+         * When enabled, both the screen capture and template images will be converted to grayscale
+         * before matching, which can improve matching in situations where color variations
+         * might affect the results, and can also be more robust to lighting changes.
+         */
+        var useGrayscale = false
     }
 
     /**
@@ -317,6 +333,23 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
                     throw RuntimeException(errorMsg)
                 }
 
+                // Convert to grayscale if enabled
+                if (useGrayscale) {
+                    val grayScreen = Mat()
+                    val grayTemplate = Mat()
+                    try {
+                        Imgproc.cvtColor(screen, grayScreen, Imgproc.COLOR_BGR2GRAY)
+                        Imgproc.cvtColor(template, grayTemplate, Imgproc.COLOR_BGR2GRAY)
+                        screen.release()
+                        template.release()
+                        grayScreen.copyTo(screen)
+                        grayTemplate.copyTo(template)
+                    } finally {
+                        grayScreen.release()
+                        grayTemplate.release()
+                    }
+                }
+
                 // Register the template if it's not already registered
                 if (!templateInfo.containsKey(templatePath)) {
                     // This will throw if registration fails
@@ -343,7 +376,9 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
                             continue
                         }
 
-                        Imgproc.matchTemplate(screen, scaledTemplate, result, Imgproc.TM_CCOEFF_NORMED)
+                        // Use shape matching method if enabled, otherwise use standard method
+                        val matchMethod = if (useShapeMatching) Imgproc.TM_CCORR_NORMED else Imgproc.TM_CCOEFF_NORMED
+                        Imgproc.matchTemplate(screen, scaledTemplate, result, matchMethod)
 
                         val mmr = Core.minMaxLoc(result)
 
@@ -458,6 +493,23 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
                 throw RuntimeException(errorMsg)
             }
 
+            // Convert to grayscale if enabled
+            if (useGrayscale) {
+                val grayScreen = Mat()
+                val grayTemplate = Mat()
+                try {
+                    Imgproc.cvtColor(screen, grayScreen, Imgproc.COLOR_BGR2GRAY)
+                    Imgproc.cvtColor(template, grayTemplate, Imgproc.COLOR_BGR2GRAY)
+                    screen.release()
+                    template.release()
+                    grayScreen.copyTo(screen)
+                    grayTemplate.copyTo(template)
+                } finally {
+                    grayScreen.release()
+                    grayTemplate.release()
+                }
+            }
+
             // Register the template if it's not already registered
             if (!templateInfo.containsKey(templatePath)) {
                 // This will throw if registration fails
@@ -484,7 +536,9 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
                         continue
                     }
 
-                    Imgproc.matchTemplate(screen, scaledTemplate, result, Imgproc.TM_CCOEFF_NORMED)
+                    // Use shape matching method if enabled, otherwise use standard method
+                    val matchMethod = if (useShapeMatching) Imgproc.TM_CCORR_NORMED else Imgproc.TM_CCOEFF_NORMED
+                    Imgproc.matchTemplate(screen, scaledTemplate, result, matchMethod)
 
                     val mmr = Core.minMaxLoc(result)
 
@@ -548,6 +602,23 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
                 throw RuntimeException(errorMsg)
             }
 
+            // Convert to grayscale if enabled
+            if (useGrayscale) {
+                val grayScreen = Mat()
+                val grayTemplate = Mat()
+                try {
+                    Imgproc.cvtColor(screen, grayScreen, Imgproc.COLOR_BGR2GRAY)
+                    Imgproc.cvtColor(template, grayTemplate, Imgproc.COLOR_BGR2GRAY)
+                    screen.release()
+                    template.release()
+                    grayScreen.copyTo(screen)
+                    grayTemplate.copyTo(template)
+                } finally {
+                    grayScreen.release()
+                    grayTemplate.release()
+                }
+            }
+
             // Register the template if it's not already registered
             if (!templateInfo.containsKey(templatePath)) {
                 // This will throw if registration fails
@@ -581,7 +652,9 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
                                 return@async Triple(null, scale, 0.0)
                             }
 
-                            Imgproc.matchTemplate(screen, scaledTemplate, result, Imgproc.TM_CCOEFF_NORMED)
+                            // Use shape matching method if enabled, otherwise use standard method
+                            val matchMethod = if (useShapeMatching) Imgproc.TM_CCORR_NORMED else Imgproc.TM_CCOEFF_NORMED
+                            Imgproc.matchTemplate(screen, scaledTemplate, result, matchMethod)
 
                             val mmr = Core.minMaxLoc(result)
                             Triple(mmr.maxLoc, scale, mmr.maxVal)

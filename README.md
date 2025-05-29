@@ -43,6 +43,10 @@ The bot requires OpenCV for image recognition and template matching. The applica
 The bot will not run in partial functionality mode - it requires full OpenCV functionality to operate correctly.
 OpenCV should enable OpenCL by default (GPU hardware acceleration). This requires that you have drivers properly installed and openCL drivers properly working (Linux systems)
 
+### Screen Capture Method
+
+The bot uses Java's Robot.createScreenCapture method for capturing the screen. This approach was chosen for better compatibility across different systems after testing showed that the multi-resolution screen capture method (Robot.createMultiResolutionScreenCapture) caused issues on some configurations. The standard screen capture method provides more consistent results across different environments.
+
 ### Memory Management for OpenCV Mat Objects
 
 OpenCV's Mat objects use native memory that must be explicitly released:
@@ -85,7 +89,9 @@ Using the `--morethreads` flag provides the most efficient navigation by elimina
 
 ### Running the Application with Command-Line Arguments
 
-#### Coroutine Optimization Flags
+#### Command-Line Arguments
+
+##### Coroutine Optimization Flags
 
 To enable coroutines for zone detection, use the `--morethreads` command-line argument:
 
@@ -107,14 +113,42 @@ gradlew run --args="--opencvthreads"
 ./gradlew run --args="--opencvthreads"
 ```
 
-You can enable both optimizations at once:
+##### Template Matching Enhancement Flags
+
+To enable shape-based template matching, use the `--shapematching` command-line argument:
 
 ```bash
 # On Windows
-gradlew run --args="--morethreads --opencvthreads"
+gradlew run --args="--shapematching"
 
 # On Linux/macOS
-./gradlew run --args="--morethreads --opencvthreads"
+./gradlew run --args="--shapematching"
+```
+
+This uses a different matching algorithm (TM_CCORR_NORMED instead of TM_CCOEFF_NORMED) that focuses more on shapes and contours rather than exact pixel values, which can be more robust to lighting changes and slight variations.
+
+To enable grayscale template matching, use the `--grayscale` command-line argument:
+
+```bash
+# On Windows
+gradlew run --args="--grayscale"
+
+# On Linux/macOS
+./gradlew run --args="--grayscale"
+```
+
+This converts both the screen capture and template images to grayscale before matching, which can improve results when color variations might affect matching accuracy.
+
+##### Combining Multiple Flags
+
+You can combine multiple optimization and enhancement flags:
+
+```bash
+# On Windows
+gradlew run --args="--morethreads --opencvthreads --shapematching --grayscale"
+
+# On Linux/macOS
+./gradlew run --args="--morethreads --opencvthreads --shapematching --grayscale"
 ```
 
 #### Configuring Thread Count for `--opencvthreads`

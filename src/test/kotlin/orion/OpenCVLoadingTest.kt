@@ -100,9 +100,9 @@ class OpenCVLoadingTest {
         }
 
         val libraryFileName = when {
-            osName.contains("Windows", ignoreCase = true) -> "opencv_java490.dll"
-            osName.contains("Linux", ignoreCase = true) -> "libopencv_java490.so"
-            osName.contains("Mac", ignoreCase = true) -> "libopencv_java490.dylib"
+            osName.contains("Windows", ignoreCase = true) -> "opencv_java470.dll"
+            osName.contains("Linux", ignoreCase = true) -> "libopencv_java470.so"
+            osName.contains("Mac", ignoreCase = true) -> "libopencv_java470.dylib"
             else -> {
                 throw IllegalArgumentException("Unsupported operating system: $osName")
             }
@@ -191,9 +191,9 @@ class OpenCVLoadingTest {
         }
 
         val libraryFileName = when {
-            osName.contains("Windows", ignoreCase = true) -> "opencv_java490.dll"
-            osName.contains("Linux", ignoreCase = true) -> "libopencv_java490.so"
-            osName.contains("Mac", ignoreCase = true) -> "libopencv_java490.dylib"
+            osName.contains("Windows", ignoreCase = true) -> "opencv_java4110.dll"
+            osName.contains("Linux", ignoreCase = true) -> "libopencv_java4110.so"
+            osName.contains("Mac", ignoreCase = true) -> "libopencv_java4110.dylib"
             else -> {
                 throw IllegalArgumentException("Unsupported operating system: $osName")
             }

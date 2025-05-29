@@ -31,6 +31,8 @@ import java.nio.file.Paths
 import java.util.UUID
 import java.util.Vector //unused
 import orion.utils.PathUtils
+import java.awt.Robot
+import java.awt.event.InputEvent
 
 fun main(args: Array<String>) {
     println("Starting OpenCV Bot...")
@@ -69,6 +71,38 @@ fun main(args: Array<String>) {
         orion.Bot.useCoroutinesForTemplateMatching = true
     } else {
         println("Using sequential template matching (use --opencvthreads flag to enable parallel processing)")
+    }
+
+    // Check if we should use shape matching for template detection
+    val useShapeMatching = args.contains("--shapematching")
+    if (useShapeMatching) {
+        println("╔════════════════════════════════════════════════════════════════╗")
+        println("║ EXPERIMENTAL: Using shape-based template matching              ║")
+        println("║ (--shapematching flag detected)                                ║")
+        println("║                                                                ║")
+        println("║ This uses a different matching algorithm that focuses more on  ║")
+        println("║ shapes and contours rather than exact pixel values, which can  ║")
+        println("║ be more robust to lighting changes and slight variations.      ║")
+        println("╚════════════════════════════════════════════════════════════════╝")
+        orion.Bot.useShapeMatching = true
+    } else {
+        println("Using standard template matching (use --shapematching flag to enable shape-based matching)")
+    }
+
+    // Check if we should use grayscale mode for template detection
+    val useGrayscale = args.contains("--grayscale")
+    if (useGrayscale) {
+        println("╔════════════════════════════════════════════════════════════════╗")
+        println("║ EXPERIMENTAL: Using grayscale template matching                ║")
+        println("║ (--grayscale flag detected)                                    ║")
+        println("║                                                                ║")
+        println("║ This converts both the screen capture and template images to   ║")
+        println("║ grayscale before matching, which can improve results when      ║")
+        println("║ color variations might affect matching accuracy.               ║")
+        println("╚════════════════════════════════════════════════════════════════╝")
+        orion.Bot.useGrayscale = true
+    } else {
+        println("Using color template matching (use --grayscale flag to enable grayscale matching)")
     }
 
     // Test if coroutines are working properly
@@ -143,6 +177,16 @@ fun main(args: Array<String>) {
                 println("   Confidence: ${result.confidence}")
                 println("   Screen Resolution: ${result.screenResolution.first}x${result.screenResolution.second}")
                 println("   DPI Scaling: ${result.dpi * 100}%")
+                // Move mouse cursor to found location
+                val x = result.location.x.toInt()
+                val y = result.location.y.toInt()
+                try {
+                    val robot = Robot()
+                    robot.mouseMove(x, y)
+                    println("Moved mouse cursor to: ($x, $y)")
+                } catch (e: Exception) {
+                    println("Failed to move mouse cursor: ${e.message}")
+                }
             } else {
                 println("❌ Could not find template")
                 println("   Best scale attempted: ${result.scale}")
@@ -170,6 +214,16 @@ fun main(args: Array<String>) {
                     println("   Position: ${result.location}")
                     println("   Scale: ${result.scale}")
                     println("   Confidence: ${result.confidence}")
+                    // Move mouse cursor to found location
+                    val x = result.location.x.toInt()
+                    val y = result.location.y.toInt()
+                    try {
+                        val robot = Robot()
+                        robot.mouseMove(x, y)
+                        println("Moved mouse cursor to: ($x, $y)")
+                    } catch (e: Exception) {
+                        println("Failed to move mouse cursor: ${e.message}")
+                    }
                 } else {
                     println("❌ Could not find template: $template")
                     println("   Best scale attempted: ${result.scale}")
@@ -446,9 +500,9 @@ fun loadOpenCVNativeLibrary() {
         }
 
         val libraryFileName = when {
-            osDirectory == "windows" -> "opencv_java490.dll"
-            osDirectory == "linux" -> "libopencv_java490.so"
-            osDirectory == "macos" -> "libopencv_java490.dylib"
+            osDirectory == "windows" -> "opencv_java4110.dll"
+            osDirectory == "linux" -> "libopencv_java4110.so"
+            osDirectory == "macos" -> "libopencv_java4110.dylib"
             else -> throw UnsatisfiedLinkError("Unsupported operating system: $osName")
         }
 
@@ -610,7 +664,7 @@ fun loadOpenCVNativeLibrary() {
             osDirectory == "windows" && archDirectory == "x86" -> 
                 "https://repo1.maven.org/maven2/org/openpnp/opencv/4.9.0-0/opencv-4.9.0-0.jar"
             osDirectory == "linux" && archDirectory == "x64" -> 
-                "https://repo1.maven.org/maven2/org/openpnp/opencv/4.9.0-0/opencv-4.9.0-0.jar"
+                "https://repo1.maven.org/maven2/org/openpnp/opencv/4.7.0-0/opencv-4.9.0-0.jar"
             osDirectory == "linux" && archDirectory == "x86" -> 
                 "https://repo1.maven.org/maven2/org/openpnp/opencv/4.9.0-0/opencv-4.9.0-0.jar"
             osDirectory == "macos" -> 
@@ -619,7 +673,7 @@ fun loadOpenCVNativeLibrary() {
         }
 
         println("Downloading OpenCV library from Maven repository: $mavenUrl")
-        val jarFile = File(downloadDir, "opencv-4.9.0-0.jar")
+        val jarFile = File(downloadDir, "opencv-4.11.0-0.jar")
 
         try {
             // Download the JAR file

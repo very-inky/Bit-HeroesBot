@@ -329,7 +329,14 @@ The bot requires OpenCV with full functionality for image recognition and templa
    - If full functionality cannot be loaded, the bot will throw an exception and exit
    - OpenCL should enable by default. This requires you have GPU drivers propely installed. This is easy on Windows but Linux users should make sure they have necessary openCL functionality working.
 
-2. **Memory Management for OpenCV Mat Objects**:
+2. **Screen Capture Method**:
+   - The bot uses Java's Robot.createScreenCapture method for capturing the screen
+   - This approach was chosen for better compatibility across different systems
+   - Testing showed that the multi-resolution screen capture method (Robot.createMultiResolutionScreenCapture) caused issues on some configurations
+   - The standard screen capture method provides more consistent results across different environments
+   - The bot handles DPI scaling and resolution differences through its template matching system
+
+3. **Memory Management for OpenCV Mat Objects**:
    - OpenCV's Mat objects are native resources that must be explicitly released when no longer needed
    - These objects are not automatically managed by Java's garbage collector since they use native memory
    - The bot handles memory management in two ways:
@@ -342,7 +349,7 @@ The bot requires OpenCV with full functionality for image recognition and templa
      - `captureRegion()`
      - `bufferedImageToMat()`
 
-3. **Template Matching System**:
+4. **Template Matching System**:
    - Template images are stored in the `templates` directory with subdirectories organized by action type:
      - `raid`: Templates for raid-related actions
      - `quest`: Templates for quest-related actions
@@ -360,8 +367,11 @@ The bot requires OpenCV with full functionality for image recognition and templa
      - Scale templates based on screen resolution and DPI
      - Get detailed matching information (scale, confidence, etc.)
    - Template registration system tracks original dimensions and DPI for proper scaling
+   - Enhanced template matching options:
+     - Shape-based matching (`--shapematching` flag): Uses TM_CCORR_NORMED instead of TM_CCOEFF_NORMED for matching, focusing more on shapes and contours rather than exact pixel values
+     - Grayscale matching (`--grayscale` flag): Converts both screen capture and template images to grayscale before matching, improving results when color variations might affect matching accuracy
 
-3. **Template Loading Process**:
+5. **Template Loading Process**:
    - Each action configuration specifies which template directories to use:
      - `commonTemplateDirectories`: Directories containing common UI elements (default: `templates/ui`)
      - `specificTemplateDirectories`: Directories containing action-specific templates (e.g., `templates/quest`)

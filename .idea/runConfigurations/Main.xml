@@ -4,9 +4,9 @@
     <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
     <option name="MAIN_CLASS_NAME" value="orion.MainKt" />
     <module name="untitled.main" />
-    <option name="PROGRAM_PARAMETERS" value="--morethreads --opencvthreads --test-pattern templates/quest/zone2det.png" />
+    <option name="PROGRAM_PARAMETERS" value="--morethreads --opencvthreads --grayscale --test-pattern templates/quest/zone1det.png" />
     <shortenClasspath name="NONE" />
-    <option name="VM_PARAMETERS" value="-Dkotlinx.coroutines.scheduler.max.pool.size=10 -Dkotlinx.coroutines.scheduler.core.pool.size=10" />
+    <option name="VM_PARAMETERS" value="-Dkotlinx.coroutines.scheduler.max.pool.size=2 -Dkotlinx.coroutines.scheduler.core.pool.size=2" />
     <method v="2">
       <option name="Make" enabled="true" />
     </method>

@@ -100,16 +100,9 @@ class RaidAction : BaseGameAction() {
                 println("Successfully started raid using generic start button")
             }
 
-            // Add additional delay to ensure UI has time to show resource popup if needed
-            println("Waiting for UI to update after clicking start raid button...")
-            Thread.sleep(2000)
-
-            // Check for out of resources message
-            // Look for a specific out of resources template file like "out_of_resources.png"
-            val outOfResourcesPath = "${config.specificTemplateDirectories.first()}/out_of_resources.png"
-            if (bot.findTemplate(outOfResourcesPath) != null) {
-                println("Out of resources message detected, stopping raid action")
-                return true
+            // Check for out of resources message after clicking start raid button
+            if (checkForOutOfResources(bot, 2000, "Out of resources message detected, stopping raid action")) {
+                return false // Return false to indicate failure due to resource depletion
             }
 
             // Step 8: Post-Start Actions (Optional)
@@ -122,6 +115,21 @@ class RaidAction : BaseGameAction() {
             }
 
             println("Successfully processed raid: ${target.raidName} with difficulty: ${target.difficulty}")
+
+            // Check for rerun button and handle rerun functionality
+            println("Checking for rerun button...")
+            if (findAndClickSpecificTemplate(bot, config, "rerun.png", "rerun button", delayAfterClick = 2000)) {
+                println("Found and clicked rerun button")
+
+                // Check for out of resources message after clicking rerun button
+                if (checkForOutOfResources(bot, 2000, "Out of resources message detected after clicking rerun, stopping raid action")) {
+                    return false // Return false to indicate failure due to resource depletion
+                }
+
+                println("Resources available for rerun, continuing...")
+            } else {
+                println("No rerun button found or failed to click, continuing with next raid")
+            }
         }
 
         // Check if no raid targets were specified

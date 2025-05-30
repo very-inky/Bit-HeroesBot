@@ -231,18 +231,28 @@ class QuestAction : BaseGameAction() {
                 }
                 println("Successfully clicked accept button")
 
-                // Add additional delay to ensure UI has time to show resource popup if needed
-                println("Waiting for UI to update after clicking accept button...")
-                Thread.sleep(2000)
-
-                // Check for out of resources message
-                val outOfResourcesPath = "${config.commonTemplateDirectories.first()}/outofresourcepopup.png"
-                if (bot.findTemplate(outOfResourcesPath) != null) {
-                    println("Out of resources message detected, stopping quest action")
-                    return true
+                // Check for out of resources message after clicking accept button
+                if (checkForOutOfResources(bot, 2000, "Out of resources message detected, stopping quest action")) {
+                    return false // Return false to indicate failure due to resource depletion
                 }
 
                 println("Successfully processed dungeon ${target.dungeonNumber} in zone ${target.zoneNumber}")
+
+                // Check for rerun button and handle rerun functionality
+                println("Checking for rerun button...")
+                val rerunButtonPath = "${config.commonTemplateDirectories.first()}/rerun.png"
+                if (findAndClickSpecificTemplate(bot, config, "rerun.png", "rerun button", delayAfterClick = 2000)) {
+                    println("Found and clicked rerun button")
+
+                    // Check for out of resources message after clicking rerun button
+                    if (checkForOutOfResources(bot, 2000, "Out of resources message detected after clicking rerun, stopping quest action")) {
+                        return false // Return false to indicate failure due to resource depletion
+                    }
+
+                    println("Resources available for rerun, continuing...")
+                } else {
+                    println("No rerun button found or failed to click, continuing with next dungeon")
+                }
             }
         } else {
             println("No dungeon targets specified. Nothing to do.")

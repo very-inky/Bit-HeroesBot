@@ -8,6 +8,35 @@ import java.io.File
  */
 abstract class BaseGameAction : GameAction {
     /**
+     * Checks if the out-of-resources popup is visible on the screen.
+     * This standardized function uses the common template at templates/ui/outofresourcepopup.png.
+     *
+     * @param bot The Bot instance to use for interacting with the game.
+     * @param delayBeforeCheck The delay in milliseconds before checking for the popup (default is 2000).
+     * @param logMessage The message to log if the popup is detected (default is "Out of resources message detected").
+     * @return True if the out-of-resources popup is detected, false otherwise.
+     */
+    protected fun checkForOutOfResources(
+        bot: Bot,
+        delayBeforeCheck: Long = 2000,
+        logMessage: String = "Out of resources message detected"
+    ): Boolean {
+        // Add delay to ensure UI has time to show resource popup if needed
+        if (delayBeforeCheck > 0) {
+            println("Waiting for UI to update before checking for out-of-resources popup...")
+            Thread.sleep(delayBeforeCheck)
+        }
+
+        // Check for out of resources message using the standardized template path
+        val outOfResourcesPath = "templates/ui/outofresourcepopup.png"
+        if (bot.findTemplate(outOfResourcesPath) != null) {
+            println("$logMessage")
+            return true
+        }
+        return false
+    }
+
+    /**
      * Clicks on a template with retry mechanism and delay after successful click.
      * This helps ensure the UI has time to update after a click and handles transient UI issues.
      *

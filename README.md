@@ -9,6 +9,7 @@ A Kotlin-based automation bot for games using OpenCV for image recognition. The 
 - **Template-based recognition**: Identify game elements using template images
 - **Resource management**: Automatically handle cooldowns and resource depletion
 - **Automatic dependency management**: OpenCV libraries are automatically downloaded and installed if needed
+- **Improved rerun and town button handling**: During rerun state, the bot now checks if actions have runs left and uses the rerun button if available, preventing premature exit to town and improving automation reliability
 
 ## Template System
 
@@ -350,13 +351,20 @@ The current development focus is on improving the action system and UI responsiv
    - Ensuring the bot doesn't process checks faster than the UI can update
    - Adding appropriate delays for resource checks and completion detection
 
-2. **Enhanced Monitoring System**:
+2. **Resource Management**:
+   - Implementing game inputs for out-of-resource conditions
+   - Currently, the system detects out-of-resource conditions but doesn't perform any game inputs in response
+   - Adding templates for "close" or "ok" buttons on resource popups
+   - Implementing click actions when out-of-resource popups are detected
+   - Adding proper error handling and recovery for resource-related actions
+
+3. **Enhanced Monitoring System**:
    - Adding more templates for detecting various game states
    - Improving error handling and recovery mechanisms
    - Adding more robust handling of unexpected game states
    - Implementing configurable monitoring timeouts
 
-3. **Improved Rerun Functionality**:
+4. **Improved Rerun Functionality**:
    - Adding support for more complex rerun scenarios
    - Implementing better handling of rerun failures
    - Adding configurable rerun limits

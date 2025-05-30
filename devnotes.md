@@ -33,7 +33,10 @@
      - Detects when actions are completed
      - Handles unexpected popups and errors
      - Checks for template file availability for robustness
-     - Returns detailed results about the action's status
+     - Handles rerun functionality internally for appropriate actions
+     - Tracks rerun state and consecutive resource checks after rerun
+     - Only returns out-of-resources after 3 checks in rerun state
+     - Returns detailed results about the action's status including rerun information
    - This allows the bot to respond to changes in the game UI in real-time
 
 2. **Rerun Functionality**
@@ -65,7 +68,15 @@ The main focus is on improving the action system and UI responsiveness:
    - Add a delay between clicking the accept button and checking for the out of resources message
    - This will give the UI time to update and display the popup if needed
 
-2. **Enhance the ActionRunning Monitoring System**
+2. **Implement Game Inputs for Out-of-Resource Conditions**
+   - Currently, the system detects out-of-resource conditions but doesn't perform any game inputs in response
+   - Need to implement logic to handle out-of-resource popups by clicking appropriate buttons
+   - Add template for "close" or "ok" button on resource popups
+   - Implement click action when out-of-resource popup is detected
+   - Consider adding option to auto-purchase resources if configured
+   - Add proper error handling and recovery if resource-related actions fail
+
+3. **Enhance the ActionRunning Monitoring System**
    - ✅ Added one-time autopilot check at the beginning of monitoring
    - ✅ Added player death detection and recovery
    - ✅ Added template file availability checks
@@ -86,6 +97,9 @@ The main focus is on improving the action system and UI responsiveness:
    - Add comprehensive logging for better debugging
    - Implement log levels (debug, info, warning, error)
    - Add log rotation and archiving
+
+### Current Priorities
+- Implement game input actions for out-of-resource conditions (e.g., clicking 'close' or 'ok' on resource popups)
 
 ## Technical Notes
 

@@ -22,22 +22,42 @@
   - This causes the bot to potentially miss the out of resources popup
   - A delay needs to be added between clicking the accept button and checking for the out of resources message
 
-### Current Development Focus
-The main focus is on full quest action automation, specifically:
+### Recent Implementations
 
 1. **Monitor Function / ActionRunning Loop**
-   - Need to implement a monitoring system that continuously checks the game state
-   - This will allow the bot to respond to changes in the game UI in real-time
-   - Will help with detecting completion of actions and handling unexpected popups
+   - Implemented a continuous monitoring system that checks the game state in real-time
+   - Added `monitorRunningAction` method in ActionManager that:
+     - Performs a one-time autopilot check at the beginning of monitoring
+     - Detects player death and handles recovery
+     - Detects and handles in-progress dialogues without interrupting the action
+     - Detects when actions are completed
+     - Handles unexpected popups and errors
+     - Checks for template file availability for robustness
+     - Returns detailed results about the action's status
+   - This allows the bot to respond to changes in the game UI in real-time
 
 2. **Rerun Functionality**
-   - Need to implement the ability to rerun quests or raids without backing out to setup
-   - For single dungeon or raid runs, the bot should hit the "Rerun" button
-   - This will improve efficiency by eliminating unnecessary navigation
+   - Implemented the ability to rerun quests or raids without backing out to setup
+   - Added detection for the "Rerun" button in the monitoring loop
+   - Added logic to use the rerun button when appropriate instead of backing out to setup
+   - Implemented proper handling of resource checks after clicking rerun
+   - This improves efficiency by eliminating unnecessary navigation
+   - Different action types handle completion differently:
+     - Quest and Raid actions with a single enabled target use the rerun button to start another run directly
+     - Quest and Raid actions with multiple enabled targets use the town button to change configs for the next run
+     - Other actions always use the town button to go back to setup for subsequent runs
 
-3. **UI Responsiveness**
+### Current Development Focus
+The main focus is on improving the action system and UI responsiveness:
+
+1. **UI Responsiveness**
    - Need to add appropriate delays to ensure the bot doesn't process checks faster than the UI can update
    - Particularly important for resource checks and completion detection
+
+2. **Template Management**
+   - Ensure all required templates are available and properly handled
+   - Implement fallback mechanisms for missing templates
+   - Add more templates for detecting various game states
 
 ## Implementation Priorities
 
@@ -45,20 +65,27 @@ The main focus is on full quest action automation, specifically:
    - Add a delay between clicking the accept button and checking for the out of resources message
    - This will give the UI time to update and display the popup if needed
 
-2. **Implement Monitor Function / ActionRunning Loop**
-   - Create a continuous monitoring system that checks for various game states
-   - Handle unexpected popups, errors, and completion states
-   - Implement proper state transitions based on detected UI elements
-
-3. **Implement Rerun Functionality**
-   - Add detection for the "Rerun" button in quest and raid screens
-   - Implement logic to use the rerun button when appropriate instead of backing out to setup
-   - Handle cases where rerun is not available or not appropriate
-
-4. **Improve Error Handling and Recovery**
-   - Enhance error detection and recovery mechanisms
+2. **Enhance the ActionRunning Monitoring System**
+   - ✅ Added one-time autopilot check at the beginning of monitoring
+   - ✅ Added player death detection and recovery
+   - ✅ Added template file availability checks
+   - ✅ Added in-progress dialogue detection and handling
+   - ✅ Implemented configurable monitoring intervals with heartbeat logging
+   - Add more templates for detecting various game states
+   - Improve error handling and recovery mechanisms
    - Add more robust handling of unexpected game states
-   - Implement logging for better debugging
+   - Implement configurable monitoring timeouts
+
+3. **Improve Rerun Functionality**
+   - Add support for more complex rerun scenarios
+   - Implement better handling of rerun failures
+   - Add configurable rerun limits
+   - ✅ Differentiate between action types (Quest/Raid use rerun, others use town button)
+
+4. **Implement Logging System**
+   - Add comprehensive logging for better debugging
+   - Implement log levels (debug, info, warning, error)
+   - Add log rotation and archiving
 
 ## Technical Notes
 

@@ -518,8 +518,8 @@ The bot includes a pattern test mode that allows testing template matching witho
 
 ### Pending Implementation
 
-1. ❌ ActionRunning loop for continuous game state monitoring in real-time
-2. ❌ Rerun functionality for quests and raids without backing out to setup
+1. ✅ ActionRunning loop for continuous game state monitoring in real-time
+2. ✅ Rerun functionality for quests and raids without backing out to setup
 3. ❌ PvP action implementation
 4. ❌ GvG action implementation
 5. ❌ World Boss action implementation
@@ -667,18 +667,29 @@ The ActionConfig class is the base class for all action configurations:
 2. **Resource Management**: Extracted resource availability check to a dedicated `isOutOfResources` function with improved separation of concerns
 3. **Action Handler Refactoring**: Updated action handlers to use the new monitoring system for improved consistency and maintainability
 4. **Unit Testing**: Added comprehensive unit tests for the new monitoring and resource management functions
+5. **ActionRunning Loop**: Implemented a continuous monitoring system that checks the game state in real-time via the `monitorRunningAction` method, which:
+   - Performs a one-time autopilot check at the beginning of monitoring
+   - Detects player death and handles recovery
+   - Detects player disconnection and handles reconnection
+   - Detects and handles in-progress dialogues without interrupting the action
+   - Uses town.png as the primary indicator of action completion
+   - Handles template file availability checks for robustness
+   - Provides configurable monitoring intervals for performance tuning
+   - Includes heartbeat logging to confirm monitoring is active
+6. **Rerun Functionality**: Implemented the ability to rerun quests or raids without backing out to setup, with different handling for different action types:
+   - Quest and Raid actions with a single enabled target use the rerun button to start another run directly
+   - Quest and Raid actions with multiple enabled targets use the town button to change configs for the next run
+   - Other actions always use the town button to go back to setup for subsequent runs
 
 ### Current Focus
-1. **Implement ActionRunning Loop**: Create a continuous monitoring system that checks for various game states and responds to changes in the game UI in real-time
-2. **Implement Rerun Functionality**: Add the ability to rerun quests or raids without backing out to setup, improving efficiency by eliminating unnecessary navigation
-3. **Improve UI Responsiveness**: Add appropriate delays to ensure the bot doesn't process checks faster than the UI can update, particularly for resource checks
-4. **Fix OutOfResource Check**: Address the issue in QuestAction.kt where the bot processes the outofresource check too quickly for the UI to update
-5. **Improve Error Handling**: Enhance error detection and recovery mechanisms
-6. **Complete Action Implementations**: Implement the remaining game actions (PvP, GvG, etc.)
-7. **Improve Resource Detection**: Replace simulated resource checking with actual screen recognition
-8. **Testing Framework**: Develop a testing framework for actions
-9. **Configuration UI**: Create a user interface for configuration management
-10. **Multi-Account Automation**: Enhance account switching with automatic login
+1. **Improve UI Responsiveness**: Add appropriate delays to ensure the bot doesn't process checks faster than the UI can update, particularly for resource checks
+2. **Fix OutOfResource Check**: Address the issue in QuestAction.kt where the bot processes the outofresource check too quickly for the UI to update
+3. **Improve Error Handling**: Enhance error detection and recovery mechanisms
+4. **Complete Action Implementations**: Implement the remaining game actions (PvP, GvG, etc.)
+5. **Improve Resource Detection**: Replace simulated resource checking with actual screen recognition
+6. **Testing Framework**: Develop a testing framework for actions
+7. **Configuration UI**: Create a user interface for configuration management
+8. **Multi-Account Automation**: Enhance account switching with automatic login
 
 For more detailed information on the current state of the project and development priorities, see [devnotes.md](devnotes.md).
 

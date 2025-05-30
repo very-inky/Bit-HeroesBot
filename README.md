@@ -318,12 +318,48 @@ The following improvements have been implemented:
    - Improved consistency across different action types
    - Enhanced maintainability by centralizing monitoring logic
 
-### Ongoing Development
-The current development focus is on full quest action automation, specifically:
+4. **ActionRunning Loop**:
+   - Implemented a continuous monitoring system that checks the game state in real-time
+   - Added `monitorRunningAction` method in ActionManager that:
+     - Performs a one-time autopilot check at the beginning of monitoring
+     - Detects player death and handles recovery
+     - Detects player disconnection and handles reconnection
+     - Detects and handles in-progress dialogues without interrupting the action
+     - Uses town.png as the primary indicator of action completion
+     - Checks for template file availability for robustness
+     - Provides configurable monitoring intervals for performance tuning
+     - Includes heartbeat logging to confirm monitoring is active
+     - Returns detailed results about the action's status
+   - This allows the bot to respond to changes in the game UI in real-time
 
-1. **ActionRunning Loop**: Implementing a continuous monitoring system that checks the game state in real-time
-2. **Rerun Functionality**: Adding the ability to rerun quests or raids without backing out to setup
-3. **UI Responsiveness**: Ensuring the bot doesn't process checks faster than the UI can update
+5. **Rerun Functionality**:
+   - Implemented the ability to rerun quests or raids without backing out to setup
+   - Added detection for the "Rerun" button in the monitoring loop
+   - Added logic to use the rerun button when appropriate instead of backing out to setup
+   - Implemented proper handling of resource checks after clicking rerun
+   - Implemented smart config handling:
+     - Quest and Raid actions with a single enabled target use the rerun button
+     - Quest and Raid actions with multiple enabled targets use the town button to change configs
+     - Other actions always use the town button to go back to setup
+   - This improves efficiency by eliminating unnecessary navigation
+
+### Ongoing Development
+The current development focus is on improving the action system and UI responsiveness:
+
+1. **UI Responsiveness**:
+   - Ensuring the bot doesn't process checks faster than the UI can update
+   - Adding appropriate delays for resource checks and completion detection
+
+2. **Enhanced Monitoring System**:
+   - Adding more templates for detecting various game states
+   - Improving error handling and recovery mechanisms
+   - Adding more robust handling of unexpected game states
+   - Implementing configurable monitoring timeouts
+
+3. **Improved Rerun Functionality**:
+   - Adding support for more complex rerun scenarios
+   - Implementing better handling of rerun failures
+   - Adding configurable rerun limits
 
 For more detailed information on the current state of the project and development priorities, see [devnotes.md](devnotes.md).
 

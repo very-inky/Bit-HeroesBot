@@ -9,6 +9,7 @@ A Kotlin-based automation bot for games using OpenCV for image recognition. The 
 - **Template-based recognition**: Identify game elements using template images
 - **Resource management**: Automatically handle cooldowns and resource depletion
 - **Automatic dependency management**: OpenCV libraries are automatically downloaded and installed if needed
+- **Improved rerun and town button handling**: During rerun state, the bot now checks if actions have runs left and uses the rerun button if available, preventing premature exit to town and improving automation reliability
 
 ## Template System
 
@@ -58,10 +59,6 @@ OpenCV's Mat objects use native memory that must be explicitly released:
 - Always call `mat.release()` when you're done with a Mat object that was returned from a method
 - Failure to release Mat objects will result in memory leaks
 
-Key methods that return Mat objects and require caller to release:
-- `captureScreen()`
-- `captureRegion()`
-- `bufferedImageToMat()`
 
 ## Coroutines for Parallel Processing
 
@@ -301,11 +298,76 @@ See the [documentation](documentation.md) for detailed information on:
 
 ## Current Development Focus
 
-The current development focus is on full quest action automation, specifically:
+### Recent Improvements
+The following improvements have been implemented:
 
-1. **Monitor Function / ActionRunning Loop**: Implementing a monitoring system that continuously checks the game state
-2. **Rerun Functionality**: Adding the ability to rerun quests or raids without backing out to setup
-3. **UI Responsiveness**: Ensuring the bot doesn't process checks faster than the UI can update
+1. **Action Monitoring System**: 
+   - Added an `actionMonitor` function in ActionManager that centralizes monitoring logic
+   - Checks for cooldowns, run counts, and resource availability
+   - Provides a consistent interface for all actions
+   - Makes it easier to add more checks in the future
+
+2. **Resource Management**:
+   - Extracted resource availability check to a dedicated `isOutOfResources` function
+   - Improved separation of concerns with single-responsibility functions
+   - Enhanced testability with unit tests for resource logic
+   - Allows resource checks to be called from anywhere in the codebase
+
+3. **Action Handler Refactoring**:
+   - Updated action handlers to use the new monitoring system
+   - Removed duplicate code for checking if actions are enabled
+   - Improved consistency across different action types
+   - Enhanced maintainability by centralizing monitoring logic
+
+4. **ActionRunning Loop**:
+   - Implemented a continuous monitoring system that checks the game state in real-time
+   - Added `monitorRunningAction` method in ActionManager that:
+     - Performs a one-time autopilot check at the beginning of monitoring
+     - Detects player death and handles recovery
+     - Detects player disconnection and handles reconnection
+     - Detects and handles in-progress dialogues without interrupting the action
+     - Uses town.png as the primary indicator of action completion
+     - Checks for template file availability for robustness
+     - Provides configurable monitoring intervals for performance tuning
+     - Includes heartbeat logging to confirm monitoring is active
+     - Returns detailed results about the action's status
+   - This allows the bot to respond to changes in the game UI in real-time
+
+5. **Rerun Functionality**:
+   - Implemented the ability to rerun quests or raids without backing out to setup
+   - Added detection for the "Rerun" button in the monitoring loop
+   - Added logic to use the rerun button when appropriate instead of backing out to setup
+   - Implemented proper handling of resource checks after clicking rerun
+   - Implemented smart config handling:
+     - Quest and Raid actions with a single enabled target use the rerun button
+     - Quest and Raid actions with multiple enabled targets use the town button to change configs
+     - Other actions always use the town button to go back to setup
+   - This improves efficiency by eliminating unnecessary navigation
+
+### Ongoing Development
+The current development focus is on improving the action system and UI responsiveness:
+
+1. **UI Responsiveness**:
+   - Ensuring the bot doesn't process checks faster than the UI can update
+   - Adding appropriate delays for resource checks and completion detection
+
+2. **Resource Management**:
+   - Implementing game inputs for out-of-resource conditions
+   - Currently, the system detects out-of-resource conditions but doesn't perform any game inputs in response
+   - Adding templates for "close" or "ok" buttons on resource popups
+   - Implementing click actions when out-of-resource popups are detected
+   - Adding proper error handling and recovery for resource-related actions
+
+3. **Enhanced Monitoring System**:
+   - Adding more templates for detecting various game states
+   - Improving error handling and recovery mechanisms
+   - Adding more robust handling of unexpected game states
+   - Implementing configurable monitoring timeouts
+
+4. **Improved Rerun Functionality**:
+   - Adding support for more complex rerun scenarios
+   - Implementing better handling of rerun failures
+   - Adding configurable rerun limits
 
 For more detailed information on the current state of the project and development priorities, see [devnotes.md](devnotes.md).
 

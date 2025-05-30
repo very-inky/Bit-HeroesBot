@@ -33,11 +33,6 @@ class QuestAction : BaseGameAction() {
             return false
         }
 
-        if (!config.enabled) {
-            println("QuestAction is disabled in config.")
-            return false
-        }
-
         println("--- Executing Quest Action ---")
 
         // Load templates for navigation
@@ -57,10 +52,7 @@ class QuestAction : BaseGameAction() {
 
         // Step 1: Confirm quest availability and readiness
         println("Step 1: Confirming quest availability")
-        if (!hasResourcesAvailable(bot, config)) {
-            println("Quest resources not available or on cooldown. Aborting.")
-            return false
-        }
+        // Resource check is now handled by ActionManager.actionMonitor
         println("Quest resources available and ready")
 
         // Step 2: Find and click on quest icon
@@ -233,20 +225,34 @@ class QuestAction : BaseGameAction() {
 
                 // Step 8: Click accept
                 println("Step 8: Clicking accept button")
-                if (!findAndClickSpecificTemplate(bot, config, "accept.png", "accept button")) {
+                if (!findAndClickSpecificTemplate(bot, config, "accept.png", "accept button", delayAfterClick = 2000)) {
                     println("Failed to find and click accept button. Skipping this dungeon.")
                     continue
                 }
                 println("Successfully clicked accept button")
 
-                // Check for out of resources message
-                val outOfResourcesPath = "${config.commonTemplateDirectories.first()}/outofresourcepopup.png"
-                if (bot.findTemplate(outOfResourcesPath) != null) {
-                    println("Out of resources message detected, stopping quest action")
-                    return true
+                // Check for out of resources message after clicking accept button
+                if (checkForOutOfResources(bot, 2000, "Out of resources message detected, stopping quest action")) {
+                    return false // Return false to indicate failure due to resource depletion
                 }
 
                 println("Successfully processed dungeon ${target.dungeonNumber} in zone ${target.zoneNumber}")
+
+                // Check for rerun button and handle rerun functionality
+                println("Checking for rerun button...")
+                val rerunButtonPath = "${config.commonTemplateDirectories.first()}/rerun.png"
+                if (findAndClickSpecificTemplate(bot, config, "rerun.png", "rerun button", delayAfterClick = 2000)) {
+                    println("Found and clicked rerun button")
+
+                    // Check for out of resources message after clicking rerun button
+                    if (checkForOutOfResources(bot, 2000, "Out of resources message detected after clicking rerun, stopping quest action")) {
+                        return false // Return false to indicate failure due to resource depletion
+                    }
+
+                    println("Resources available for rerun, continuing...")
+                } else {
+                    println("No rerun button found or failed to click, continuing with next dungeon")
+                }
             }
         } else {
             println("No dungeon targets specified. Nothing to do.")
@@ -655,8 +661,8 @@ class QuestAction : BaseGameAction() {
 
         for (i in 1..maxClicks) {
             bot.click(arrowLocation.x.toInt(), arrowLocation.y.toInt())
-            // Short delay between clicks to ensure they register
-            Thread.sleep(300)
+            // Longer delay after each click to allow UI to update
+            Thread.sleep(1000)
         }
 
         // Wait a moment for the screen to fully update after all clicks
@@ -751,8 +757,8 @@ class QuestAction : BaseGameAction() {
             println("Found arrow. Clicking it $clickCount times...")
             for (i in 1..clickCount) {
                 bot.click(arrowLocation.x.toInt(), arrowLocation.y.toInt())
-                // Short delay between clicks to ensure they register
-                Thread.sleep(300)
+                // Longer delay after each click to allow UI to update
+                Thread.sleep(1000)
             }
 
             // Wait a moment for the screen to fully update after all clicks

@@ -26,6 +26,9 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
     // Flag for session-wide autopilot check
     private var autopilotEngagementAttemptedThisSession = false
 
+    // Verbosity level for template matching
+    var templateMatchingVerbosity: Boolean = false
+
     companion object {
         /**
          * Flag to determine whether to use coroutines for template matching with scale checking.
@@ -309,11 +312,12 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
         minScale: Double = 0.5,
         maxScale: Double = 3.5,
         scaleStep: Double = 0.1,
-        confidenceThreshold: Double = 0.74 // Adjusted default threshold, was 0.66
+        confidenceThreshold: Double = 0.81,
+        verbose: Boolean = false
     ): Pair<Point, Double>? {
         if (useCoroutinesForTemplateMatching) {
             // Use the coroutine-based detailed finder
-            val detailedResult = findTemplateDetailed(templatePath, minScale, maxScale, scaleStep, confidenceThreshold)
+            val detailedResult = findTemplateDetailed(templatePath, minScale, maxScale, scaleStep, confidenceThreshold, verbose)
             return if (detailedResult.location != null) {
                 Pair(detailedResult.location, detailedResult.scale)
             } else {
@@ -408,7 +412,14 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
                     return null
                 }
 
-                println("Found template at scale: $bestScale with confidence: $bestConfidence (Sequential)")
+                // Only log detailed info if verbose is true or class-level verbosity is enabled
+                if (verbose || templateMatchingVerbosity) {
+                    println("Found template at scale: $bestScale with confidence: $bestConfidence (Sequential)")
+                }
+
+                // Always log when a template is found, regardless of verbosity
+                println("Found template '${templatePath.substringAfterLast('\\')}' with confidence: $bestConfidence")
+
                 return Pair(bestMatch, bestScale)
             } catch (e: UnsatisfiedLinkError) {
                 println("Error: OpenCV functionality not fully available. Cannot find template: ${e.message}")
@@ -427,14 +438,15 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
     /**
      * Find a template image within the screen
      * @param templatePath The path to the template image
+     * @param verbose Whether to print verbose logging (default is false)
      * @return The location of the template image, or null if not found with sufficient confidence
      * @throws UnsatisfiedLinkError if OpenCV functionality is not available
      * @throws RuntimeException if there's an error during template matching
      */
-    fun findTemplate(templatePath: String): Point? {
+    fun findTemplate(templatePath: String, verbose: Boolean = false): Point? {
         // Use the multiscale version and return just the point
         // This will throw exceptions if OpenCV is not available
-        val result = findTemplateMultiScale(templatePath)
+        val result = findTemplateMultiScale(templatePath, verbose = verbose)
         return result?.first
     }
 
@@ -454,16 +466,17 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
         minScale: Double = 0.5,
         maxScale: Double = 3.5,
         scaleStep: Double = 0.1,
-        confidenceThreshold: Double = 0.73 // Adjusted from 0.66
+        confidenceThreshold: Double = 0.80, // Adjusted from 0.66
+        verbose: Boolean = false
     ): TemplateMatchResult {
         // Use coroutines if enabled
         return if (useCoroutinesForTemplateMatching) {
             // Use runBlocking to call the suspending function from a non-suspending context
             runBlocking {
-                findTemplateDetailedWithCoroutines(templatePath, minScale, maxScale, scaleStep, confidenceThreshold)
+                findTemplateDetailedWithCoroutines(templatePath, minScale, maxScale, scaleStep, confidenceThreshold, verbose)
             }
         } else {
-            findTemplateDetailedSequential(templatePath, minScale, maxScale, scaleStep, confidenceThreshold)
+            findTemplateDetailedSequential(templatePath, minScale, maxScale, scaleStep, confidenceThreshold, verbose)
         }
     }
 
@@ -476,7 +489,8 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
         minScale: Double = 0.5,
         maxScale: Double = 3.5,
         scaleStep: Double = 0.1,
-        confidenceThreshold: Double = 0.70
+        confidenceThreshold: Double = 0.80,
+        verbose: Boolean = false
     ): TemplateMatchResult {
         val dpi = getSystemDPIScaling()
         val screenRes = Pair(screenSize.width, screenSize.height)
@@ -568,6 +582,9 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
                 return TemplateMatchResult(null, bestScale, bestConfidence, screenRes, dpi)
             }
 
+            // Always log when a template is found, regardless of verbosity
+            println("Found template '${templatePath.substringAfterLast('\\')}' with confidence: $bestConfidence")
+
             return TemplateMatchResult(bestMatch, bestScale, bestConfidence, screenRes, dpi)
         } finally {
             // Release Mat objects to free native memory
@@ -585,7 +602,8 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
         minScale: Double = 0.5,
         maxScale: Double = 3.5,
         scaleStep: Double = 0.1,
-        confidenceThreshold: Double = 0.70
+        confidenceThreshold: Double = 0.80,
+        verbose: Boolean = false
     ): TemplateMatchResult {
         val dpi = getSystemDPIScaling()
         val screenRes = Pair(screenSize.width, screenSize.height)
@@ -625,7 +643,10 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
                 registerTemplate(templatePath)
             }
 
-            println("Starting parallel template matching with scale checking using coroutines...")
+            // Only log if verbose is true or class-level verbosity is enabled
+            if (verbose || templateMatchingVerbosity) {
+                println("Starting parallel template matching with scale checking using coroutines...")
+            }
             val startTime = System.currentTimeMillis()
 
             // Generate a list of scales to check
@@ -633,7 +654,10 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
                 .takeWhile { it <= maxScale }
                 .toList()
 
-            println("Checking ${scales.size} scales in parallel")
+            // Only log if verbose is true or class-level verbosity is enabled
+            if (verbose || templateMatchingVerbosity) {
+                println("Checking ${scales.size} scales in parallel")
+            }
 
             // Use withContext to run on the Default dispatcher (optimized for CPU-bound tasks)
             return withContext(Dispatchers.Default) {
@@ -680,12 +704,19 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
                 val (bestMatch, bestScale, bestConfidence) = bestResult
 
                 val totalTime = System.currentTimeMillis() - startTime
-                println("Parallel template matching completed in ${totalTime}ms")
+
+                // Only log if verbose is true or class-level verbosity is enabled
+                if (verbose || templateMatchingVerbosity) {
+                    println("Parallel template matching completed in ${totalTime}ms")
+                }
 
                 // If the best match confidence is too low, return null for the location
                 if (bestConfidence < confidenceThreshold) {
                     return@withContext TemplateMatchResult(null, bestScale, bestConfidence, screenRes, dpi)
                 }
+
+                // Always log when a template is found, regardless of verbosity
+                println("Found template '${templatePath.substringAfterLast('\\')}' with confidence: $bestConfidence")
 
                 return@withContext TemplateMatchResult(bestMatch, bestScale, bestConfidence, screenRes, dpi)
             }
@@ -749,18 +780,18 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
             // Decide if you want to proceed or handle this as an error
         }
 
-        if (findTemplate(autopilotOnTemplate) != null) {
+        if (findTemplate(autopilotOnTemplate, verbose = false) != null) {
             println("Autopilot is already ON.")
             return
         }
 
-        if (findTemplate(autopilotOffTemplate) != null) {
+        if (findTemplate(autopilotOffTemplate, verbose = false) != null) {
             println("Autopilot is OFF. Attempting to toggle it ON by pressing SPACE.")
             pressKey(KeyEvent.VK_SPACE)
             delay(1000) // Wait a second for the game to react
 
             // Verify if it turned on
-            if (findTemplate(autopilotOnTemplate) != null) {
+            if (findTemplate(autopilotOnTemplate, verbose = false) != null) {
                 println("Autopilot successfully toggled ON.")
             } else {
                 println("Failed to verify Autopilot turned ON after pressing SPACE. It might still be off or the template is not found.")
@@ -773,13 +804,14 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
     /**
      * Click on a template image if found
      * @param templatePath The path to the template image
+     * @param verbose Whether to print verbose logging (default is false)
      * @return True if the template was found and clicked, false if the template was not found with sufficient confidence
      * @throws UnsatisfiedLinkError if OpenCV functionality is not available
      * @throws RuntimeException if there's an error during template matching or clicking
      */
-    fun clickOnTemplate(templatePath: String): Boolean {
+    fun clickOnTemplate(templatePath: String, verbose: Boolean = false): Boolean {
         // This will throw if OpenCV is not available
-        val result = findTemplateMultiScale(templatePath)
+        val result = findTemplateMultiScale(templatePath, verbose = verbose)
         if (result != null) {
             val (location, scale) = result
 

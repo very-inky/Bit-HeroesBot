@@ -22,22 +22,45 @@
   - This causes the bot to potentially miss the out of resources popup
   - A delay needs to be added between clicking the accept button and checking for the out of resources message
 
-### Current Development Focus
-The main focus is on full quest action automation, specifically:
+### Recent Implementations
 
 1. **Monitor Function / ActionRunning Loop**
-   - Need to implement a monitoring system that continuously checks the game state
-   - This will allow the bot to respond to changes in the game UI in real-time
-   - Will help with detecting completion of actions and handling unexpected popups
+   - Implemented a continuous monitoring system that checks the game state in real-time
+   - Added `monitorRunningAction` method in ActionManager that:
+     - Performs a one-time autopilot check at the beginning of monitoring
+     - Detects player death and handles recovery
+     - Detects and handles in-progress dialogues without interrupting the action
+     - Detects when actions are completed
+     - Handles unexpected popups and errors
+     - Checks for template file availability for robustness
+     - Handles rerun functionality internally for appropriate actions
+     - Tracks rerun state and consecutive resource checks after rerun
+     - Only returns out-of-resources after 3 checks in rerun state
+     - Returns detailed results about the action's status including rerun information
+   - This allows the bot to respond to changes in the game UI in real-time
 
 2. **Rerun Functionality**
-   - Need to implement the ability to rerun quests or raids without backing out to setup
-   - For single dungeon or raid runs, the bot should hit the "Rerun" button
-   - This will improve efficiency by eliminating unnecessary navigation
+   - Implemented the ability to rerun quests or raids without backing out to setup
+   - Added detection for the "Rerun" button in the monitoring loop
+   - Added logic to use the rerun button when appropriate instead of backing out to setup
+   - Implemented proper handling of resource checks after clicking rerun
+   - This improves efficiency by eliminating unnecessary navigation
+   - Different action types handle completion differently:
+     - Quest and Raid actions with a single enabled target use the rerun button to start another run directly
+     - Quest and Raid actions with multiple enabled targets use the town button to change configs for the next run
+     - Other actions always use the town button to go back to setup for subsequent runs
 
-3. **UI Responsiveness**
+### Current Development Focus
+The main focus is on improving the action system and UI responsiveness:
+
+1. **UI Responsiveness**
    - Need to add appropriate delays to ensure the bot doesn't process checks faster than the UI can update
    - Particularly important for resource checks and completion detection
+
+2. **Template Management**
+   - Ensure all required templates are available and properly handled
+   - Implement fallback mechanisms for missing templates
+   - Add more templates for detecting various game states
 
 ## Implementation Priorities
 
@@ -45,20 +68,38 @@ The main focus is on full quest action automation, specifically:
    - Add a delay between clicking the accept button and checking for the out of resources message
    - This will give the UI time to update and display the popup if needed
 
-2. **Implement Monitor Function / ActionRunning Loop**
-   - Create a continuous monitoring system that checks for various game states
-   - Handle unexpected popups, errors, and completion states
-   - Implement proper state transitions based on detected UI elements
+2. **Implement Game Inputs for Out-of-Resource Conditions**
+   - Currently, the system detects out-of-resource conditions but doesn't perform any game inputs in response
+   - Need to implement logic to handle out-of-resource popups by clicking appropriate buttons
+   - Add template for "close" or "ok" button on resource popups
+   - Implement click action when out-of-resource popup is detected
+   - Consider adding option to auto-purchase resources if configured
+   - Add proper error handling and recovery if resource-related actions fail
 
-3. **Implement Rerun Functionality**
-   - Add detection for the "Rerun" button in quest and raid screens
-   - Implement logic to use the rerun button when appropriate instead of backing out to setup
-   - Handle cases where rerun is not available or not appropriate
-
-4. **Improve Error Handling and Recovery**
-   - Enhance error detection and recovery mechanisms
+3. **Enhance the ActionRunning Monitoring System**
+   - ✅ Added one-time autopilot check at the beginning of monitoring
+   - ✅ Added player death detection and recovery
+   - ✅ Added template file availability checks
+   - ✅ Added in-progress dialogue detection and handling
+   - ✅ Implemented configurable monitoring intervals with heartbeat logging
+   - Add more templates for detecting various game states
+   - Improve error handling and recovery mechanisms
    - Add more robust handling of unexpected game states
-   - Implement logging for better debugging
+   - Implement configurable monitoring timeouts
+
+3. **Improve Rerun Functionality**
+   - Add support for more complex rerun scenarios
+   - Implement better handling of rerun failures
+   - Add configurable rerun limits
+   - ✅ Differentiate between action types (Quest/Raid use rerun, others use town button)
+
+4. **Implement Logging System**
+   - Add comprehensive logging for better debugging
+   - Implement log levels (debug, info, warning, error)
+   - Add log rotation and archiving
+
+### Current Priorities
+- Implement game input actions for out-of-resource conditions (e.g., clicking 'close' or 'ok' on resource popups)
 
 ## Technical Notes
 
@@ -106,3 +147,19 @@ The main focus is on full quest action automation, specifically:
 - Each action has its own configuration and resource management
 - Actions are placed on cooldown when resources are depleted
 - The system tracks run counts and respects configured limits
+
+#### Recent Improvements to Action System
+- Extracted resource availability check to a dedicated function `isOutOfResources`
+  - Single responsibility: The function focuses solely on resource checks
+  - Reusability: Can be called from anywhere, including the action monitor or directly by actions
+  - Testability: Easier to write unit tests for resource logic
+- Added an `actionMonitor` function in ActionManager
+  - Centralizes monitoring logic (checking cooldowns, run counts, and resource availability)
+  - Extensibility: Easy to add more checks (e.g., error states, external conditions)
+  - Loose coupling: Actions can delegate monitoring to this function
+- Refactored action handlers to use the monitor function
+  - Consistency: All actions use the same monitoring logic
+  - Maintainability: Changes to monitoring only need to be made in one place
+- Added unit tests for the new functions
+  - Reliability: Ensures new logic works as intended
+  - Regression safety: Prevents future changes from breaking resource/monitoring logic

@@ -1,11 +1,15 @@
 package orion
 
 import orion.actions.*
+import orion.state.ActionData
+import orion.state.BotState
+import orion.state.StateMachine
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.delay
 import java.io.File
+import java.awt.event.KeyEvent
 
 // Imports for Bot, BotConfig, GameAction, ActionConfig from the 'orion' package are not needed
 // if ActionManager is correctly declared in 'package orion'.
@@ -18,6 +22,209 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
     // Flag to track if we're in a rerun state
     private var isRerunning = false
 
+    // State machine for managing bot states
+    private val stateMachine = StateMachine()
+
+    init {
+        // Set up the state machine with transitions and handlers
+        setupStateMachine()
+    }
+
+    /**
+     * Sets up the state machine with transitions and handlers.
+     * This defines all possible state transitions and what happens when entering each state.
+     */
+    private fun setupStateMachine() {
+        // Define state transitions
+        with(stateMachine) {
+            // From Idle state
+            addTransition(BotState.Idle, "start_action", BotState.Starting)
+
+            // From Starting state
+            addTransition(BotState.Starting, "action_started", BotState.Running)
+            addTransition(BotState.Starting, "start_failed", BotState.Failed)
+
+            // From Running state
+            addTransition(BotState.Running, "rerun_detected", BotState.Rerunning)
+            addTransition(BotState.Running, "out_of_resources", BotState.OutOfResources)
+            addTransition(BotState.Running, "player_dead", BotState.PlayerDead)
+            addTransition(BotState.Running, "disconnected", BotState.Disconnected)
+            addTransition(BotState.Running, "completed", BotState.Completed)
+
+            // From Rerunning state
+            addTransition(BotState.Rerunning, "out_of_resources", BotState.OutOfResources)
+            addTransition(BotState.Rerunning, "player_dead", BotState.PlayerDead)
+            addTransition(BotState.Rerunning, "disconnected", BotState.Disconnected)
+            addTransition(BotState.Rerunning, "completed", BotState.Completed)
+
+            // From Disconnected state
+            addTransition(BotState.Disconnected, "reconnect", BotState.Reconnecting)
+
+            // From Reconnecting state
+            addTransition(BotState.Reconnecting, "reconnected", BotState.Running)
+            addTransition(BotState.Reconnecting, "failed", BotState.Failed)
+
+            // From PlayerDead state
+            addTransition(BotState.PlayerDead, "return_to_town", BotState.Completed)
+
+            // From all terminal states back to Idle
+            addTransition(BotState.Completed, "next_action", BotState.Idle)
+            addTransition(BotState.Failed, "next_action", BotState.Idle)
+            addTransition(BotState.OutOfResources, "next_action", BotState.Idle)
+
+            // Define state handlers
+            addStateHandler(BotState.Idle) { data ->
+                println("Bot is idle, ready for next action")
+            }
+
+            addStateHandler(BotState.Starting) { data ->
+                val actionData = data as? ActionData
+                if (actionData != null) {
+                    println("Starting action: ${actionData.actionName}")
+
+                    // Verify that the game is properly loaded before proceeding
+                    val mainScreenAnchorPath = "templates/ui/mainscreenanchor.png"
+                    val popupPath = "templates/ui/popup.png"
+
+                    // Check if template files exist
+                    val mainScreenAnchorExists = File(mainScreenAnchorPath).exists()
+                    val popupExists = File(popupPath).exists()
+
+                    if (!mainScreenAnchorExists) {
+                        println("Warning: Main screen anchor template not found at $mainScreenAnchorPath. Game verification will be skipped.")
+                    }
+
+                    if (!popupExists) {
+                        println("Warning: Popup template not found at $popupPath. Popup detection will be skipped.")
+                    }
+
+                    // Only proceed with verification if templates exist
+                    if (mainScreenAnchorExists) {
+                        println("Verifying game is properly loaded...")
+
+                        // Maximum number of retries
+                        val maxRetries = 5
+                        var retryCount = 0
+                        var gameLoaded = false
+
+                        while (retryCount < maxRetries && !gameLoaded) {
+                            // Check for main screen anchor
+                            val mainScreenFound = actionData.bot.findTemplate(mainScreenAnchorPath, verbose = false) != null
+
+                            if (mainScreenFound) {
+                                println("Main screen anchor found. Game is properly loaded.")
+                                gameLoaded = true
+                            } else {
+                                // Check for popup if main screen anchor not found
+                                val popupFound = popupExists && actionData.bot.findTemplate(popupPath, verbose = false) != null
+
+                                if (popupFound) {
+                                    println("Popup detected. Attempting to close it...")
+                                    // Try to click on the popup to close it
+                                    if (actionData.bot.clickOnTemplate(popupPath)) {
+                                        println("Clicked on popup. Waiting for main screen...")
+                                    } else {
+                                        println("Failed to click on popup.")
+                                    }
+                                }
+
+                                // Increment retry count and wait before next attempt
+                                retryCount++
+                                if (retryCount < maxRetries) {
+                                    println("Game not properly loaded. Retrying ($retryCount/$maxRetries)...")
+                                    Thread.sleep(2000) // Wait 2 seconds before retrying
+                                }
+                            }
+                        }
+
+                        // If game is not loaded after all retries, transition to Failed state
+                        if (!gameLoaded) {
+                            println("Failed to verify game is properly loaded after $maxRetries attempts.")
+                            // Store failure reason in action data for the Failed state handler
+                            actionData.setData("failureReason", "Game not properly loaded")
+                            // Transition to Failed state
+                            stateMachine.processEvent("start_failed", actionData)
+                        }
+                    }
+                }
+            }
+
+            addStateHandler(BotState.Running) { data ->
+                val actionData = data as? ActionData
+                if (actionData != null) {
+                    println("Running action: ${actionData.actionName}")
+                    // Reset the rerun state when entering Running state
+                    isRerunning = false
+                }
+            }
+
+            addStateHandler(BotState.Rerunning) { data ->
+                val actionData = data as? ActionData
+                if (actionData != null) {
+                    println("Rerunning action: ${actionData.actionName}")
+                    // Set the rerun state when entering Rerunning state
+                    isRerunning = true
+                    // Increment run count
+                    actionData.incrementRunCount()
+                    actionRunCounts[actionData.actionName] = actionData.runCount
+                }
+            }
+
+            addStateHandler(BotState.OutOfResources) { data ->
+                val actionData = data as? ActionData
+                if (actionData != null) {
+                    println("Action '${actionData.actionName}' is out of resources. Setting on cooldown.")
+                    actionCooldowns[actionData.actionName] = Instant.now().plus(
+                        actionData.actionConfig.cooldownDuration.toLong(), ChronoUnit.MINUTES)
+                }
+            }
+
+            addStateHandler(BotState.PlayerDead) { data ->
+                val actionData = data as? ActionData
+                if (actionData != null) {
+                    println("Player died during action: ${actionData.actionName}")
+                }
+            }
+
+            addStateHandler(BotState.Disconnected) { data ->
+                println("Disconnected from game. Attempting to reconnect...")
+            }
+
+            addStateHandler(BotState.Reconnecting) { data ->
+                println("Attempting to reconnect to game...")
+            }
+
+            addStateHandler(BotState.Completed) { data ->
+                val actionData = data as? ActionData
+                if (actionData != null) {
+                    println("Action '${actionData.actionName}' completed successfully.")
+                    // Increment run count if not already incremented in Rerunning state
+                    if (!isRerunning) {
+                        actionData.incrementRunCount()
+                        actionRunCounts[actionData.actionName] = actionData.runCount
+                    }
+                }
+            }
+
+            addStateHandler(BotState.Failed) { data ->
+                val actionData = data as? ActionData
+                if (actionData != null) {
+                    // Check if there's a specific failure reason
+                    val failureReason = actionData.getData<String>("failureReason")
+                    if (failureReason != null) {
+                        println("Action '${actionData.actionName}' failed: $failureReason")
+                    } else {
+                        println("Action '${actionData.actionName}' failed.")
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Runs the sequence of actions defined in the configuration.
+     * Uses the state machine to manage the action sequence.
+     */
     fun runActionSequence() {
         // Get character name from ConfigManager if available, otherwise use config name
         val characterName = if (configManager != null) {
@@ -28,11 +235,15 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
 
         println("ActionManager: Starting action sequence for $characterName using config '${config.configName}' (ID: ${config.configId}).")
         println("Action sequence: ${config.actionSequence.joinToString(" -> ")}")
+        println("Using state machine for action management")
 
         // Initialize run counts for all actions
         for (actionName in config.actionSequence) {
             actionRunCounts[actionName] = 0
         }
+
+        // Reset the state machine to Idle state
+        stateMachine.reset(BotState.Idle)
 
         // Continue running actions until all are completed or on cooldown
         var allActionsCompleted = false
@@ -56,20 +267,7 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
                 val actionConfig = config.actionConfigs[actionName]!!
 
                 println("\nAttempting to execute action: $actionName")
-                val actionHandler: GameAction? = when (actionName) {
-                    "Quest" -> QuestAction()
-                    "Raid" -> RaidAction()
-                    // "PVP" -> PvpAction() // Placeholder for when PvpAction.kt is created
-                    // "GVG" -> GvgAction()
-                    // "WorldBoss" -> WorldBossAction()
-                    // "Trials" -> TrialsAction()
-                    // "Expedition" -> ExpeditionAction()
-                    // "Gauntlet" -> GauntletAction()
-                    else -> {
-                        println("Warning: Unknown action type '$actionName' in sequence. No handler defined. Skipping.")
-                        null
-                    }
-                }
+                val actionHandler: GameAction? = createActionHandler(actionName)
 
                 if (actionHandler != null) {
                     executeAction(actionName, actionHandler, actionConfig)
@@ -84,6 +282,29 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
         }
 
         println("\nActionManager: Finished processing action sequence for $characterName.")
+    }
+
+    /**
+     * Creates an action handler for the specified action name.
+     * 
+     * @param actionName The name of the action
+     * @return The action handler, or null if no handler is defined for the action
+     */
+    private fun createActionHandler(actionName: String): GameAction? {
+        return when (actionName) {
+            "Quest" -> QuestAction()
+            "Raid" -> RaidAction()
+            // "PVP" -> PvpAction() // Placeholder for when PvpAction.kt is created
+            // "GVG" -> GvgAction()
+            // "WorldBoss" -> WorldBossAction()
+            // "Trials" -> TrialsAction()
+            // "Expedition" -> ExpeditionAction()
+            // "Gauntlet" -> GauntletAction()
+            else -> {
+                println("Warning: Unknown action type '$actionName' in sequence. No handler defined. Skipping.")
+                null
+            }
+        }
     }
 
     /**
@@ -158,15 +379,16 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
     }
 
     /**
-     * Executes an action and handles the result.
+     * Executes an action and handles the result using the state machine.
      * @param actionName The name of the action.
      * @param actionHandler The action handler.
      * @param actionConfig The action configuration.
      */
-    private fun executeAction(actionName: String, actionHandler: GameAction, actionConfig: ActionConfig) {
+    internal fun executeAction(actionName: String, actionHandler: GameAction, actionConfig: ActionConfig) {
         try {
-            // Reset the rerun state when starting a new action
-            isRerunning = false
+            // Reset the state machine to Idle state
+            stateMachine.reset(BotState.Idle)
+
             // Check if action can be executed (including resource check)
             val canExecute = actionMonitor(actionName, actionHandler, actionConfig)
             if (!canExecute.first) {
@@ -174,99 +396,500 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
                 return
             }
 
-            // Start the action
-            val success = actionHandler.execute(bot, actionConfig)
-            if (success) {
-                println("Action '$actionName' started successfully.")
+            // Create ActionData object to pass to state handlers
+            val runCount = getRunCountLimit(actionConfig)
+            val currentRunCount = actionRunCounts[actionName] ?: 0
+            val actionData = ActionData(
+                actionName = actionName,
+                actionHandler = actionHandler,
+                actionConfig = actionConfig,
+                bot = bot,
+                runCount = currentRunCount,
+                maxRunCount = runCount
+            )
 
-                // Monitor the running action
-                val monitorResult = monitorRunningAction(actionName, actionHandler, actionConfig, true)
+            // Transition to Starting state
+            stateMachine.processEvent("start_action", actionData)
 
-                if (monitorResult.success) {
-                    println("Action '$actionName' completed successfully.")
+            // Check if we're still in Starting state (not Failed)
+            if (stateMachine.getCurrentState() == BotState.Starting) {
+                // Start the action
+                val success = actionHandler.execute(bot, actionConfig)
+                if (success) {
+                    // Transition to Running state
+                    stateMachine.processEvent("action_started", actionData)
 
-                    // Note: Run count is now incremented in the monitorRunningAction method when rerunning
-                    // We only need to increment it here for the initial completion
-                    if (!monitorResult.wasRerun) {
-                        actionRunCounts[actionName] = (actionRunCounts[actionName] ?: 0) + 1
-                    }
+                    // Monitor the action using the state machine
+                    monitorActionWithStateMachine(actionData)
 
-                    // Handle town button if available
-                    if (monitorResult.townButtonAvailable) {
-                        // Check if this is a Quest or Raid action that supports rerun
-                        val supportsRerun = actionConfig is QuestActionConfig || actionConfig is RaidActionConfig
-
-                        // Determine if we need to change configs for Quest/Raid actions
-                        val needToChangeConfigs = when (actionConfig) {
-                            is QuestActionConfig -> actionConfig.dungeonTargets.filter { it.enabled }.size > 1
-                            is RaidActionConfig -> actionConfig.raidTargets.filter { it.enabled }.size > 1
-                            else -> true // For other action types, always assume we need to change configs
-                        }
-
-                        // For Quest/Raid actions with single config, the monitor function handles rerun
-                        // For Quest/Raid actions with multiple configs or other actions, we need to click town button
-                        if (!supportsRerun || needToChangeConfigs) {
-                            if (supportsRerun && needToChangeConfigs && monitorResult.rerunAvailable) {
-                                println("Rerun button available for action '$actionName', but using town button instead because multiple targets are configured.")
-                                println("This action has multiple enabled targets and needs to change configs for the next run.")
-                            } else {
-                                println("Town button available for action '$actionName'. Clicking to return to town.")
-                            }
-
-                            // Wait 800ms to ensure town button is clickable
-                            println("Waiting 800ms to ensure town button is clickable...")
-                            Thread.sleep(800) // 800 milliseconds
-
-                            // Click the town button
-                            if (bot.clickOnTemplate("templates/ui/town.png")) {
-                                println("Clicked town button. Action will need to go through setup for next run.")
-                                // Reset the rerun state when clicking town button
-                                isRerunning = false
-
-                                val runCount = getRunCountLimit(actionConfig)
-                                val currentRunCount = actionRunCounts[actionName] ?: 0
-
-                                if (runCount > 0 && currentRunCount >= runCount) {
-                                    println("Action '$actionName' has reached its run count limit ($currentRunCount/$runCount).")
-                                }
-                            } else {
-                                println("Failed to click town button. Continuing with next action.")
-                            }
-                        }
+                    // After monitoring completes, handle town button if in Completed state
+                    if (stateMachine.getCurrentState() == BotState.Completed) {
+                        handleTownButton(actionData)
                     }
                 } else {
-                    println("Action '$actionName' ${monitorResult.message}")
-
-                    // If the action failed due to resource depletion, set cooldown
-                    if (monitorResult.outOfResources) {
-                        println("Action '$actionName' is out of resources. Setting on cooldown for ${actionConfig.cooldownDuration} minutes.")
-                        actionCooldowns[actionName] = Instant.now().plus(actionConfig.cooldownDuration.toLong(), ChronoUnit.MINUTES)
-                    }
-
-                    // Handle town button click if available (e.g., after player death)
-                    if (monitorResult.townButtonAvailable) {
-                        println("Town button available after action failure. Clicking to return to town.")
-                        println("Waiting 800ms to ensure town button is clickable...")
-                        Thread.sleep(800) // 800 milliseconds
-
-                        if (bot.clickOnTemplate("templates/ui/town.png")) {
-                            println("Clicked town button after action failure.")
-                            // Reset the rerun state when clicking town button
-                            isRerunning = false
-                        } else {
-                            println("Failed to click town button after action failure.")
-                        }
-                    }
+                    // Transition to Failed state
+                    stateMachine.processEvent("start_failed", actionData)
                 }
             } else {
-                println("Action '$actionName' failed to start or did not complete setup.")
-                // Decide if sequence should stop on failure, or continue
-                // For now, we'll continue
+                // We're no longer in Starting state, likely transitioned to Failed during game verification
+                println("Action '${actionData.actionName}' will not be executed because game verification failed.")
+            }
+
+            // Transition back to Idle state for the next action
+            if (stateMachine.getCurrentState() != BotState.Idle) {
+                stateMachine.processEvent("next_action", actionData)
             }
         } catch (e: Exception) {
             println("Error executing action '$actionName': ${e.message}")
             e.printStackTrace()
-            // Decide on error handling, e.g., stop sequence or log and continue
+            // Reset state machine to Idle for next action
+            stateMachine.reset(BotState.Idle)
+        }
+    }
+
+    /**
+     * Monitors an action using the state machine.
+     * This method continuously checks the game state and triggers appropriate state transitions.
+     * 
+     * @param actionData The action data
+     */
+    private fun monitorActionWithStateMachine(actionData: ActionData) {
+        val actionName = actionData.actionName
+        println("Starting continuous monitoring for action: $actionName using state machine")
+
+        // Define templates to check for various conditions
+        val playerDeadPath = "templates/ui/playerdead.png"
+        val townButtonPath = "templates/ui/town.png"
+        val rerunButtonPath = "templates/ui/rerun.png"
+        val inProgressDialoguePath = "templates/ui/handleinprogressdialogue.png"
+        val reconnectPath = "templates/ui/reconnect.png"
+        val mainScreenAnchorPath = "templates/ui/mainscreenanchor.png"
+        val outOfResourcesPath = "templates/ui/outofresourcepopup.png"
+
+        // Check if template files exist
+        val playerDeadExists = File(playerDeadPath).exists()
+        val townButtonExists = File(townButtonPath).exists()
+        val inProgressDialogueExists = File(inProgressDialoguePath).exists()
+        val reconnectExists = File(reconnectPath).exists()
+        val mainScreenAnchorExists = File(mainScreenAnchorPath).exists()
+        val outOfResourcesExists = File(outOfResourcesPath).exists()
+
+        // Log warnings for missing templates
+        if (!playerDeadExists) {
+            println("Warning: Player death template not found at $playerDeadPath. Player death detection will be skipped.")
+        }
+        if (!townButtonExists) {
+            println("Warning: Town button template not found at $townButtonPath. Town button detection will be skipped.")
+        }
+        if (!inProgressDialogueExists) {
+            println("Warning: In-progress dialogue template not found at $inProgressDialoguePath. In-progress dialogue detection will be skipped.")
+        }
+        if (!reconnectExists) {
+            println("Warning: Reconnect button template not found at $reconnectPath. Disconnect detection will be skipped.")
+        }
+        if (!mainScreenAnchorExists) {
+            println("Warning: Main screen anchor template not found at $mainScreenAnchorPath. Main screen detection will be skipped.")
+        }
+        if (!outOfResourcesExists) {
+            println("Warning: Out of resources template not found at $outOfResourcesPath. Out of resources detection will be skipped.")
+        }
+
+        // Maximum monitoring time (5 minutes) to prevent infinite loops
+        val maxMonitoringTimeMs = 5 * 60 * 1000L
+        val startTime = System.currentTimeMillis()
+
+        // One-time autopilot check at the beginning of monitoring
+        try {
+            runBlocking {
+                actionData.bot.ensureAutopilotEngagedOnce()
+            }
+        } catch (e: Exception) {
+            println("Error during autopilot check: ${e.message}")
+            // Continue monitoring even if autopilot check fails
+        }
+
+        // Counter for loop iterations (for heartbeat logging)
+        var iterations = 0
+
+        // Track the number of consecutive resource checks after rerun
+        var rerunResourceCheckCount = 0
+
+        // Monitoring loop
+        while (System.currentTimeMillis() - startTime < maxMonitoringTimeMs) {
+            // Increment iteration counter
+            iterations++
+
+            // Log heartbeat message every 3 iterations
+            if (iterations % 3 == 0) {
+                println("Monitor heartbeat: Still monitoring action '$actionName' (${System.currentTimeMillis() - startTime}ms elapsed)")
+                println("Current state: ${stateMachine.getCurrentState()}")
+            }
+
+            // Check for out of resources if template exists
+            if (outOfResourcesExists && actionData.bot.findTemplate(outOfResourcesPath, verbose = false) != null) {
+                println("Out of resources detected during monitoring")
+
+                // If we're in a rerun state, increment the resource check count
+                if (stateMachine.getCurrentState() == BotState.Rerunning) {
+                    rerunResourceCheckCount++
+                    println("Rerun resource check count: $rerunResourceCheckCount")
+
+                    // If we've reached 3 resource checks after rerun, handle out of resources
+                    if (rerunResourceCheckCount >= 3) {
+                        println("Reached 3 out-of-resource checks after rerun. Action is out of resources.")
+                        handleOutOfResources(actionData, mainScreenAnchorPath)
+                        return
+                    }
+                } else {
+                    // If not in rerun state, handle out of resources immediately
+                    handleOutOfResources(actionData, mainScreenAnchorPath)
+                    return
+                }
+            }
+
+            // Check for player disconnected using the reusable function
+            if (checkForDisconnect(actionData, reconnectPath, mainScreenAnchorPath)) {
+                // If disconnect was handled, return from monitoring
+                return
+            }
+
+            // Check for player death if template exists
+            if (playerDeadExists && actionData.bot.findTemplate(playerDeadPath, verbose = false) != null) {
+                println("Player death detected during monitoring")
+
+                // Transition to PlayerDead state
+                stateMachine.processEvent("player_dead", actionData)
+
+                // Check if town button is available
+                if (townButtonExists && actionData.bot.findTemplate(townButtonPath, verbose = false) != null) {
+                    println("Town button detected after player death")
+
+                    // Transition to Completed state via return_to_town event
+                    stateMachine.processEvent("return_to_town", actionData)
+                }
+
+                return
+            }
+
+            // Check for in-progress dialogue if template exists
+            if (inProgressDialogueExists && actionData.bot.findTemplate(inProgressDialoguePath, verbose = false) != null) {
+                println("In-progress dialogue detected during monitoring")
+
+                // Wait 800ms to ensure dialogue is clickable
+                println("Waiting 800ms to ensure in-progress dialogue is clickable...")
+                Thread.sleep(800) // 800 milliseconds
+
+                // Click on the dialogue to handle it
+                if (actionData.bot.clickOnTemplate(inProgressDialoguePath)) {
+                    println("Successfully clicked on in-progress dialogue")
+                } else {
+                    println("Failed to click on in-progress dialogue")
+                }
+
+                // Continue monitoring after handling the dialogue
+                // No need to change state, as this is a regular part of gameplay
+            }
+
+            // Check for rerun button if we're in Running state
+            if (stateMachine.getCurrentState() == BotState.Running && 
+                File(rerunButtonPath).exists() && 
+                actionData.bot.findTemplate(rerunButtonPath, verbose = false) != null) {
+
+                println("Rerun button detected during monitoring")
+
+                // Check if this is a Quest or Raid action that supports rerun
+                val supportsRerun = actionData.actionConfig is QuestActionConfig || actionData.actionConfig is RaidActionConfig
+
+                // Determine if we need to change configs for Quest/Raid actions
+                val needToChangeConfigs = when (actionData.actionConfig) {
+                    is QuestActionConfig -> actionData.actionConfig.dungeonTargets.filter { it.enabled }.size > 1
+                    is RaidActionConfig -> actionData.actionConfig.raidTargets.filter { it.enabled }.size > 1
+                    else -> true // For other action types, always assume we need to change configs
+                }
+
+                // For Quest/Raid actions with single config, use rerun if available
+                if (supportsRerun && !needToChangeConfigs && !actionData.hasReachedMaxRunCount()) {
+                    println("Rerun button available for action '${actionData.actionName}'. Attempting to rerun.")
+
+                    // Wait 800ms to ensure button is clickable
+                    println("Waiting 800ms to ensure rerun button is clickable...")
+                    Thread.sleep(800) // 800 milliseconds
+
+                    // Click the rerun button
+                    if (actionData.bot.clickOnTemplate(rerunButtonPath)) {
+                        println("Clicked rerun button. Continuing monitoring.")
+
+                        // Transition to Rerunning state
+                        stateMachine.processEvent("rerun_detected", actionData)
+
+                        // Reset the resource check count for this rerun
+                        rerunResourceCheckCount = 0
+
+                        // Continue monitoring after clicking rerun
+                        continue
+                    } else {
+                        println("Failed to click rerun button. Continuing monitoring.")
+                    }
+                } else if (actionData.hasReachedMaxRunCount()) {
+                    println("Action '${actionData.actionName}' has reached its run count limit (${actionData.runCount}/${actionData.maxRunCount}). Not rerunning.")
+                }
+            }
+
+            // Check for town button (primary indicator of action completion)
+            if (townButtonExists && actionData.bot.findTemplate(townButtonPath, verbose = false) != null) {
+                println("Town button detected - action is complete (win or lose)")
+
+                // If we're in Rerunning state and the action still has runs left, check for rerun button
+                if (stateMachine.getCurrentState() == BotState.Rerunning && !actionData.hasReachedMaxRunCount()) {
+                    // Check if this is a Quest or Raid action that supports rerun
+                    val supportsRerun = actionData.actionConfig is QuestActionConfig || actionData.actionConfig is RaidActionConfig
+
+                    // Determine if we need to change configs for Quest/Raid actions
+                    val needToChangeConfigs = when (actionData.actionConfig) {
+                        is QuestActionConfig -> actionData.actionConfig.dungeonTargets.filter { it.enabled }.size > 1
+                        is RaidActionConfig -> actionData.actionConfig.raidTargets.filter { it.enabled }.size > 1
+                        else -> true // For other action types, always assume we need to change configs
+                    }
+
+                    // For Quest/Raid actions with single config, check if we should continue rerunning
+                    if (supportsRerun && !needToChangeConfigs) {
+                        // Check if rerun button is available
+                        if (File(rerunButtonPath).exists() && actionData.bot.findTemplate(rerunButtonPath, verbose = false) != null) {
+                            println("Town button detected during rerun, but action '${actionData.actionName}' still has runs left. Checking for rerun button.")
+
+                            // Wait 800ms to ensure button is clickable
+                            println("Waiting 800ms to ensure rerun button is clickable...")
+                            Thread.sleep(800) // 800 milliseconds
+
+                            // Click the rerun button
+                            if (actionData.bot.clickOnTemplate(rerunButtonPath)) {
+                                println("Clicked rerun button after town button detection. Continuing monitoring.")
+
+                                // Reset the resource check count for this rerun
+                                rerunResourceCheckCount = 0
+
+                                // Continue monitoring after clicking rerun
+                                continue
+                            } else {
+                                println("Failed to click rerun button after town button detection. Returning to town.")
+                            }
+                        } else {
+                            println("Rerun button not found after town button detection. Returning to town.")
+                        }
+                    }
+                }
+
+                // Transition to Completed state
+                stateMachine.processEvent("completed", actionData)
+
+                // Store rerun button availability in action data for later use
+                val rerunAvailable = File(rerunButtonPath).exists() && 
+                                     actionData.bot.findTemplate(rerunButtonPath, verbose = false) != null
+                actionData.setData("rerunAvailable", rerunAvailable)
+
+                return
+            }
+
+            // Sleep to prevent CPU overuse
+            Thread.sleep(3000)
+        }
+
+        // If we reach here, monitoring timed out
+        println("Monitoring timed out for action: ${actionData.actionName}")
+
+        // Transition to Failed state
+        stateMachine.processEvent("failed", actionData)
+    }
+
+    /**
+     * Checks for player disconnect and handles reconnection if needed.
+     * 
+     * @param actionData The action data
+     * @param reconnectPath The path to the reconnect button template
+     * @param mainScreenAnchorPath The path to the main screen anchor template
+     * @return True if a disconnect was detected and handled, false otherwise
+     */
+    private fun checkForDisconnect(actionData: ActionData, reconnectPath: String, mainScreenAnchorPath: String): Boolean {
+        // Check if template files exist
+        val reconnectExists = File(reconnectPath).exists()
+        val mainScreenAnchorExists = File(mainScreenAnchorPath).exists()
+
+        if (!reconnectExists) {
+            return false
+        }
+
+        // First check for disconnect
+        if (actionData.bot.findTemplate(reconnectPath, verbose = false) == null) {
+            return false
+        }
+
+        println("Potential player disconnect detected - checking again to confirm...")
+
+        // Wait a moment before checking again
+        Thread.sleep(1000)
+
+        // Second check to confirm disconnect
+        if (actionData.bot.findTemplate(reconnectPath, verbose = false) == null) {
+            println("Disconnect not confirmed on second check")
+            return false
+        }
+
+        println("Player disconnect confirmed after second check")
+
+        // Transition to Disconnected state
+        stateMachine.processEvent("disconnected", actionData)
+
+        // Wait 800ms to ensure button is clickable
+        println("Waiting 800ms to ensure reconnect button is clickable...")
+        Thread.sleep(800) // 800 milliseconds
+
+        // Click the reconnect button
+        if (actionData.bot.clickOnTemplate(reconnectPath)) {
+            println("Clicked reconnect button after disconnect")
+
+            // Transition to Reconnecting state
+            stateMachine.processEvent("reconnect", actionData)
+
+            // Wait for reconnection (up to 30 seconds)
+            val reconnectStartTime = System.currentTimeMillis()
+            val maxReconnectTimeMs = 30 * 1000L
+            var reconnected = false
+
+            while (System.currentTimeMillis() - reconnectStartTime < maxReconnectTimeMs) {
+                // Check for main screen anchor to confirm reconnection
+                if (mainScreenAnchorExists && actionData.bot.findTemplate(mainScreenAnchorPath, verbose = false) != null) {
+                    println("Successfully reconnected to game")
+                    reconnected = true
+
+                    // Transition to Idle state to force game verification on next action
+                    stateMachine.processEvent("reconnected", actionData)
+                    stateMachine.processEvent("next_action", actionData)
+                    break
+                }
+                Thread.sleep(1000)
+            }
+
+            if (!reconnected) {
+                println("Failed to reconnect within timeout period")
+
+                // Transition to Failed state
+                stateMachine.processEvent("failed", actionData)
+            }
+
+            return true
+        } else {
+            println("Failed to click reconnect button")
+
+            // Transition to Failed state
+            stateMachine.processEvent("failed", actionData)
+            return true
+        }
+    }
+
+    /**
+     * Handles out-of-resource conditions by pressing Escape key multiple times,
+     * verifying the main screen anchor is visible, and then transitioning to OutOfResources state.
+     * 
+     * @param actionData The action data
+     * @param mainScreenAnchorPath The path to the main screen anchor template
+     */
+    private fun handleOutOfResources(actionData: ActionData, mainScreenAnchorPath: String) {
+        println("Handling out-of-resource condition for action: ${actionData.actionName}")
+
+        // Press Escape key multiple times to close any UI dialogs
+        val maxEscapePresses = 5
+        println("Pressing Escape key $maxEscapePresses times to close UI dialogs...")
+
+        for (i in 1..maxEscapePresses) {
+            println("Pressing Escape key (${i}/$maxEscapePresses)...")
+            actionData.bot.pressKey(KeyEvent.VK_ESCAPE)
+            Thread.sleep(500)
+        }
+
+
+        println("Verifying main screen anchor is visible after handling out-of-resource...")
+        var mainScreenVisible = false
+        val maxRetries = 2
+        var retryCount = 0
+
+        while (retryCount < maxRetries && !mainScreenVisible) {
+            // Check if main screen anchor template exists
+            if (File(mainScreenAnchorPath).exists()) {
+                // Check if main screen anchor is visible
+                if (actionData.bot.findTemplate(mainScreenAnchorPath, verbose = false) != null) {
+                    println("Main screen anchor is visible after handling out-of-resource.")
+                    mainScreenVisible = true
+                } else {
+                    println("Main screen anchor not visible. Retrying (${retryCount + 1}/$maxRetries)...")
+                    retryCount++
+                    Thread.sleep(1000) // Wait a bit before retrying
+                }
+            } else {
+                println("Warning: Main screen anchor template not found at $mainScreenAnchorPath. Skipping verification.")
+                break
+            }
+        }
+
+        if (!mainScreenVisible && File(mainScreenAnchorPath).exists()) {
+            println("Warning: Failed to verify main screen anchor is visible after handling out-of-resource.")
+        }
+
+        // Transition to OutOfResources state
+        println("Transitioning to OutOfResources state...")
+        stateMachine.processEvent("out_of_resources", actionData)
+    }
+
+    /**
+     * Handles the town button click based on action configuration.
+     * 
+     * @param actionData The action data
+     */
+    private fun handleTownButton(actionData: ActionData) {
+        val actionName = actionData.actionName
+        val actionConfig = actionData.actionConfig
+
+        // Check if town button is available
+        if (File("templates/ui/town.png").exists() && bot.findTemplate("templates/ui/town.png", verbose = false) != null) {
+            // Check if this is a Quest or Raid action that supports rerun
+            val supportsRerun = actionConfig is QuestActionConfig || actionConfig is RaidActionConfig
+
+            // Determine if we need to change configs for Quest/Raid actions
+            val needToChangeConfigs = when (actionConfig) {
+                is QuestActionConfig -> actionConfig.dungeonTargets.filter { it.enabled }.size > 1
+                is RaidActionConfig -> actionConfig.raidTargets.filter { it.enabled }.size > 1
+                else -> true // For other action types, always assume we need to change configs
+            }
+
+            // Check if rerun button is available
+            val rerunButtonPath = "templates/ui/rerun.png"
+            val rerunAvailable = File(rerunButtonPath).exists() && 
+                                 bot.findTemplate(rerunButtonPath, verbose = false) != null
+
+            // For Quest/Raid actions with single config, the monitor function handles rerun
+            // For Quest/Raid actions with multiple configs or other actions, we need to click town button
+            if (!supportsRerun || needToChangeConfigs) {
+                if (supportsRerun && needToChangeConfigs && rerunAvailable) {
+                    println("Rerun button available for action '$actionName', but using town button instead because multiple targets are configured.")
+                    println("This action has multiple enabled targets and needs to change configs for the next run.")
+                } else {
+                    println("Town button available for action '$actionName'. Clicking to return to town.")
+                }
+
+                // Wait 800ms to ensure town button is clickable
+                println("Waiting 800ms to ensure town button is clickable...")
+                Thread.sleep(800) // 800 milliseconds
+
+                // Click the town button
+                if (bot.clickOnTemplate("templates/ui/town.png")) {
+                    println("Clicked town button. Action will need to go through setup for next run.")
+
+                    if (actionData.hasReachedMaxRunCount()) {
+                        println("Action '$actionName' has reached its run count limit (${actionData.runCount}/${actionData.maxRunCount}).")
+                    }
+                } else {
+                    println("Failed to click town button. Continuing with next action.")
+                }
+            }
         }
     }
 

@@ -114,6 +114,21 @@ fun main(args: Array<String>) {
         println("Using color template matching (use --grayscale flag to enable grayscale matching)")
     }
 
+    // Check if we should enable verbose template matching output
+    val useVerbose = args.contains("--verbose")
+    if (useVerbose) {
+        println("╔════════════════════════════════════════════════════════════════╗")
+        println("║ VERBOSE: Enabling detailed template matching output            ║")
+        println("║ (--verbose flag detected)                                      ║")
+        println("║                                                                ║")
+        println("║ This provides detailed information about template matching     ║")
+        println("║ operations, including what is being searched for and the       ║")
+        println("║ details of matches found.                                      ║")
+        println("╚════════════════════════════════════════════════════════════════╝")
+    } else {
+        println("Using standard output (use --verbose flag to enable detailed template matching output)")
+    }
+
     // Test if coroutines are working properly
     if (isCoroutineTestMode) {
         println("╔════════════════════════════════════════════════════════════════╗")
@@ -164,6 +179,9 @@ fun main(args: Array<String>) {
             actionSequence = emptyList(),
             actionConfigs = emptyMap()
         ))
+
+        // Set template matching verbosity using helper function
+        applyVerboseFlag(bot, useVerbose)
 
         bot.initialize()
 
@@ -443,6 +461,12 @@ fun main(args: Array<String>) {
 
         // Create and initialize the bot with the active configuration and ConfigManager
         val bot = Bot(activeConfig, configManager)
+
+        // Set template matching verbosity if --verbose flag is detected
+        if (useVerbose) {
+            bot.templateMatchingVerbosity = true
+        }
+
         bot.initialize()
 
         // Check if templates directory exists and load templates

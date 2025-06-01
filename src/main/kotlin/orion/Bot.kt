@@ -315,6 +315,12 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
         confidenceThreshold: Double = 0.81,
         verbose: Boolean = false
     ): Pair<Point, Double>? {
+        // Log what template we're searching for if verbose is true or class-level verbosity is enabled
+        if (verbose || templateMatchingVerbosity) {
+            println("Searching for template: $templatePath")
+            println("Parameters: minScale=$minScale, maxScale=$maxScale, scaleStep=$scaleStep, confidenceThreshold=$confidenceThreshold")
+        }
+
         if (useCoroutinesForTemplateMatching) {
             // Use the coroutine-based detailed finder
             val detailedResult = findTemplateDetailed(templatePath, minScale, maxScale, scaleStep, confidenceThreshold, verbose)
@@ -335,6 +341,12 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
                     val errorMsg = "Could not load template image: $templatePath"
                     println(errorMsg)
                     throw RuntimeException(errorMsg)
+                }
+
+                // Log template dimensions if verbose is true or class-level verbosity is enabled
+                if (verbose || templateMatchingVerbosity) {
+                    println("Template dimensions: ${template.width()}x${template.height()}")
+                    println("Screen dimensions: ${screen.width()}x${screen.height()}")
                 }
 
                 // Convert to grayscale if enabled
@@ -366,7 +378,15 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
 
                 // Try different scales
                 var currentScale = minScale
+                var scalesChecked = 0
+
+                // Log the start of scale checking if verbose is true or class-level verbosity is enabled
+                if (verbose || templateMatchingVerbosity) {
+                    println("Starting scale search from $minScale to $maxScale with step $scaleStep")
+                }
+
                 while (currentScale <= maxScale) {
+                    scalesChecked++
                     val scaledTemplate = Mat()
                     val result = Mat()
                     try {
@@ -376,21 +396,40 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
 
                         // Skip if the scaled template is larger than the screen
                         if (scaledTemplate.width() > screen.width() || scaledTemplate.height() > screen.height()) {
+                            if (verbose || templateMatchingVerbosity) {
+                                println("Skipping scale $currentScale - scaled template (${scaledTemplate.width()}x${scaledTemplate.height()}) is larger than screen (${screen.width()}x${screen.height()})")
+                            }
                             currentScale += scaleStep
                             continue
                         }
 
                         // Use shape matching method if enabled, otherwise use standard method
                         val matchMethod = if (useShapeMatching) Imgproc.TM_CCORR_NORMED else Imgproc.TM_CCOEFF_NORMED
+
+                        // Log the current scale being checked if verbose is true or class-level verbosity is enabled
+                        if (verbose || templateMatchingVerbosity) {
+                            println("Checking scale $currentScale (${scaledTemplate.width()}x${scaledTemplate.height()}) using ${if (useShapeMatching) "shape matching" else "standard matching"}")
+                        }
+
                         Imgproc.matchTemplate(screen, scaledTemplate, result, matchMethod)
 
                         val mmr = Core.minMaxLoc(result)
+
+                        // Log the match result if verbose is true or class-level verbosity is enabled
+                        if (verbose || templateMatchingVerbosity) {
+                            println("  Scale $currentScale - confidence: ${mmr.maxVal}")
+                        }
 
                         // If this match is better than our previous best, update it
                         if (mmr.maxVal > bestConfidence) {
                             bestConfidence = mmr.maxVal
                             bestMatch = mmr.maxLoc
                             bestScale = currentScale
+
+                            // Log the new best match if verbose is true or class-level verbosity is enabled
+                            if (verbose || templateMatchingVerbosity) {
+                                println("  New best match at scale $currentScale with confidence $bestConfidence at location (${bestMatch?.x}, ${bestMatch?.y})")
+                            }
                         }
                     } catch (e: UnsatisfiedLinkError) {
                         println("Error: OpenCV functionality not fully available during template matching: ${e.message}")
@@ -407,14 +446,26 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
                     currentScale += scaleStep
                 }
 
+                // Log a summary of the search results if verbose is true or class-level verbosity is enabled
+                if (verbose || templateMatchingVerbosity) {
+                    println("Scale search complete. Checked $scalesChecked scales.")
+                    println("Best match: scale=$bestScale, confidence=$bestConfidence, location=${bestMatch?.x},${bestMatch?.y}")
+                }
+
                 // If the best match confidence is too low, return null
                 if (bestConfidence < confidenceThreshold || bestMatch == null) {
+                    if (verbose || templateMatchingVerbosity) {
+                        println("Match rejected: confidence $bestConfidence is below threshold $confidenceThreshold")
+                    }
                     return null
                 }
 
                 // Only log detailed info if verbose is true or class-level verbosity is enabled
                 if (verbose || templateMatchingVerbosity) {
                     println("Found template at scale: $bestScale with confidence: $bestConfidence (Sequential)")
+                    println("Template file: $templatePath")
+                    println("Match location: (${bestMatch?.x}, ${bestMatch?.y})")
+                    println("Match confidence: $bestConfidence (threshold: $confidenceThreshold)")
                 }
 
                 // Always log when a template is found, regardless of verbosity
@@ -492,6 +543,12 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
         confidenceThreshold: Double = 0.80,
         verbose: Boolean = false
     ): TemplateMatchResult {
+        // Log what template we're searching for if verbose is true or class-level verbosity is enabled
+        if (verbose || templateMatchingVerbosity) {
+            println("Searching for template sequentially: $templatePath")
+            println("Parameters: minScale=$minScale, maxScale=$maxScale, scaleStep=$scaleStep, confidenceThreshold=$confidenceThreshold")
+        }
+
         val dpi = getSystemDPIScaling()
         val screenRes = Pair(screenSize.width, screenSize.height)
 
@@ -505,6 +562,12 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
                 val errorMsg = "Could not load template image: $templatePath"
                 println(errorMsg)
                 throw RuntimeException(errorMsg)
+            }
+
+            // Log template dimensions if verbose is true or class-level verbosity is enabled
+            if (verbose || templateMatchingVerbosity) {
+                println("Template dimensions: ${template.width()}x${template.height()}")
+                println("Screen dimensions: ${screen.width()}x${screen.height()}")
             }
 
             // Convert to grayscale if enabled
@@ -536,7 +599,15 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
 
             // Try different scales
             var currentScale = minScale
+            var scalesChecked = 0
+
+            // Log the start of scale checking if verbose is true or class-level verbosity is enabled
+            if (verbose || templateMatchingVerbosity) {
+                println("Starting sequential scale search from $minScale to $maxScale with step $scaleStep")
+            }
+
             while (currentScale <= maxScale) {
+                scalesChecked++
                 val scaledTemplate = Mat()
                 val result = Mat()
                 try {
@@ -546,21 +617,40 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
 
                     // Skip if the scaled template is larger than the screen
                     if (scaledTemplate.width() > screen.width() || scaledTemplate.height() > screen.height()) {
+                        if (verbose || templateMatchingVerbosity) {
+                            println("Skipping scale $currentScale - scaled template (${scaledTemplate.width()}x${scaledTemplate.height()}) is larger than screen (${screen.width()}x${screen.height()})")
+                        }
                         currentScale += scaleStep
                         continue
                     }
 
                     // Use shape matching method if enabled, otherwise use standard method
                     val matchMethod = if (useShapeMatching) Imgproc.TM_CCORR_NORMED else Imgproc.TM_CCOEFF_NORMED
+
+                    // Log the current scale being checked if verbose is true or class-level verbosity is enabled
+                    if (verbose || templateMatchingVerbosity) {
+                        println("Checking scale $currentScale (${scaledTemplate.width()}x${scaledTemplate.height()}) using ${if (useShapeMatching) "shape matching" else "standard matching"}")
+                    }
+
                     Imgproc.matchTemplate(screen, scaledTemplate, result, matchMethod)
 
                     val mmr = Core.minMaxLoc(result)
+
+                    // Log the match result if verbose is true or class-level verbosity is enabled
+                    if (verbose || templateMatchingVerbosity) {
+                        println("  Scale $currentScale - confidence: ${mmr.maxVal}")
+                    }
 
                     // If this match is better than our previous best, update it
                     if (mmr.maxVal > bestConfidence) {
                         bestConfidence = mmr.maxVal
                         bestMatch = mmr.maxLoc
                         bestScale = currentScale
+
+                        // Log the new best match if verbose is true or class-level verbosity is enabled
+                        if (verbose || templateMatchingVerbosity) {
+                            println("  New best match at scale $currentScale with confidence $bestConfidence at location (${bestMatch?.x}, ${bestMatch?.y})")
+                        }
                     }
                 } catch (e: UnsatisfiedLinkError) {
                     println("Error: OpenCV functionality not fully available during template matching: ${e.message}")
@@ -577,9 +667,26 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
                 currentScale += scaleStep
             }
 
+            // Log a summary of the search results if verbose is true or class-level verbosity is enabled
+            if (verbose || templateMatchingVerbosity) {
+                println("Sequential scale search complete. Checked $scalesChecked scales.")
+                println("Best match: scale=$bestScale, confidence=$bestConfidence, location=${bestMatch?.x},${bestMatch?.y}")
+            }
+
             // If the best match confidence is too low, return null for the location
             if (bestConfidence < confidenceThreshold) {
+                if (verbose || templateMatchingVerbosity) {
+                    println("Match rejected: confidence $bestConfidence is below threshold $confidenceThreshold")
+                }
                 return TemplateMatchResult(null, bestScale, bestConfidence, screenRes, dpi)
+            }
+
+            // Only log detailed info if verbose is true or class-level verbosity is enabled
+            if (verbose || templateMatchingVerbosity) {
+                println("Found template at scale: $bestScale with confidence: $bestConfidence (Sequential Detailed)")
+                println("Template file: $templatePath")
+                println("Match location: (${bestMatch?.x}, ${bestMatch?.y})")
+                println("Match confidence: $bestConfidence (threshold: $confidenceThreshold)")
             }
 
             // Always log when a template is found, regardless of verbosity
@@ -605,6 +712,12 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
         confidenceThreshold: Double = 0.80,
         verbose: Boolean = false
     ): TemplateMatchResult {
+        // Log what template we're searching for if verbose is true or class-level verbosity is enabled
+        if (verbose || templateMatchingVerbosity) {
+            println("Searching for template with coroutines: $templatePath")
+            println("Parameters: minScale=$minScale, maxScale=$maxScale, scaleStep=$scaleStep, confidenceThreshold=$confidenceThreshold")
+        }
+
         val dpi = getSystemDPIScaling()
         val screenRes = Pair(screenSize.width, screenSize.height)
 
@@ -618,6 +731,12 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
                 val errorMsg = "Could not load template image: $templatePath"
                 println(errorMsg)
                 throw RuntimeException(errorMsg)
+            }
+
+            // Log template dimensions if verbose is true or class-level verbosity is enabled
+            if (verbose || templateMatchingVerbosity) {
+                println("Template dimensions: ${template.width()}x${template.height()}")
+                println("Screen dimensions: ${screen.width()}x${screen.height()}")
             }
 
             // Convert to grayscale if enabled
@@ -699,6 +818,29 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
                 // Wait for all results
                 val results = deferredResults.awaitAll()
 
+                // Log detailed results if verbose is true or class-level verbosity is enabled
+                if (verbose || templateMatchingVerbosity) {
+                    println("All coroutine tasks completed. Processing results...")
+
+                    // Count valid results (non-null matches)
+                    val validResults = results.count { it.first != null }
+                    println("Found $validResults valid matches out of ${results.size} scales checked")
+
+                    // Log top 5 matches by confidence
+                    val topMatches = results.filter { it.first != null }
+                                          .sortedByDescending { it.third }
+                                          .take(5)
+
+                    if (topMatches.isNotEmpty()) {
+                        println("Top ${topMatches.size} matches by confidence:")
+                        topMatches.forEachIndexed { index, (location, scale, confidence) ->
+                            println("  ${index + 1}. Scale: $scale, Confidence: $confidence, Location: (${location?.x}, ${location?.y})")
+                        }
+                    } else {
+                        println("No valid matches found")
+                    }
+                }
+
                 // Find the best match
                 val bestResult = results.maxByOrNull { it.third } ?: Triple(null, 1.0, 0.0)
                 val (bestMatch, bestScale, bestConfidence) = bestResult
@@ -708,11 +850,24 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
                 // Only log if verbose is true or class-level verbosity is enabled
                 if (verbose || templateMatchingVerbosity) {
                     println("Parallel template matching completed in ${totalTime}ms")
+                    println("Best match: scale=$bestScale, confidence=$bestConfidence, location=${bestMatch?.x},${bestMatch?.y}")
                 }
 
                 // If the best match confidence is too low, return null for the location
                 if (bestConfidence < confidenceThreshold) {
+                    if (verbose || templateMatchingVerbosity) {
+                        println("Match rejected: confidence $bestConfidence is below threshold $confidenceThreshold")
+                    }
                     return@withContext TemplateMatchResult(null, bestScale, bestConfidence, screenRes, dpi)
+                }
+
+                // Only log detailed info if verbose is true or class-level verbosity is enabled
+                if (verbose || templateMatchingVerbosity) {
+                    println("Found template at scale: $bestScale with confidence: $bestConfidence (Parallel)")
+                    println("Template file: $templatePath")
+                    println("Match location: (${bestMatch?.x}, ${bestMatch?.y})")
+                    println("Match confidence: $bestConfidence (threshold: $confidenceThreshold)")
+                    println("Total processing time: ${totalTime}ms")
                 }
 
                 // Always log when a template is found, regardless of verbosity

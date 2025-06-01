@@ -710,7 +710,7 @@ fun loadOpenCVNativeLibrary() {
 
         try {
             // Download the JAR file
-            val connection = java.net.URL(mavenUrl).openConnection()
+            val connection = java.net.URI(mavenUrl).toURL().openConnection()
             connection.connect()
             val inputStream = connection.getInputStream()
             val outputStream = jarFile.outputStream()

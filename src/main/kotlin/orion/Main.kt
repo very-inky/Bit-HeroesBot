@@ -180,10 +180,8 @@ fun main(args: Array<String>) {
             actionConfigs = emptyMap()
         ))
 
-        // Set template matching verbosity if --verbose flag is detected
-        if (useVerbose) {
-            bot.templateMatchingVerbosity = true
-        }
+        // Set template matching verbosity using helper function
+        applyVerboseFlag(bot, useVerbose)
 
         bot.initialize()
 

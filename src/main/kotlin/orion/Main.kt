@@ -180,8 +180,10 @@ fun main(args: Array<String>) {
             actionConfigs = emptyMap()
         ))
 
-        // Set template matching verbosity using helper function
-        applyVerboseFlag(bot, useVerbose)
+        // Set template matching verbosity if --verbose flag is detected
+        if (useVerbose) {
+            bot.templateMatchingVerbosity = true
+        }
 
         bot.initialize()
 
@@ -710,7 +712,7 @@ fun loadOpenCVNativeLibrary() {
 
         try {
             // Download the JAR file
-            val connection = java.net.URL(mavenUrl).openConnection()
+            val connection = java.net.URI(mavenUrl).toURL().openConnection()
             connection.connect()
             val inputStream = connection.getInputStream()
             val outputStream = jarFile.outputStream()

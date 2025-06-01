@@ -9,6 +9,9 @@ A Kotlin-based automation bot for games using OpenCV for image recognition. The 
 - **Template-based recognition**: Identify game elements using template images
 - **Resource management**: Automatically handle cooldowns and resource depletion
 - **Automatic dependency management**: OpenCV libraries are automatically downloaded and installed if needed
+- **State machine system**: Manage bot states and transitions in a structured way, making the code more maintainable and easier to extend
+- **Game verification**: Verify that the game is properly loaded before executing actions
+- **Disconnect detection and handling**: Detect disconnections and automatically attempt to reconnect
 - **Improved rerun and town button handling**: During rerun state, the bot now checks if actions have runs left and uses the rerun button if available, preventing premature exit to town and improving automation reliability
 
 ## Template System
@@ -301,39 +304,48 @@ See the [documentation](documentation.md) for detailed information on:
 ### Recent Improvements
 The following improvements have been implemented:
 
-1. **Action Monitoring System**: 
+1. **State Machine System**:
+   - Implemented a state machine to manage bot states and transitions
+   - Created a `StateMachine` class that handles state transitions and executes state handlers
+   - Defined a `BotState` sealed class hierarchy with all possible bot states
+   - Created an `ActionData` class to encapsulate action information and pass data between state handlers
+   - Added state handlers for each state that perform actions specific to that state
+   - This makes the code more maintainable, extensible, and easier to reason about
+
+2. **Game Verification**:
+   - Added game verification in the Starting state handler
+   - Verifies that the game is properly loaded before executing actions
+   - Checks for the main screen anchor template to confirm the game is loaded
+   - Detects and handles popups that might be blocking the main screen
+   - Retries verification multiple times before failing
+   - This ensures that actions are only executed when the game is in a proper state
+
+3. **Disconnect Detection and Handling**:
+   - Added disconnect detection in the monitoring loop
+   - Detects disconnections by looking for the reconnect button
+   - Automatically attempts to reconnect when a disconnection is detected
+   - Verifies successful reconnection by checking for the main screen anchor
+   - This improves reliability by automatically recovering from disconnections
+
+4. **Action Monitoring System**: 
    - Added an `actionMonitor` function in ActionManager that centralizes monitoring logic
    - Checks for cooldowns, run counts, and resource availability
    - Provides a consistent interface for all actions
    - Makes it easier to add more checks in the future
 
-2. **Resource Management**:
+5. **Resource Management**:
    - Extracted resource availability check to a dedicated `isOutOfResources` function
    - Improved separation of concerns with single-responsibility functions
    - Enhanced testability with unit tests for resource logic
    - Allows resource checks to be called from anywhere in the codebase
 
-3. **Action Handler Refactoring**:
+6. **Action Handler Refactoring**:
    - Updated action handlers to use the new monitoring system
    - Removed duplicate code for checking if actions are enabled
    - Improved consistency across different action types
    - Enhanced maintainability by centralizing monitoring logic
 
-4. **ActionRunning Loop**:
-   - Implemented a continuous monitoring system that checks the game state in real-time
-   - Added `monitorRunningAction` method in ActionManager that:
-     - Performs a one-time autopilot check at the beginning of monitoring
-     - Detects player death and handles recovery
-     - Detects player disconnection and handles reconnection
-     - Detects and handles in-progress dialogues without interrupting the action
-     - Uses town.png as the primary indicator of action completion
-     - Checks for template file availability for robustness
-     - Provides configurable monitoring intervals for performance tuning
-     - Includes heartbeat logging to confirm monitoring is active
-     - Returns detailed results about the action's status
-   - This allows the bot to respond to changes in the game UI in real-time
-
-5. **Rerun Functionality**:
+7. **Rerun Functionality**:
    - Implemented the ability to rerun quests or raids without backing out to setup
    - Added detection for the "Rerun" button in the monitoring loop
    - Added logic to use the rerun button when appropriate instead of backing out to setup

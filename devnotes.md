@@ -24,9 +24,65 @@
 
 ### Recent Implementations
 
-1. **Monitor Function / ActionRunning Loop**
+1. **State Machine System**
+   - Implemented a state machine to manage bot states and transitions
+   - Created a `StateMachine` class that handles state transitions and executes state handlers
+   - Defined a `BotState` sealed class hierarchy with all possible bot states:
+     - `Idle`: Bot is waiting for an action to be started
+     - `Starting`: Bot is in the process of starting an action
+     - `Running`: Bot is actively running an action
+     - `Rerunning`: Bot is rerunning the current action
+     - `OutOfResources`: Bot has detected that it's out of resources
+     - `PlayerDead`: Bot has detected that the player character has died
+     - `Disconnected`: Bot has detected a disconnection from the game
+     - `Reconnecting`: Bot is attempting to reconnect to the game
+     - `Completed`: Action has been completed successfully
+     - `Failed`: Action has failed
+   - Created an `ActionData` class to encapsulate action information and pass data between state handlers
+   - Added state handlers for each state that perform actions specific to that state
+   - Implemented game verification in the Starting state handler
+   - Implemented disconnect detection and handling in the monitoring loop
+   - Refactored the ActionManager to use the state machine for action execution
+   - This makes the code more maintainable, extensible, and easier to reason about
+   - Expected behavior:
+     - Bot verifies that the game is properly loaded before executing actions
+     - Bot transitions between states based on game conditions
+     - Bot handles disconnections and attempts to reconnect automatically
+     - Bot properly tracks action run counts and resource availability
+     - Bot provides detailed logging of state transitions and actions
+
+2. **Game Verification**
+   - Added game verification in the Starting state handler
+   - Verifies that the game is properly loaded before executing actions
+   - Checks for the main screen anchor template to confirm the game is loaded
+   - Detects and handles popups that might be blocking the main screen
+   - Retries verification multiple times before failing
+   - Transitions to Failed state if game verification fails
+   - Expected behavior:
+     - Bot checks for main screen anchor before executing actions
+     - Bot attempts to close popups if main screen anchor is not found
+     - Bot retries verification up to 5 times before failing
+     - Bot does not execute actions if game verification fails
+     - Bot logs detailed information about the verification process
+
+3. **Disconnect Detection and Handling**
+   - Added disconnect detection in the monitoring loop
+   - Detects disconnections by looking for the reconnect button
+   - Performs a second check to confirm disconnection
+   - Automatically attempts to reconnect when a disconnection is detected
+   - Verifies successful reconnection by checking for the main screen anchor
+   - Transitions to Idle state after reconnection to force game verification on next action
+   - Expected behavior:
+     - Bot detects disconnections during action execution
+     - Bot confirms disconnection with a second check to avoid false positives
+     - Bot attempts to reconnect by clicking the reconnect button
+     - Bot verifies successful reconnection by checking for the main screen anchor
+     - Bot transitions to Idle state after reconnection to ensure proper game state
+     - Bot logs detailed information about the disconnection and reconnection process
+
+4. **Monitor Function / ActionRunning Loop**
    - Implemented a continuous monitoring system that checks the game state in real-time
-   - Added `monitorRunningAction` method in ActionManager that:
+   - Added `monitorActionWithStateMachine` method in ActionManager that:
      - Performs a one-time autopilot check at the beginning of monitoring
      - Detects player death and handles recovery
      - Detects and handles in-progress dialogues without interrupting the action
@@ -35,11 +91,11 @@
      - Checks for template file availability for robustness
      - Handles rerun functionality internally for appropriate actions
      - Tracks rerun state and consecutive resource checks after rerun
-     - Only returns out-of-resources after 3 checks in rerun state
-     - Returns detailed results about the action's status including rerun information
+     - Only transitions to OutOfResources after 3 checks in rerun state
+     - Uses the state machine to manage state transitions
    - This allows the bot to respond to changes in the game UI in real-time
 
-2. **Rerun Functionality**
+5. **Rerun Functionality**
    - Implemented the ability to rerun quests or raids without backing out to setup
    - Added detection for the "Rerun" button in the monitoring loop
    - Added logic to use the rerun button when appropriate instead of backing out to setup
@@ -69,12 +125,12 @@ The main focus is on improving the action system and UI responsiveness:
    - This will give the UI time to update and display the popup if needed
 
 2. **Implement Game Inputs for Out-of-Resource Conditions**
-   - Currently, the system detects out-of-resource conditions but doesn't perform any game inputs in response
-   - Need to implement logic to handle out-of-resource popups by clicking appropriate buttons
-   - Add template for "close" or "ok" button on resource popups
-   - Implement click action when out-of-resource popup is detected
+   - ✅ Added `handleOutOfResources` method to handle out-of-resource conditions
+   - ✅ Implemented logic to press Escape key multiple times to close UI dialogs
+   - ✅ Added verification of main screen anchor after handling out-of-resource
+   - ✅ Ensured proper state transitions after handling out-of-resource
    - Consider adding option to auto-purchase resources if configured
-   - Add proper error handling and recovery if resource-related actions fail
+   - Add support for clicking specific "close" or "ok" buttons on resource popups
 
 3. **Enhance the ActionRunning Monitoring System**
    - ✅ Added one-time autopilot check at the beginning of monitoring
@@ -99,7 +155,9 @@ The main focus is on improving the action system and UI responsiveness:
    - Add log rotation and archiving
 
 ### Current Priorities
-- Implement game input actions for out-of-resource conditions (e.g., clicking 'close' or 'ok' on resource popups)
+- ✅ Implement game input actions for out-of-resource conditions (pressing Escape key to close UI dialogs)
+- Add support for clicking specific "close" or "ok" buttons on resource popups
+- Add more templates for detecting various game states
 
 ## Technical Notes
 
@@ -142,13 +200,44 @@ The main focus is on improving the action system and UI responsiveness:
   - The multi-resolution approach was causing compatibility issues on some systems
   - Standard screen capture provides more consistent results across different environments
 
+### State Machine System
+- The bot uses a state machine to manage the execution of actions
+- The `StateMachine` class handles state transitions and executes state handlers
+- The `BotState` sealed class defines all possible states the bot can be in
+- The `ActionData` class encapsulates information about an action being executed
+- State transitions are defined in the `setupStateMachine` method of the `ActionManager` class
+- Each state has a handler function that is executed when the bot enters that state
+- The state machine provides a structured way to handle different game states and transitions between them
+- Benefits of the state machine approach:
+  - Clearer code structure: States and transitions are explicitly defined
+  - Easier debugging: State transitions are logged, making it easier to track what's happening
+  - More extensible: Adding new states or transitions is straightforward
+  - Better separation of concerns: State logic is separated from action execution logic
+  - Easier testing: State transitions can be tested independently of the actual game actions
+
 ### Action System
 - Actions are defined in the BotConfig and executed in sequence by the ActionManager
 - Each action has its own configuration and resource management
 - Actions are placed on cooldown when resources are depleted
 - The system tracks run counts and respects configured limits
+- The state machine manages the execution of actions and handles state transitions
 
 #### Recent Improvements to Action System
+- Implemented a state machine system for managing action execution
+  - Clearer code structure: States and transitions are explicitly defined
+  - Easier debugging: State transitions are logged, making it easier to track what's happening
+  - More extensible: Adding new states or transitions is straightforward
+- Added game verification in the Starting state handler
+  - Ensures that the game is properly loaded before executing actions
+  - Improves reliability by preventing actions from being executed in an invalid game state
+- Added disconnect detection and handling in the monitoring loop
+  - Detects disconnections and automatically attempts to reconnect
+  - Improves reliability by automatically recovering from disconnections
+- Improved out-of-resource handling with new `handleOutOfResources` method
+  - Presses Escape key multiple times to close UI dialogs
+  - Verifies main screen anchor is visible after handling out-of-resource
+  - Ensures proper state transitions after handling out-of-resource
+  - Improves reliability by properly handling out-of-resource conditions
 - Extracted resource availability check to a dedicated function `isOutOfResources`
   - Single responsibility: The function focuses solely on resource checks
   - Reusability: Can be called from anywhere, including the action monitor or directly by actions

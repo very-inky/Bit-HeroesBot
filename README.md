@@ -139,16 +139,38 @@ gradlew run --args="--grayscale"
 
 This converts both the screen capture and template images to grayscale before matching, which can improve results when color variations might affect matching accuracy.
 
+##### Verbose Output Flag
+
+To enable detailed template matching output, use the `--verbose` command-line argument:
+
+```bash
+# On Windows
+gradlew run --args="--verbose"
+
+# On Linux/macOS
+./gradlew run --args="--verbose"
+```
+
+When the verbose flag is enabled, the bot provides detailed information about template matching operations, including:
+- What template is being searched for
+- Template and screen dimensions
+- The scales being checked during template matching
+- Confidence values for each scale
+- Detailed information about matches found
+- Summary of the search results
+
+This is particularly useful for debugging template matching issues and understanding how the bot is interacting with the game.
+
 ##### Combining Multiple Flags
 
 You can combine multiple optimization and enhancement flags:
 
 ```bash
 # On Windows
-gradlew run --args="--morethreads --opencvthreads --shapematching --grayscale"
+gradlew run --args="--morethreads --opencvthreads --shapematching --grayscale --verbose"
 
 # On Linux/macOS
-./gradlew run --args="--morethreads --opencvthreads --shapematching --grayscale"
+./gradlew run --args="--morethreads --opencvthreads --shapematching --grayscale --verbose"
 ```
 
 #### Configuring Thread Count for `--opencvthreads`

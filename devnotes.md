@@ -15,6 +15,7 @@
 - This improves performance for all template matching operations throughout the application
 - Added shape-based template matching option (`--shapematching` flag) that uses TM_CCORR_NORMED instead of TM_CCOEFF_NORMED
 - Added grayscale template matching option (`--grayscale` flag) that converts images to grayscale before matching
+- Added verbose template matching option (`--verbose` flag) that provides detailed information about template matching operations
 - Reverted from robot.createMultiResolutionScreenCapture to robot.createScreenCapture for better compatibility
 
 ### Current Issues
@@ -195,6 +196,14 @@ The main focus is on improving the action system and UI responsiveness:
     - Converts both screen capture and template images to grayscale before matching
     - Improves results when color variations might affect matching accuracy
     - Can be more robust to lighting changes
+  - Verbose output (`--verbose` flag):
+    - Provides detailed information about template matching operations
+    - Shows what template is being searched for and its dimensions
+    - Logs the scales being checked during template matching
+    - Reports confidence values for each scale
+    - Displays detailed information about matches found
+    - Provides a summary of the search results
+    - Useful for debugging template matching issues
 - Screen capture:
   - Reverted from robot.createMultiResolutionScreenCapture to robot.createScreenCapture
   - The multi-resolution approach was causing compatibility issues on some systems

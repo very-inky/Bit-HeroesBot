@@ -803,13 +803,13 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
         for (i in 1..maxEscapePresses) {
             println("Pressing Escape key (${i}/$maxEscapePresses)...")
             actionData.bot.pressKey(KeyEvent.VK_ESCAPE)
-            Thread.sleep(500) // Wait a bit between key presses
+            Thread.sleep(500)
         }
 
-        // Verify main screen anchor is visible
+
         println("Verifying main screen anchor is visible after handling out-of-resource...")
         var mainScreenVisible = false
-        val maxRetries = 5
+        val maxRetries = 2
         var retryCount = 0
 
         while (retryCount < maxRetries && !mainScreenVisible) {

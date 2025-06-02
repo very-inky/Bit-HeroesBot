@@ -6,6 +6,7 @@ A Kotlin-based automation bot for games using OpenCV for image recognition. The 
 
 - **Multi-character support**: Manage multiple characters and accounts
 - **Configurable action sequences**: Create custom automation profiles for different gameplay goals
+- **YAML-based configuration system**: Create, edit, and manage bot configurations through a command-line interface or by directly editing YAML files
 - **Template-based recognition**: Identify game elements using template images
 - **Resource management**: Automatically handle cooldowns and resource depletion
 - **Automatic dependency management**: OpenCV libraries are automatically downloaded and installed if needed
@@ -34,6 +35,78 @@ templates/
 The bot loads templates from these directories based on the action being executed:
 - Common UI elements are loaded from the `templates/ui` directory
 - Action-specific templates are loaded from their respective directories (e.g., `templates/quest` for quest actions)
+
+## Configuration System
+
+The bot uses a YAML-based configuration system that allows you to create, edit, and manage bot configurations through a command-line interface or by directly editing YAML files.
+
+### Configuration Directory Structure
+
+Configurations are stored in the `configs` directory with the following structure:
+
+```
+configs/
+├── characters/     # Character configuration files
+├── botconfigs/     # Bot configuration files
+└── active_state.yaml  # Stores which character and config are currently active
+```
+
+### Using the Configuration CLI
+
+To launch the configuration CLI, run the bot with the `--config` flag:
+
+```bash
+# On Windows
+gradlew run --args="--config"
+
+# On Linux/macOS
+./gradlew run --args="--config"
+```
+
+The CLI provides commands for:
+- Creating and editing characters
+- Creating and editing bot configurations
+- Setting active characters and configurations
+- Saving and loading configurations
+- Viewing configuration details
+
+### YAML Configuration Format
+
+Configuration files use YAML format, which is human-readable and easy to edit. Here's an example of a bot configuration:
+
+```yaml
+configId: "550e8400-e29b-41d4-a716-446655440001"
+configName: "Daily Farming"
+characterId: "550e8400-e29b-41d4-a716-446655440000"
+description: "Configuration for daily farming tasks"
+actionSequence:
+- "Quest"
+- "Raid"
+actionConfigs:
+  Quest:
+    enabled: true
+    commonActionTemplates:
+    - "templates/quest/Untitled.png"
+    specificTemplates: []
+    commonTemplateDirectories:
+    - "templates/ui"
+    specificTemplateDirectories:
+    - "templates/quest"
+    useDirectoryBasedTemplates: true
+    dungeonTargets:
+    - zoneNumber: 1
+      dungeonNumber: 2
+      difficulty: "heroic"
+      enabled: true
+    repeatCount: 3
+    cooldownDuration: 20
+```
+
+### Editing YAML Files Directly
+
+You can edit the YAML files directly with a text editor. After editing, restart the bot or use the `load` command in the CLI to reload the configurations.
+
+For more detailed information on the configuration system, see the [configs/README.md](configs/README.md) file.
 
 ## Auto Dependency Functionality
 

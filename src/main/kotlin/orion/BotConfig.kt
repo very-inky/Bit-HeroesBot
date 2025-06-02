@@ -1,6 +1,8 @@
 package orion
 
 import orion.utils.PathUtils
+import orion.utils.YamlUtils
+import java.io.File
 
 // Sealed class for action configurations
 sealed class ActionConfig {
@@ -124,6 +126,16 @@ class ConfigManager {
     private val configs = mutableMapOf<String, BotConfig>()
     private var activeConfigId: String? = null
     private var activeCharacterId: String? = null
+
+    companion object {
+        // Default directories for configuration files
+        const val DEFAULT_CONFIG_DIR = "configs"
+        const val CHARACTERS_DIR = "characters"
+        const val BOT_CONFIGS_DIR = "botconfigs"
+
+        // File extensions
+        const val YAML_EXTENSION = ".yaml"
+    }
 
     /**
      * Add a character configuration
@@ -446,5 +458,294 @@ class ConfigManager {
         }
 
         return true
+    }
+
+    // ===== YAML Configuration File Methods =====
+
+    /**
+     * Initialize the configuration directory structure
+     * @param baseDir The base directory for configurations (default: "configs")
+     * @return True if the directories were created or already exist, false otherwise
+     */
+    fun initConfigDirectories(baseDir: String = DEFAULT_CONFIG_DIR): Boolean {
+        val configDir = File(baseDir)
+        val charactersDir = File(configDir, CHARACTERS_DIR)
+        val botConfigsDir = File(configDir, BOT_CONFIGS_DIR)
+
+        return try {
+            configDir.mkdirs()
+            charactersDir.mkdirs()
+            botConfigsDir.mkdirs()
+            true
+        } catch (e: Exception) {
+            println("Error creating configuration directories: ${e.message}")
+            false
+        }
+    }
+
+    /**
+     * Save a character configuration to a YAML file
+     * @param character The character configuration to save
+     * @param baseDir The base directory for configurations (default: "configs")
+     * @return True if saved successfully, false otherwise
+     */
+    fun saveCharacter(character: CharacterConfig, baseDir: String = DEFAULT_CONFIG_DIR): Boolean {
+        val charactersDir = File(baseDir, CHARACTERS_DIR)
+        if (!charactersDir.exists() && !charactersDir.mkdirs()) {
+            println("Failed to create characters directory: ${charactersDir.absolutePath}")
+            return false
+        }
+
+        val fileName = "${character.characterId}${YAML_EXTENSION}"
+        val file = File(charactersDir, fileName)
+
+        return YamlUtils.writeToFile(character, file)
+    }
+
+    /**
+     * Save a bot configuration to a YAML file
+     * @param config The bot configuration to save
+     * @param baseDir The base directory for configurations (default: "configs")
+     * @return True if saved successfully, false otherwise
+     */
+    fun saveConfig(config: BotConfig, baseDir: String = DEFAULT_CONFIG_DIR): Boolean {
+        val botConfigsDir = File(baseDir, BOT_CONFIGS_DIR)
+        if (!botConfigsDir.exists() && !botConfigsDir.mkdirs()) {
+            println("Failed to create bot configs directory: ${botConfigsDir.absolutePath}")
+            return false
+        }
+
+        val fileName = "${config.configId}${YAML_EXTENSION}"
+        val file = File(botConfigsDir, fileName)
+
+        return YamlUtils.writeToFile(config, file)
+    }
+
+    /**
+     * Save all characters to YAML files
+     * @param baseDir The base directory for configurations (default: "configs")
+     * @return The number of characters successfully saved
+     */
+    fun saveAllCharacters(baseDir: String = DEFAULT_CONFIG_DIR): Int {
+        var savedCount = 0
+
+        characters.values.forEach { character ->
+            if (saveCharacter(character, baseDir)) {
+                savedCount++
+            }
+        }
+
+        return savedCount
+    }
+
+    /**
+     * Save all configurations to YAML files
+     * @param baseDir The base directory for configurations (default: "configs")
+     * @return The number of configurations successfully saved
+     */
+    fun saveAllConfigs(baseDir: String = DEFAULT_CONFIG_DIR): Int {
+        var savedCount = 0
+
+        configs.values.forEach { config ->
+            if (saveConfig(config, baseDir)) {
+                savedCount++
+            }
+        }
+
+        return savedCount
+    }
+
+    /**
+     * Save the active state (which character and config are active)
+     * @param baseDir The base directory for configurations (default: "configs")
+     * @return True if saved successfully, false otherwise
+     */
+    fun saveActiveState(baseDir: String = DEFAULT_CONFIG_DIR): Boolean {
+        val configDir = File(baseDir)
+        if (!configDir.exists() && !configDir.mkdirs()) {
+            println("Failed to create config directory: ${configDir.absolutePath}")
+            return false
+        }
+
+        val activeState = mapOf(
+            "activeCharacterId" to activeCharacterId,
+            "activeConfigId" to activeConfigId
+        )
+
+        val file = File(configDir, "active_state${YAML_EXTENSION}")
+
+        return YamlUtils.writeToFile(activeState, file)
+    }
+
+    /**
+     * Load a character configuration from a YAML file
+     * @param characterId The ID of the character to load
+     * @param baseDir The base directory for configurations (default: "configs")
+     * @return The loaded character configuration, or null if not found or an error occurred
+     */
+    fun loadCharacter(characterId: String, baseDir: String = DEFAULT_CONFIG_DIR): CharacterConfig? {
+        val charactersDir = File(baseDir, CHARACTERS_DIR)
+        val file = File(charactersDir, "${characterId}${YAML_EXTENSION}")
+
+        if (!file.exists()) {
+            println("Character file does not exist: ${file.absolutePath}")
+            return null
+        }
+
+        return YamlUtils.readFromFile<CharacterConfig>(file)
+    }
+
+    /**
+     * Load a bot configuration from a YAML file
+     * @param configId The ID of the configuration to load
+     * @param baseDir The base directory for configurations (default: "configs")
+     * @return The loaded bot configuration, or null if not found or an error occurred
+     */
+    fun loadConfig(configId: String, baseDir: String = DEFAULT_CONFIG_DIR): BotConfig? {
+        val botConfigsDir = File(baseDir, BOT_CONFIGS_DIR)
+        val file = File(botConfigsDir, "${configId}${YAML_EXTENSION}")
+
+        if (!file.exists()) {
+            println("Configuration file does not exist: ${file.absolutePath}")
+            return null
+        }
+
+        return YamlUtils.readFromFile<BotConfig>(file)
+    }
+
+    /**
+     * Load all character configurations from YAML files
+     * @param baseDir The base directory for configurations (default: "configs")
+     * @return The number of characters successfully loaded
+     */
+    fun loadAllCharacters(baseDir: String = DEFAULT_CONFIG_DIR): Int {
+        val charactersDir = File(baseDir, CHARACTERS_DIR)
+        if (!charactersDir.exists()) {
+            println("Characters directory does not exist: ${charactersDir.absolutePath}")
+            return 0
+        }
+
+        var loadedCount = 0
+
+        charactersDir.listFiles { file -> file.isFile && file.name.endsWith(YAML_EXTENSION) }?.forEach { file ->
+            val character = YamlUtils.readFromFile<CharacterConfig>(file)
+            if (character != null) {
+                // Don't force activate when loading from files
+                if (addCharacter(character, false)) {
+                    loadedCount++
+                }
+            }
+        }
+
+        return loadedCount
+    }
+
+    /**
+     * Load all bot configurations from YAML files
+     * @param baseDir The base directory for configurations (default: "configs")
+     * @return The number of configurations successfully loaded
+     */
+    fun loadAllConfigs(baseDir: String = DEFAULT_CONFIG_DIR): Int {
+        val botConfigsDir = File(baseDir, BOT_CONFIGS_DIR)
+        if (!botConfigsDir.exists()) {
+            println("Bot configs directory does not exist: ${botConfigsDir.absolutePath}")
+            return 0
+        }
+
+        var loadedCount = 0
+
+        botConfigsDir.listFiles { file -> file.isFile && file.name.endsWith(YAML_EXTENSION) }?.forEach { file ->
+            val config = YamlUtils.readFromFile<BotConfig>(file)
+            if (config != null) {
+                if (addConfig(config)) {
+                    loadedCount++
+                }
+            }
+        }
+
+        return loadedCount
+    }
+
+    /**
+     * Load the active state (which character and config are active)
+     * @param baseDir The base directory for configurations (default: "configs")
+     * @return True if loaded successfully, false otherwise
+     */
+    fun loadActiveState(baseDir: String = DEFAULT_CONFIG_DIR): Boolean {
+        val configDir = File(baseDir)
+        val file = File(configDir, "active_state${YAML_EXTENSION}")
+
+        if (!file.exists()) {
+            println("Active state file does not exist: ${file.absolutePath}")
+            return false
+        }
+
+        val activeState = YamlUtils.readFromFile<Map<String, String?>>(file)
+        if (activeState != null) {
+            val characterId = activeState["activeCharacterId"]
+            val configId = activeState["activeConfigId"]
+
+            if (characterId != null) {
+                try {
+                    setActiveCharacter(characterId, true)
+                } catch (e: IllegalStateException) {
+                    println("Warning: Could not set active character: ${e.message}")
+                }
+            }
+
+            if (configId != null) {
+                try {
+                    setActiveConfig(configId, true)
+                } catch (e: IllegalStateException) {
+                    println("Warning: Could not set active config: ${e.message}")
+                }
+            }
+
+            return true
+        }
+
+        return false
+    }
+
+    /**
+     * Load all configurations and characters from YAML files
+     * @param baseDir The base directory for configurations (default: "configs")
+     * @return True if any configurations or characters were loaded, false otherwise
+     */
+    fun loadAllFromFiles(baseDir: String = DEFAULT_CONFIG_DIR): Boolean {
+        // Initialize directories if they don't exist
+        initConfigDirectories(baseDir)
+
+        // Load characters first
+        val charactersLoaded = loadAllCharacters(baseDir)
+
+        // Then load configurations
+        val configsLoaded = loadAllConfigs(baseDir)
+
+        // Finally, load active state
+        loadActiveState(baseDir)
+
+        return charactersLoaded > 0 || configsLoaded > 0
+    }
+
+    /**
+     * Save all configurations and characters to YAML files
+     * @param baseDir The base directory for configurations (default: "configs")
+     * @return True if any configurations or characters were saved, false otherwise
+     */
+    fun saveAllToFiles(baseDir: String = DEFAULT_CONFIG_DIR): Boolean {
+        // Initialize directories if they don't exist
+        initConfigDirectories(baseDir)
+
+        // Save characters
+        val charactersSaved = saveAllCharacters(baseDir)
+
+        // Save configurations
+        val configsSaved = saveAllConfigs(baseDir)
+
+        // Save active state
+        saveActiveState(baseDir)
+
+        return charactersSaved > 0 || configsSaved > 0
     }
 }

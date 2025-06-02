@@ -14,10 +14,12 @@ This project is a game automation bot built in Kotlin using OpenCV for image rec
 4. **BotState**: Defines all possible states the bot can be in during operation (Idle, Starting, Running, Rerunning, etc.).
 5. **ActionData**: Encapsulates information about an action being executed, used to pass data between state handlers.
 6. **GameAction Interface**: Defines the contract for all game actions, with methods for execution and resource checking.
-7. **ConfigManager**: Manages multiple characters and configurations, ensuring only one is active at a time.
+7. **ConfigManager**: Manages multiple characters and configurations, ensuring only one is active at a time. Handles loading and saving configurations to/from YAML files.
 8. **CharacterConfig**: Contains character-specific settings and account information.
 9. **BotConfig**: Contains configuration settings for a specific task or farming goal, linked to a character.
 10. **ActionConfig**: A sealed class hierarchy that defines configurations for different types of game actions.
+11. **ConfigCLI**: Provides a command-line interface for managing bot configurations.
+12. **YamlUtils**: Utility class for serializing and deserializing configuration objects to/from YAML format.
 
 ### Component Relationships
 
@@ -164,3 +166,106 @@ The ActionData class encapsulates information about an action being executed, in
 - The maximum run count
 
 This data is passed between state handlers to maintain context during state transitions.
+
+#### Configuration System
+
+The bot uses a YAML-based configuration system that allows users to create, edit, and manage bot configurations through a command-line interface or by directly editing YAML files.
+
+##### Configuration Classes
+
+1. **CharacterConfig**: Contains character-specific settings
+   - `characterId`: Unique identifier for the character
+   - `characterName`: Display name for the character
+   - `accountId`: Identifier for the account this character belongs to
+   - `isActive`: Whether this character is currently active
+
+2. **BotConfig**: Contains configuration settings for a specific task or farming goal
+   - `configId`: Unique identifier for this configuration
+   - `configName`: Display name for this configuration
+   - `characterId`: Reference to the character this config belongs to
+   - `description`: Description of what this config is for
+   - `actionSequence`: List of action names to execute in order
+   - `actionConfigs`: Map of action names to their configurations
+   - `defaultAction`: Default action if none specified
+
+3. **ActionConfig**: A sealed class hierarchy that defines configurations for different types of game actions
+   - Base properties:
+     - `enabled`: Whether this action is enabled
+     - `commonActionTemplates`: Templates for general entry/exit/navigation
+     - `specificTemplates`: Templates specific to this action
+     - `commonTemplateDirectories`: Directories for automatic template loading
+     - `specificTemplateDirectories`: Action-specific template directories
+     - `useDirectoryBasedTemplates`: Whether to use directory-based template loading
+     - `cooldownDuration`: Cooldown duration in minutes when resources are depleted
+   - Subclasses:
+     - `QuestActionConfig`: Configuration for quest actions
+     - `PvpActionConfig`: Configuration for PvP actions
+     - `GvgActionConfig`: Configuration for GvG actions
+     - `WorldBossActionConfig`: Configuration for World Boss actions
+     - `RaidActionConfig`: Configuration for raid actions
+
+##### Configuration Management
+
+The `ConfigManager` class manages all aspects of the configuration system:
+
+1. **Character Management**:
+   - Add, edit, and remove characters
+   - Set the active character
+   - Get character details
+   - List all characters
+
+2. **Configuration Management**:
+   - Add, edit, and remove configurations
+   - Set the active configuration
+   - Get configuration details
+   - List all configurations
+   - Get configurations for a specific character
+
+3. **File Operations**:
+   - Initialize configuration directories
+   - Save characters and configurations to YAML files
+   - Load characters and configurations from YAML files
+   - Save and load the active state (which character and config are active)
+
+##### Command-Line Interface
+
+The `ConfigCLI` class provides a command-line interface for managing configurations:
+
+1. **Commands**:
+   - `help`: Show help information
+   - `list-characters`: List all characters
+   - `list-configs`: List all configurations
+   - `create-character`: Create a new character
+   - `create-config`: Create a new configuration
+   - `edit-character <id>`: Edit a character
+   - `edit-config <id>`: Edit a configuration
+   - `delete-character <id>`: Delete a character
+   - `delete-config <id>`: Delete a configuration
+   - `activate-character <id>`: Set the active character
+   - `activate-config <id>`: Set the active configuration
+   - `save`: Save all configurations to files
+   - `load`: Load all configurations from files
+   - `show-character <id>`: Show details of a character
+   - `show-config <id>`: Show details of a configuration
+   - `validate`: Validate the current configuration
+
+2. **Usage**:
+   - Launch with `--config` flag: `gradlew run --args="--config"`
+   - Follow the interactive prompts to manage configurations
+
+##### YAML Serialization
+
+The `YamlUtils` class handles serialization and deserialization of configuration objects:
+
+1. **Features**:
+   - Serialize objects to YAML files
+   - Deserialize objects from YAML files
+   - Serialize objects to YAML strings
+   - Deserialize objects from YAML strings
+   - Handle polymorphic types (ActionConfig and its subclasses)
+
+2. **Implementation**:
+   - Uses Jackson library with YAML factory
+   - Configures ObjectMapper for proper YAML formatting
+   - Registers subtypes for polymorphic serialization
+   - Provides utility methods for file and string operations

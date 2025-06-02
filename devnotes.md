@@ -25,7 +25,25 @@
 
 ### Recent Implementations
 
-1. **State Machine System**
+1. **YAML-based Configuration System**
+   - Implemented a YAML-based configuration system for storing and managing bot configurations
+   - Created `YamlUtils` class for serializing and deserializing configuration objects
+   - Added YAML file operations to `ConfigManager` for loading and saving configurations
+   - Implemented `ConfigCLI` class for command-line management of configurations
+   - Added Jackson library dependencies for YAML support
+   - Configured polymorphic type handling for ActionConfig sealed class hierarchy
+   - Created directory structure for storing configuration files
+   - Added documentation in configs/README.md
+   - Implemented automatic creation of default configurations if none exist
+   - Added command-line flag `--config` for launching the configuration CLI
+   - Expected behavior:
+     - Users can create, edit, and manage bot configurations through the CLI
+     - Configurations are saved to YAML files and can be edited directly
+     - The bot loads configurations from YAML files at startup
+     - Default configurations are created automatically if none exist
+     - The active character and configuration are persisted between runs
+
+2. **State Machine System**
    - Implemented a state machine to manage bot states and transitions
    - Created a `StateMachine` class that handles state transitions and executes state handlers
    - Defined a `BotState` sealed class hierarchy with all possible bot states:
@@ -223,6 +241,31 @@ The main focus is on improving the action system and UI responsiveness:
   - More extensible: Adding new states or transitions is straightforward
   - Better separation of concerns: State logic is separated from action execution logic
   - Easier testing: State transitions can be tested independently of the actual game actions
+
+### YAML Configuration System
+- The configuration system uses Jackson library for YAML serialization/deserialization
+- Polymorphic type handling is configured to support the ActionConfig sealed class hierarchy
+- The system follows a directory structure:
+  - `configs/` - Main configuration directory
+  - `configs/characters/` - Character configuration files
+  - `configs/botconfigs/` - Bot configuration files
+  - `configs/active_state.yaml` - Stores active character and config IDs
+- File operations are handled by the ConfigManager class:
+  - `initConfigDirectories()` - Creates the directory structure
+  - `saveCharacter()` / `loadCharacter()` - Save/load individual character
+  - `saveConfig()` / `loadConfig()` - Save/load individual config
+  - `saveActiveState()` / `loadActiveState()` - Save/load active state
+  - `saveAllToFiles()` / `loadAllFromFiles()` - Save/load all configurations
+- The YamlUtils class provides utility methods for YAML operations:
+  - Uses Jackson's ObjectMapper with YAML factory
+  - Configures proper indentation and formatting
+  - Handles polymorphic types with activateDefaultTyping and registerSubtypes
+  - Provides methods for file and string operations
+- The ConfigCLI class provides a command-line interface:
+  - Interactive command prompt with help system
+  - Commands for managing characters and configurations
+  - Validation of user input and configuration integrity
+  - Detailed output formatting for better readability
 
 ### Action System
 - Actions are defined in the BotConfig and executed in sequence by the ActionManager

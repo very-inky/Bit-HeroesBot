@@ -60,6 +60,7 @@ object YamlUtils {
      * @param filePath The path to the file to write to
      * @return True if successful, false otherwise
      */
+
     fun <T : Any> writeToFile(obj: T, filePath: String): Boolean {
         return writeToFile(obj, File(filePath))
     }
@@ -92,6 +93,7 @@ object YamlUtils {
      * @param clazz The class of the object to deserialize
      * @return The deserialized object, or null if an error occurred
      */
+    @Suppress("unused")
     fun <T : Any> readFromFile(filePath: String, clazz: Class<T>): T? {
         return readFromFile(File(filePath), clazz)
     }
@@ -103,6 +105,7 @@ object YamlUtils {
      * @param clazz The class of the object to deserialize
      * @return The deserialized object, or null if an error occurred
      */
+    @Suppress("unused")
     fun <T : Any> readFromString(yaml: String, clazz: Class<T>): T? {
         return try {
             mapper.readValue(yaml, clazz)

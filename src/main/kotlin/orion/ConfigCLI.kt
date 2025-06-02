@@ -10,7 +10,7 @@ import java.util.UUID
  */
 class ConfigCLI(private val configManager: ConfigManager) {
     private val scanner = Scanner(System.`in`)
-    
+
     /**
      * Start the CLI interface
      */
@@ -19,25 +19,25 @@ class ConfigCLI(private val configManager: ConfigManager) {
         println("║ Orion Bot Configuration Manager                                ║")
         println("║ Type 'help' for a list of commands                             ║")
         println("╚════════════════════════════════════════════════════════════════╝")
-        
+
         // Initialize configuration directories
         configManager.initConfigDirectories()
-        
+
         // Try to load existing configurations
         val loaded = configManager.loadAllFromFiles()
         if (loaded) {
             println("Loaded existing configurations.")
-            
+
             // Show active character and config if any
             val activeCharacter = configManager.getActiveCharacter()
             val activeConfig = configManager.getActiveConfig()
-            
+
             if (activeCharacter != null) {
                 println("Active character: ${activeCharacter.characterName} (${activeCharacter.characterId})")
             } else {
                 println("No active character.")
             }
-            
+
             if (activeConfig != null) {
                 println("Active configuration: ${activeConfig.configName} (${activeConfig.configId})")
             } else {
@@ -46,14 +46,14 @@ class ConfigCLI(private val configManager: ConfigManager) {
         } else {
             println("No existing configurations found. Use 'create-character' to create a new character.")
         }
-        
+
         var running = true
         while (running) {
             print("\nEnter command: ")
             val input = scanner.nextLine().trim()
             val parts = input.split(" ")
             val command = parts[0].lowercase()
-            
+
             try {
                 when (command) {
                     "help" -> showHelp()
@@ -79,12 +79,12 @@ class ConfigCLI(private val configManager: ConfigManager) {
                 println("Error: ${e.message}")
             }
         }
-        
+
         println("Configuration manager exiting. Saving configurations...")
         configManager.saveAllToFiles()
         println("Configurations saved.")
     }
-    
+
     /**
      * Show help information
      */
@@ -111,7 +111,7 @@ class ConfigCLI(private val configManager: ConfigManager) {
         println("║ validate               - Validate the current configuration    ║")
         println("╚════════════════════════════════════════════════════════════════╝")
     }
-    
+
     /**
      * List all characters
      */
@@ -121,20 +121,20 @@ class ConfigCLI(private val configManager: ConfigManager) {
             println("No characters found.")
             return
         }
-        
+
         println("╔════════════════════════════════════════════════════════════════╗")
         println("║ Characters:                                                    ║")
         println("╠════════════════════════════════════════════════════════════════╣")
-        
+
         characters.forEach { character ->
             val activeMarker = if (configManager.isCharacterActive(character.characterId)) "* " else "  "
             println("║ $activeMarker${character.characterName.padEnd(30)} | ${character.characterId} ║")
         }
-        
+
         println("╚════════════════════════════════════════════════════════════════╝")
         println("* = Active character")
     }
-    
+
     /**
      * List all configurations
      */
@@ -144,43 +144,43 @@ class ConfigCLI(private val configManager: ConfigManager) {
             println("No configurations found.")
             return
         }
-        
+
         println("╔════════════════════════════════════════════════════════════════╗")
         println("║ Configurations:                                                ║")
         println("╠════════════════════════════════════════════════════════════════╣")
-        
+
         configs.forEach { config ->
             val activeMarker = if (configManager.isConfigActive(config.configId)) "* " else "  "
             val character = configManager.getCharacter(config.characterId)
             val characterName = character?.characterName ?: "Unknown"
             println("║ $activeMarker${config.configName.padEnd(25)} | ${characterName.padEnd(15)} | ${config.configId} ║")
         }
-        
+
         println("╚════════════════════════════════════════════════════════════════╝")
         println("* = Active configuration")
     }
-    
+
     /**
      * Create a new character
      */
     private fun createCharacter() {
         println("Creating a new character:")
-        
+
         print("Enter character name: ")
         val characterName = scanner.nextLine().trim()
-        
+
         print("Enter account ID (default = 'default'): ")
         val accountId = scanner.nextLine().trim().let { if (it.isEmpty()) "default" else it }
-        
+
         val characterId = UUID.randomUUID().toString()
-        
+
         val character = CharacterConfig(
             characterId = characterId,
             characterName = characterName,
             accountId = accountId,
             isActive = false
         )
-        
+
         if (configManager.addCharacter(character)) {
             println("Character created with ID: $characterId")
             configManager.saveCharacter(character)
@@ -188,7 +188,7 @@ class ConfigCLI(private val configManager: ConfigManager) {
             println("Failed to create character.")
         }
     }
-    
+
     /**
      * Create a new configuration
      */
@@ -198,32 +198,32 @@ class ConfigCLI(private val configManager: ConfigManager) {
             println("No characters found. Please create a character first.")
             return
         }
-        
+
         println("Creating a new configuration:")
-        
+
         println("Available characters:")
         characters.forEachIndexed { index, character ->
             println("${index + 1}. ${character.characterName} (${character.characterId})")
         }
-        
+
         print("Select character (1-${characters.size}): ")
         val characterIndex = scanner.nextLine().trim().toIntOrNull()?.minus(1)
-        
+
         if (characterIndex == null || characterIndex < 0 || characterIndex >= characters.size) {
             println("Invalid character selection.")
             return
         }
-        
+
         val character = characters[characterIndex]
-        
+
         print("Enter configuration name: ")
         val configName = scanner.nextLine().trim()
-        
+
         print("Enter description: ")
         val description = scanner.nextLine().trim()
-        
+
         val configId = UUID.randomUUID().toString()
-        
+
         // Create a simple configuration with default values
         val config = BotConfig(
             configId = configId,
@@ -233,11 +233,11 @@ class ConfigCLI(private val configManager: ConfigManager) {
             actionSequence = emptyList(),
             actionConfigs = emptyMap()
         )
-        
+
         if (configManager.addConfig(config)) {
             println("Configuration created with ID: $configId")
             configManager.saveConfig(config)
-            
+
             // Ask if the user wants to edit the configuration now
             print("Do you want to edit this configuration now? (y/n): ")
             val editNow = scanner.nextLine().trim().lowercase()
@@ -248,7 +248,7 @@ class ConfigCLI(private val configManager: ConfigManager) {
             println("Failed to create configuration.")
         }
     }
-    
+
     /**
      * Edit a character
      */
@@ -257,34 +257,34 @@ class ConfigCLI(private val configManager: ConfigManager) {
             println("Usage: edit-character <id>")
             return
         }
-        
+
         val characterId = parts[1]
         val character = configManager.getCharacter(characterId)
-        
+
         if (character == null) {
             println("Character not found with ID: $characterId")
             return
         }
-        
+
         println("Editing character: ${character.characterName} (${character.characterId})")
-        
+
         print("Enter new character name (current: ${character.characterName}): ")
         val characterName = scanner.nextLine().trim().let { if (it.isEmpty()) character.characterName else it }
-        
+
         print("Enter new account ID (current: ${character.accountId}): ")
         val accountId = scanner.nextLine().trim().let { if (it.isEmpty()) character.accountId else it }
-        
+
         val updatedCharacter = character.copy(
             characterName = characterName,
             accountId = accountId
         )
-        
+
         // Remove the old character and add the updated one
         configManager.addCharacter(updatedCharacter, true)
         println("Character updated.")
         configManager.saveCharacter(updatedCharacter)
     }
-    
+
     /**
      * Edit a configuration
      */
@@ -293,30 +293,30 @@ class ConfigCLI(private val configManager: ConfigManager) {
             println("Usage: edit-config <id>")
             return
         }
-        
+
         val configId = parts[1]
         val config = configManager.getConfig(configId)
-        
+
         if (config == null) {
             println("Configuration not found with ID: $configId")
             return
         }
-        
+
         editConfigDetails(config)
     }
-    
+
     /**
      * Edit the details of a configuration
      */
     private fun editConfigDetails(config: BotConfig) {
         println("Editing configuration: ${config.configName} (${config.configId})")
-        
+
         print("Enter new configuration name (current: ${config.configName}): ")
         val configName = scanner.nextLine().trim().let { if (it.isEmpty()) config.configName else it }
-        
+
         print("Enter new description (current: ${config.description}): ")
         val description = scanner.nextLine().trim().let { if (it.isEmpty()) config.description else it }
-        
+
         // Edit action sequence
         println("Current action sequence: ${config.actionSequence.joinToString(", ")}")
         println("Enter new action sequence (comma-separated, e.g., 'Quest,Raid,PvP'): ")
@@ -326,23 +326,23 @@ class ConfigCLI(private val configManager: ConfigManager) {
         } else {
             actionSequenceInput.split(",").map { it.trim() }
         }
-        
+
         // Create a copy of the configuration with the updated values
         val updatedConfig = config.copy(
             configName = configName,
             description = description,
             actionSequence = actionSequence
         )
-        
+
         // For simplicity, we're not editing the action configs here
         // A real implementation would need a more complex UI to edit nested structures
-        
+
         // Update the configuration
         configManager.addConfig(updatedConfig)
         println("Configuration updated.")
         configManager.saveConfig(updatedConfig)
     }
-    
+
     /**
      * Delete a character
      */
@@ -351,18 +351,18 @@ class ConfigCLI(private val configManager: ConfigManager) {
             println("Usage: delete-character <id>")
             return
         }
-        
+
         val characterId = parts[1]
         val character = configManager.getCharacter(characterId)
-        
+
         if (character == null) {
             println("Character not found with ID: $characterId")
             return
         }
-        
+
         print("Are you sure you want to delete character '${character.characterName}'? (y/n): ")
         val confirm = scanner.nextLine().trim().lowercase()
-        
+
         if (confirm == "y" || confirm == "yes") {
             // Delete the character file
             val charactersDir = File(ConfigManager.DEFAULT_CONFIG_DIR, ConfigManager.CHARACTERS_DIR)
@@ -370,14 +370,18 @@ class ConfigCLI(private val configManager: ConfigManager) {
             if (file.exists()) {
                 file.delete()
             }
-            
-            // TODO: Implement character deletion in ConfigManager
-            println("Character deleted.")
+
+            // Remove the character from ConfigManager
+            if (configManager.removeCharacter(characterId)) {
+                println("Character deleted.")
+            } else {
+                println("Failed to delete character from memory.")
+            }
         } else {
             println("Deletion cancelled.")
         }
     }
-    
+
     /**
      * Delete a configuration
      */
@@ -386,18 +390,18 @@ class ConfigCLI(private val configManager: ConfigManager) {
             println("Usage: delete-config <id>")
             return
         }
-        
+
         val configId = parts[1]
         val config = configManager.getConfig(configId)
-        
+
         if (config == null) {
             println("Configuration not found with ID: $configId")
             return
         }
-        
+
         print("Are you sure you want to delete configuration '${config.configName}'? (y/n): ")
         val confirm = scanner.nextLine().trim().lowercase()
-        
+
         if (confirm == "y" || confirm == "yes") {
             // Delete the config file
             val botConfigsDir = File(ConfigManager.DEFAULT_CONFIG_DIR, ConfigManager.BOT_CONFIGS_DIR)
@@ -405,14 +409,18 @@ class ConfigCLI(private val configManager: ConfigManager) {
             if (file.exists()) {
                 file.delete()
             }
-            
-            // TODO: Implement config deletion in ConfigManager
-            println("Configuration deleted.")
+
+            // Remove the config from ConfigManager
+            if (configManager.removeConfig(configId)) {
+                println("Configuration deleted.")
+            } else {
+                println("Failed to delete configuration from memory.")
+            }
         } else {
             println("Deletion cancelled.")
         }
     }
-    
+
     /**
      * Activate a character
      */
@@ -421,9 +429,9 @@ class ConfigCLI(private val configManager: ConfigManager) {
             println("Usage: activate-character <id>")
             return
         }
-        
+
         val characterId = parts[1]
-        
+
         try {
             if (configManager.setActiveCharacter(characterId, true)) {
                 val character = configManager.getCharacter(characterId)
@@ -436,7 +444,7 @@ class ConfigCLI(private val configManager: ConfigManager) {
             println("Error: ${e.message}")
         }
     }
-    
+
     /**
      * Activate a configuration
      */
@@ -445,9 +453,9 @@ class ConfigCLI(private val configManager: ConfigManager) {
             println("Usage: activate-config <id>")
             return
         }
-        
+
         val configId = parts[1]
-        
+
         try {
             if (configManager.setActiveConfig(configId, true)) {
                 val config = configManager.getConfig(configId)
@@ -460,7 +468,7 @@ class ConfigCLI(private val configManager: ConfigManager) {
             println("Error: ${e.message}")
         }
     }
-    
+
     /**
      * Save all configurations to files
      */
@@ -471,7 +479,7 @@ class ConfigCLI(private val configManager: ConfigManager) {
             println("No configurations to save or an error occurred.")
         }
     }
-    
+
     /**
      * Load all configurations from files
      */
@@ -482,7 +490,7 @@ class ConfigCLI(private val configManager: ConfigManager) {
             println("No configurations found or an error occurred.")
         }
     }
-    
+
     /**
      * Show details of a character
      */
@@ -491,15 +499,15 @@ class ConfigCLI(private val configManager: ConfigManager) {
             println("Usage: show-character <id>")
             return
         }
-        
+
         val characterId = parts[1]
         val character = configManager.getCharacter(characterId)
-        
+
         if (character == null) {
             println("Character not found with ID: $characterId")
             return
         }
-        
+
         println("╔════════════════════════════════════════════════════════════════╗")
         println("║ Character Details:                                             ║")
         println("╠════════════════════════════════════════════════════════════════╣")
@@ -508,7 +516,7 @@ class ConfigCLI(private val configManager: ConfigManager) {
         println("║ Account ID:  ${character.accountId}")
         println("║ Active:      ${character.isActive}")
         println("╚════════════════════════════════════════════════════════════════╝")
-        
+
         // Show configurations for this character
         val configs = configManager.getConfigsForCharacter(characterId)
         if (configs.isNotEmpty()) {
@@ -521,7 +529,7 @@ class ConfigCLI(private val configManager: ConfigManager) {
             println("No configurations found for this character.")
         }
     }
-    
+
     /**
      * Show details of a configuration
      */
@@ -530,18 +538,18 @@ class ConfigCLI(private val configManager: ConfigManager) {
             println("Usage: show-config <id>")
             return
         }
-        
+
         val configId = parts[1]
         val config = configManager.getConfig(configId)
-        
+
         if (config == null) {
             println("Configuration not found with ID: $configId")
             return
         }
-        
+
         val character = configManager.getCharacter(config.characterId)
         val characterName = character?.characterName ?: "Unknown"
-        
+
         println("╔════════════════════════════════════════════════════════════════╗")
         println("║ Configuration Details:                                         ║")
         println("╠════════════════════════════════════════════════════════════════╣")
@@ -551,7 +559,7 @@ class ConfigCLI(private val configManager: ConfigManager) {
         println("║ Description: ${config.description}")
         println("║ Actions:     ${config.actionSequence.joinToString(", ")}")
         println("╚════════════════════════════════════════════════════════════════╝")
-        
+
         // Show YAML representation
         println("YAML Representation:")
         val yaml = YamlUtils.writeToString(config)
@@ -561,7 +569,7 @@ class ConfigCLI(private val configManager: ConfigManager) {
             println("Error generating YAML representation.")
         }
     }
-    
+
     /**
      * Validate the current configuration
      */
@@ -569,16 +577,16 @@ class ConfigCLI(private val configManager: ConfigManager) {
         try {
             if (configManager.validateConfiguration()) {
                 println("Configuration is valid.")
-                
+
                 val activeCharacter = configManager.getActiveCharacter()
                 val activeConfig = configManager.getActiveConfig()
-                
+
                 if (activeCharacter != null) {
                     println("Active character: ${activeCharacter.characterName} (${activeCharacter.characterId})")
                 } else {
                     println("No active character.")
                 }
-                
+
                 if (activeConfig != null) {
                     println("Active configuration: ${activeConfig.configName} (${activeConfig.configId})")
                 } else {

@@ -748,4 +748,54 @@ class ConfigManager {
 
         return charactersSaved > 0 || configsSaved > 0
     }
+
+    /**
+     * Remove a character from the ConfigManager
+     * @param characterId The ID of the character to remove
+     * @return True if the character was removed, false if the character doesn't exist
+     */
+    fun removeCharacter(characterId: String): Boolean {
+        // Check if character exists
+        if (!characters.containsKey(characterId)) {
+            return false
+        }
+
+        // If character is active, deactivate it
+        if (activeCharacterId == characterId) {
+            activeCharacterId = null
+        }
+
+        // Remove any configurations associated with this character
+        val characterConfigs = getConfigsForCharacter(characterId)
+        characterConfigs.forEach { config ->
+            removeConfig(config.configId)
+        }
+
+        // Remove the character from the map
+        characters.remove(characterId)
+
+        return true
+    }
+
+    /**
+     * Remove a configuration from the ConfigManager
+     * @param configId The ID of the configuration to remove
+     * @return True if the configuration was removed, false if the configuration doesn't exist
+     */
+    fun removeConfig(configId: String): Boolean {
+        // Check if config exists
+        if (!configs.containsKey(configId)) {
+            return false
+        }
+
+        // If config is active, deactivate it
+        if (activeConfigId == configId) {
+            activeConfigId = null
+        }
+
+        // Remove the config from the map
+        configs.remove(configId)
+
+        return true
+    }
 }

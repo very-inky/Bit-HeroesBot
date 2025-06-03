@@ -363,31 +363,31 @@ class ConfigCLI(private val configManager: ConfigManager) {
                             if (raidInput.startsWith("Raid", ignoreCase = true)) {
                                 // Format: "Raid X"
                                 val number = raidInput.substring(4).trim().toIntOrNull()
-                                if (number != null && number in 1..11) {
+                                if (number != null && number in 1..18) {
                                     raidNumber = number
                                     tierNumber = RaidActionConfig.RaidTarget.raidToTier(number)
                                 } else {
-                                    println("Invalid raid number. Please enter a number between 1 and 11.")
+                                    println("Invalid raid number. Please enter a number between 1 and 18.")
                                     continue
                                 }
                             } else if (raidInput.startsWith("T", ignoreCase = true)) {
                                 // Format: "TX"
                                 val number = raidInput.substring(1).trim().toIntOrNull()
-                                if (number != null && number in 4..15) {
+                                if (number != null && number in 4..21) {
                                     tierNumber = number
                                     raidNumber = RaidActionConfig.RaidTarget.tierToRaid(number)
                                 } else {
-                                    println("Invalid tier number. Please enter a number between 4 and 15.")
+                                    println("Invalid tier number. Please enter a number between 4 and 21.")
                                     continue
                                 }
                             } else {
                                 // Try to parse as a direct number (raid number)
                                 val number = raidInput.toIntOrNull()
-                                if (number != null && number in 1..11) {
+                                if (number != null && number in 1..18) {
                                     raidNumber = number
                                     tierNumber = RaidActionConfig.RaidTarget.raidToTier(number)
                                 } else {
-                                    println("Invalid raid format. Please use 'Raid X', 'TX', or a number between 1 and 11.")
+                                    println("Invalid raid format. Please use 'Raid X', 'TX', or a number between 1 and 18.")
                                     continue
                                 }
                             }
@@ -707,31 +707,31 @@ class ConfigCLI(private val configManager: ConfigManager) {
                                 if (raidInput.startsWith("Raid", ignoreCase = true)) {
                                     // Format: "Raid X"
                                     val number = raidInput.substring(4).trim().toIntOrNull()
-                                    if (number != null && number in 1..11) {
+                                    if (number != null && number in 1..18) {
                                         raidNumber = number
                                         tierNumber = RaidActionConfig.RaidTarget.raidToTier(number)
                                     } else {
-                                        println("Invalid raid number. Please enter a number between 1 and 11.")
+                                        println("Invalid raid number. Please enter a number between 1 and 18.")
                                         continue
                                     }
                                 } else if (raidInput.startsWith("T", ignoreCase = true)) {
                                     // Format: "TX"
                                     val number = raidInput.substring(1).trim().toIntOrNull()
-                                    if (number != null && number in 4..15) {
+                                    if (number != null && number in 4..21) {
                                         tierNumber = number
                                         raidNumber = RaidActionConfig.RaidTarget.tierToRaid(number)
                                     } else {
-                                        println("Invalid tier number. Please enter a number between 4 and 15.")
+                                        println("Invalid tier number. Please enter a number between 4 and 21.")
                                         continue
                                     }
                                 } else {
                                     // Try to parse as a direct number (raid number)
                                     val number = raidInput.toIntOrNull()
-                                    if (number != null && number in 1..11) {
+                                    if (number != null && number in 1..18) {
                                         raidNumber = number
                                         tierNumber = RaidActionConfig.RaidTarget.raidToTier(number)
                                     } else {
-                                        println("Invalid raid format. Please use 'Raid X', 'TX', or a number between 1 and 11.")
+                                        println("Invalid raid format. Please use 'Raid X', 'TX', or a number between 1 and 18.")
                                         continue
                                     }
                                 }

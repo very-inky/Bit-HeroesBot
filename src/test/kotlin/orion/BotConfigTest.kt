@@ -109,6 +109,10 @@ class BotConfigTest {
         // Test default values for DungeonTarget
         val dungeonTarget = QuestActionConfig.DungeonTarget(zoneNumber = 1, dungeonNumber = 1)
         assertEquals("heroic", dungeonTarget.difficulty, "DungeonTarget.difficulty should default to heroic")
+
+        // Test default values for PvpActionConfig
+        val pvpConfig = PvpActionConfig()
+        assertEquals(5, pvpConfig.ticketsToUse, "PvpActionConfig.ticketsToUse should default to 5")
     }
 
     @Test
@@ -124,7 +128,14 @@ class BotConfigTest {
         assertEquals(11, RaidActionConfig.RaidTarget.raidToTier(8), "Raid 8 should map to Tier 11")
         assertEquals(12, RaidActionConfig.RaidTarget.raidToTier(9), "Raid 9 should map to Tier 12")
         assertEquals(13, RaidActionConfig.RaidTarget.raidToTier(10), "Raid 10 should map to Tier 13")
-        assertEquals(15, RaidActionConfig.RaidTarget.raidToTier(11), "Raid 11 should map to Tier 15")
+        assertEquals(14, RaidActionConfig.RaidTarget.raidToTier(11), "Raid 11 should map to Tier 14")
+        assertEquals(15, RaidActionConfig.RaidTarget.raidToTier(12), "Raid 12 should map to Tier 15")
+        assertEquals(16, RaidActionConfig.RaidTarget.raidToTier(13), "Raid 13 should map to Tier 16")
+        assertEquals(17, RaidActionConfig.RaidTarget.raidToTier(14), "Raid 14 should map to Tier 17")
+        assertEquals(18, RaidActionConfig.RaidTarget.raidToTier(15), "Raid 15 should map to Tier 18")
+        assertEquals(19, RaidActionConfig.RaidTarget.raidToTier(16), "Raid 16 should map to Tier 19")
+        assertEquals(20, RaidActionConfig.RaidTarget.raidToTier(17), "Raid 17 should map to Tier 20")
+        assertEquals(21, RaidActionConfig.RaidTarget.raidToTier(18), "Raid 18 should map to Tier 21")
 
         // Test tier to raid mapping
         assertEquals(1, RaidActionConfig.RaidTarget.tierToRaid(4), "Tier 4 should map to Raid 1")
@@ -137,13 +148,19 @@ class BotConfigTest {
         assertEquals(8, RaidActionConfig.RaidTarget.tierToRaid(11), "Tier 11 should map to Raid 8")
         assertEquals(9, RaidActionConfig.RaidTarget.tierToRaid(12), "Tier 12 should map to Raid 9")
         assertEquals(10, RaidActionConfig.RaidTarget.tierToRaid(13), "Tier 13 should map to Raid 10")
-        assertEquals(11, RaidActionConfig.RaidTarget.tierToRaid(15), "Tier 15 should map to Raid 11")
+        assertEquals(11, RaidActionConfig.RaidTarget.tierToRaid(14), "Tier 14 should map to Raid 11")
+        assertEquals(12, RaidActionConfig.RaidTarget.tierToRaid(15), "Tier 15 should map to Raid 12")
+        assertEquals(13, RaidActionConfig.RaidTarget.tierToRaid(16), "Tier 16 should map to Raid 13")
+        assertEquals(14, RaidActionConfig.RaidTarget.tierToRaid(17), "Tier 17 should map to Raid 14")
+        assertEquals(15, RaidActionConfig.RaidTarget.tierToRaid(18), "Tier 18 should map to Raid 15")
+        assertEquals(16, RaidActionConfig.RaidTarget.tierToRaid(19), "Tier 19 should map to Raid 16")
+        assertEquals(17, RaidActionConfig.RaidTarget.tierToRaid(20), "Tier 20 should map to Raid 17")
+        assertEquals(18, RaidActionConfig.RaidTarget.tierToRaid(21), "Tier 21 should map to Raid 18")
 
         // Test invalid mappings
         assertNull(RaidActionConfig.RaidTarget.raidToTier(0), "Raid 0 should not map to any tier")
-        assertNull(RaidActionConfig.RaidTarget.raidToTier(12), "Raid 12 should not map to any tier")
+        assertNull(RaidActionConfig.RaidTarget.raidToTier(19), "Raid 19 should not map to any tier")
         assertNull(RaidActionConfig.RaidTarget.tierToRaid(3), "Tier 3 should not map to any raid")
-        assertEquals(10, RaidActionConfig.RaidTarget.tierToRaid(14), "Tier 14 should map to Raid 10")
-        assertNull(RaidActionConfig.RaidTarget.tierToRaid(16), "Tier 16 should not map to any raid")
+        assertNull(RaidActionConfig.RaidTarget.tierToRaid(22), "Tier 22 should not map to any raid")
     }
 }

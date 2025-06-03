@@ -49,7 +49,7 @@ data class PvpActionConfig(
     override val commonTemplateDirectories: List<String> = listOf(PathUtils.templatePath("ui")),
     override val specificTemplateDirectories: List<String> = listOf(PathUtils.templatePath("pvp")),
     override val useDirectoryBasedTemplates: Boolean = true,
-    val ticketsToUse: Int, // Number of tickets to use (1-5) - mandatory
+    val ticketsToUse: Int = 5, // Number of tickets to use (1-5)
     val pvpOpponentChoice: Int = 2, // Which opponent to fight (1-4)
     val autoSelectOpponent: Boolean = false // Whether to automatically select opponents or use specified rank
 ) : ActionConfig()
@@ -98,9 +98,9 @@ data class RaidActionConfig(
         companion object {
             // Constants for valid raid and tier ranges
             private const val MIN_RAID_NUMBER = 1
-            private const val MAX_RAID_NUMBER = 11
+            private const val MAX_RAID_NUMBER = 18
             private const val MIN_TIER_NUMBER = 4
-            private const val MAX_TIER_NUMBER = 15
+            private const val MAX_TIER_NUMBER = 21
 
             /**
              * Convert a raid number to a tier number
@@ -110,7 +110,6 @@ data class RaidActionConfig(
             fun raidToTier(raidNumber: Int): Int? {
                 return when {
                     raidNumber !in MIN_RAID_NUMBER..MAX_RAID_NUMBER -> null
-                    raidNumber == 11 -> 15  // Special case: Raid 11 maps to Tier 15
                     else -> raidNumber + 3
                 }
             }
@@ -123,9 +122,10 @@ data class RaidActionConfig(
             fun tierToRaid(tierNumber: Int): Int? {
                 return when {
                     tierNumber !in MIN_TIER_NUMBER..MAX_TIER_NUMBER -> null
-                    tierNumber == 14 -> 10  // Special case: Tier 14 maps to Raid 10
-                    tierNumber == 15 -> 11  // Special case: Tier 15 maps to Raid 11
-                    else -> tierNumber - 3
+                    else -> {
+                        val raidNumber = tierNumber - 3
+                        if (raidNumber !in MIN_RAID_NUMBER..MAX_RAID_NUMBER) null else raidNumber
+                    }
                 }
             }
         }

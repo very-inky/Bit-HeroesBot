@@ -1,11 +1,11 @@
 ---
-configId: "573I"
-configName: "Daily-Main"
-characterId: "291A"
+configId: "610S"
+configName: "Daily"
+characterId: "176T"
 actionSequence: !<java.util.ArrayList>
-- "Quest"
 - "Raid"
-- "PVP"
+- "quest"
+- "pvp"
 actionConfigs: !<java.util.LinkedHashMap>
   Quest: !<orion.QuestActionConfig>
     enabled: true
@@ -23,6 +23,19 @@ actionConfigs: !<java.util.LinkedHashMap>
       difficulty: "heroic"
       enabled: true
     repeatCount: 0
+    cooldownDuration: 20
+  pvp: !<orion.PvpActionConfig>
+    enabled: true
+    commonActionTemplates: !<kotlin.collections.EmptyList> []
+    specificTemplates: !<kotlin.collections.EmptyList> []
+    commonTemplateDirectories: !<java.util.Collections$SingletonList>
+    - "templates\\ui"
+    specificTemplateDirectories: !<java.util.Collections$SingletonList>
+    - "templates\\pvp"
+    useDirectoryBasedTemplates: true
+    ticketsToUse: 5
+    pvpOpponentChoice: 2
+    autoSelectOpponent: false
     cooldownDuration: 20
   Raid: !<orion.RaidActionConfig>
     enabled: true
@@ -43,4 +56,4 @@ actionConfigs: !<java.util.LinkedHashMap>
     runCount: 0
     cooldownDuration: 20
 defaultAction: "Quest"
-description: "Daily farm for main"
+description: "Daily farm"

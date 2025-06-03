@@ -1,0 +1,59 @@
+---
+configId: "389S"
+configName: "Daily"
+characterId: "717Q"
+actionSequence: !<java.util.ArrayList>
+- "Quest"
+- "Raid"
+- "Pvp"
+actionConfigs: !<java.util.LinkedHashMap>
+  Quest: !<orion.QuestActionConfig>
+    enabled: true
+    commonActionTemplates: !<kotlin.collections.EmptyList> []
+    specificTemplates: !<kotlin.collections.EmptyList> []
+    commonTemplateDirectories: !<java.util.Collections$SingletonList>
+    - "templates\\ui"
+    specificTemplateDirectories: !<java.util.Collections$SingletonList>
+    - "templates\\quest"
+    useDirectoryBasedTemplates: true
+    dungeonTargets: !<java.util.ArrayList>
+    - !<java.util.ArrayList>
+      zoneNumber: 6
+      dungeonNumber: 3
+      difficulty: "heroic"
+      enabled: true
+    repeatCount: 0
+    cooldownDuration: 20
+  Raid: !<orion.RaidActionConfig>
+    enabled: true
+    commonActionTemplates: !<kotlin.collections.EmptyList> []
+    specificTemplates: !<kotlin.collections.EmptyList> []
+    commonTemplateDirectories: !<java.util.Collections$SingletonList>
+    - "templates\\ui"
+    specificTemplateDirectories: !<java.util.Collections$SingletonList>
+    - "templates\\raid"
+    useDirectoryBasedTemplates: true
+    raidTargets: !<java.util.ArrayList>
+    - !<java.util.ArrayList>
+      raidName: ""
+      raidNumber: 11
+      tierNumber: 14
+      difficulty: "Heroic"
+      enabled: true
+    runCount: 0
+    cooldownDuration: 20
+  pvp: !<orion.PvpActionConfig>
+    enabled: true
+    commonActionTemplates: !<kotlin.collections.EmptyList> []
+    specificTemplates: !<kotlin.collections.EmptyList> []
+    commonTemplateDirectories: !<java.util.Collections$SingletonList>
+    - "templates\\ui"
+    specificTemplateDirectories: !<java.util.Collections$SingletonList>
+    - "templates\\pvp"
+    useDirectoryBasedTemplates: true
+    ticketsToUse: 5
+    pvpOpponentChoice: 3
+    autoSelectOpponent: false
+    cooldownDuration: 20
+defaultAction: "Quest"
+description: "Daily farm"

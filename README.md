@@ -38,7 +38,7 @@ The bot loads templates from these directories based on the action being execute
 
 ## Configuration System
 
-The bot uses a YAML-based configuration system that allows you to create, edit, and manage bot configurations through a command-line interface or by directly editing YAML files.
+The bot uses a YAML-based configuration system that allows you to create, edit, and manage bot configurations through a command-line interface or by directly editing YAML files. Action names in the configuration are case-insensitive, so "quest", "Quest", and "QUEST" are all treated as the same action.
 
 ### Configuration Directory Structure
 

@@ -263,8 +263,10 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
                 // At this point, at least one action is still eligible to run
                 allActionsCompleted = false
 
-                // Get the action config
-                val actionConfig = config.actionConfigs[actionName]!!
+                // Get the action config (case-insensitive lookup)
+                val actionConfigKey = config.actionConfigs.keys.find { it.equals(actionName, ignoreCase = true) }
+                    ?: throw IllegalStateException("Action config not found for $actionName")
+                val actionConfig = config.actionConfigs[actionConfigKey]!!
 
                 println("\nAttempting to execute action: $actionName")
                 val actionHandler: GameAction? = createActionHandler(actionName)
@@ -291,15 +293,15 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
      * @return The action handler, or null if no handler is defined for the action
      */
     private fun createActionHandler(actionName: String): GameAction? {
-        return when (actionName) {
-            "Quest" -> QuestAction()
-            "Raid" -> RaidAction()
-            // "PVP" -> PvpAction() // Placeholder for when PvpAction.kt is created
-            // "GVG" -> GvgAction()
-            // "WorldBoss" -> WorldBossAction()
-            // "Trials" -> TrialsAction()
-            // "Expedition" -> ExpeditionAction()
-            // "Gauntlet" -> GauntletAction()
+        return when (actionName.lowercase()) {
+            "quest" -> QuestAction()
+            "raid" -> RaidAction()
+            // "pvp" -> PvpAction() // Placeholder for when PvpAction.kt is created
+            // "gvg" -> GvgAction()
+            // "worldboss" -> WorldBossAction()
+            // "trials" -> TrialsAction()
+            // "expedition" -> ExpeditionAction()
+            // "gauntlet" -> GauntletAction()
             else -> {
                 println("Warning: Unknown action type '$actionName' in sequence. No handler defined. Skipping.")
                 null
@@ -314,7 +316,9 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
      * and reason is a message explaining why it cannot be executed if canExecute is false.
      */
     private fun canExecuteAction(actionName: String): Pair<Boolean, String> {
-        val actionConfig = config.actionConfigs[actionName]
+        // Case-insensitive lookup for action config
+        val actionConfigKey = config.actionConfigs.keys.find { it.equals(actionName, ignoreCase = true) }
+        val actionConfig = actionConfigKey?.let { config.actionConfigs[it] }
 
         if (actionConfig == null) {
             return Pair(false, "Warning: No configuration found for action '$actionName'. Skipping.")

@@ -191,3 +191,7 @@ If you encounter issues with your configurations:
 2. Check the YAML syntax for errors (indentation, missing quotes, etc.)
 3. Make sure character IDs referenced in bot configurations exist
 4. Ensure template paths are correct and the templates exist
+
+## Notes
+
+- **Action Names**: Action names in the `actionSequence` and `actionConfigs` are case-insensitive. For example, "pvp", "PvP", and "PVP" are all treated as the same action. However, for consistency, it's recommended to use the standard capitalization in your configurations (e.g., "Quest", "Raid", "PvP").

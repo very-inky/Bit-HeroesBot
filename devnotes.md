@@ -17,6 +17,7 @@
 - Added grayscale template matching option (`--grayscale` flag) that converts images to grayscale before matching
 - Added verbose template matching option (`--verbose` flag) that provides detailed information about template matching operations
 - Reverted from robot.createMultiResolutionScreenCapture to robot.createScreenCapture for better compatibility
+- Made action name handling case-insensitive throughout the codebase, improving user experience by allowing any capitalization of action names (e.g., "pvp", "PvP", "PVP")
 
 ### Current Issues
 - In QuestAction.kt, the bot processes the outofresource check too quickly for the UI to update

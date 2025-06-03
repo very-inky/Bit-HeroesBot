@@ -256,8 +256,8 @@ class ConfigCLI(private val configManager: ConfigManager) {
 
         // Initialize action configs with default values
         for (action in actionSequence) {
-            when (action) {
-                "Quest" -> {
+            when (action.lowercase()) {
+                "quest" -> {
                     println("\nSetting up Quest configuration:")
 
                     // Prompt for dungeon targets
@@ -313,7 +313,7 @@ class ConfigCLI(private val configManager: ConfigManager) {
                         useDirectoryBasedTemplates = true
                     )
                 }
-                "PvP" -> {
+                "pvp" -> {
                     println("\nSetting up PvP configuration:")
 
                     print("Enter number of tickets to use (1-5): ")
@@ -332,7 +332,7 @@ class ConfigCLI(private val configManager: ConfigManager) {
                     val autoSelectResponse = scanner.nextLine().trim().lowercase()
                     val autoSelect = autoSelectResponse == "y" || autoSelectResponse == "yes"
 
-                    actionConfigs["PvP"] = PvpActionConfig(
+                    actionConfigs[action] = PvpActionConfig(
                         enabled = true,
                         ticketsToUse = ticketsToUse ?: 5,
                         pvpOpponentChoice = opponentChoice ?: 2,
@@ -651,9 +651,9 @@ class ConfigCLI(private val configManager: ConfigManager) {
                             cooldownDuration = existingConfig?.cooldownDuration ?: 20
                         )
                     }
-                    "PvP" -> {
+                    "pvp" -> {
                         println("\nEditing PvP configuration:")
-                        val existingConfig = actionConfigs["PvP"] as? PvpActionConfig
+                        val existingConfig = actionConfigs.entries.find { it.key.equals(action, ignoreCase = true) }?.value as? PvpActionConfig
 
                         print("Enter number of tickets to use (1-5): ")
                         val ticketsToUse = scanner.nextLine().trim().toIntOrNull()
@@ -671,7 +671,9 @@ class ConfigCLI(private val configManager: ConfigManager) {
                         val autoSelectResponse = scanner.nextLine().trim().lowercase()
                         val autoSelect = autoSelectResponse == "y" || autoSelectResponse == "yes"
 
-                        actionConfigs["PvP"] = PvpActionConfig(
+                        // Find the original key with case preserved
+                        val originalKey = actionConfigs.keys.find { it.equals(action, ignoreCase = true) } ?: action
+                        actionConfigs[originalKey] = PvpActionConfig(
                             enabled = true,
                             ticketsToUse = ticketsToUse ?: existingConfig?.ticketsToUse ?: 5,
                             pvpOpponentChoice = opponentChoice ?: existingConfig?.pvpOpponentChoice ?: 2,

@@ -30,7 +30,7 @@ data class QuestActionConfig(
     override val specificTemplateDirectories: List<String> = listOf(PathUtils.templatePath("quest")),
     override val useDirectoryBasedTemplates: Boolean = true,
     val dungeonTargets: List<DungeonTarget> = emptyList(), // Specify dungeons with zone and dungeon numbers
-    val repeatCount: Int = 1, // How many times to cycle through quests or a specific quest
+    val repeatCount: Int = 0, // How many times to cycle through quests or a specific quest (0 = infinite runs until out of resources)
     override val cooldownDuration: Int = 20 // Cooldown duration in minutes when resources are depleted
 ) : ActionConfig() {
     // Data class for specifying a dungeon with zone and dungeon number
@@ -83,7 +83,7 @@ data class RaidActionConfig(
     override val specificTemplateDirectories: List<String> = listOf(PathUtils.templatePath("raid")),
     override val useDirectoryBasedTemplates: Boolean = true,
     val raidTargets: List<RaidTarget> = emptyList(), // Specific raids
-    val runCount: Int = 3, // Number of times to run each raid target
+    val runCount: Int = 0, // Number of times to run each raid target (0 = infinite runs until out of resources)
     override val cooldownDuration: Int = 20 // Cooldown duration in minutes when resources are depleted
 ) : ActionConfig() {
     // Data class for specifying details about a raid target
@@ -91,23 +91,37 @@ data class RaidActionConfig(
         val raidName: String = "", // Corresponds to legacy Patterns.Raid.RaidName
         val raidNumber: Int? = null, // Raid number (e.g., 1, 2, 3, 4)
         val tierNumber: Int? = null, // Tier number (e.g., 4, 5, 6, 7)
-        val difficulty: String = "Normal", // e.g., "Normal", "Hard", "Heroic"
+        val difficulty: String = "Heroic", // e.g., "Normal", "Hard", "Heroic"
         val enabled: Boolean = true
     ) {
         // Mapping between raid numbers and tier numbers
         companion object {
             private val RAID_TO_TIER_MAP = mapOf(
-                1 to 4, // Raid1 = Tier4
-                2 to 5, // Raid2 = Tier5
-                3 to 6, // Raid3 = Tier6
-                4 to 7  // Raid4 = Tier7
+                1 to 4,  // Raid1 = Tier4
+                2 to 5,  // Raid2 = Tier5
+                3 to 6,  // Raid3 = Tier6
+                4 to 7,  // Raid4 = Tier7
+                5 to 8,  // Raid5 = Tier8
+                6 to 9,  // Raid6 = Tier9
+                7 to 10, // Raid7 = Tier10
+                8 to 11, // Raid8 = Tier11
+                9 to 12, // Raid9 = Tier12
+                10 to 13, // Raid10 = Tier13
+                11 to 15  // Raid11 = Tier15
             )
 
             private val TIER_TO_RAID_MAP = mapOf(
-                4 to 1, // Tier4 = Raid1
-                5 to 2, // Tier5 = Raid2
-                6 to 3, // Tier6 = Raid3
-                7 to 4  // Tier7 = Raid4
+                4 to 1,  // Tier4 = Raid1
+                5 to 2,  // Tier5 = Raid2
+                6 to 3,  // Tier6 = Raid3
+                7 to 4,  // Tier7 = Raid4
+                8 to 5,  // Tier8 = Raid5
+                9 to 6,  // Tier9 = Raid6
+                10 to 7, // Tier10 = Raid7
+                11 to 8, // Tier11 = Raid8
+                12 to 9, // Tier12 = Raid9
+                13 to 10, // Tier13 = Raid10
+                15 to 11  // Tier15 = Raid11
             )
 
             /**

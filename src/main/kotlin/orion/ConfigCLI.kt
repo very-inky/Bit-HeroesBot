@@ -301,8 +301,8 @@ class ConfigCLI(private val configManager: ConfigManager) {
                         }
                     }
 
-                    print("Enter repeat count [default: 1]: ")
-                    val repeatCount = scanner.nextLine().trim().toIntOrNull() ?: 1
+                    print("Enter repeat count (0 = infinite runs until out of resources) [default: 0]: ")
+                    val repeatCount = scanner.nextLine().trim().toIntOrNull() ?: 0
 
                     actionConfigs["Quest"] = QuestActionConfig(
                         enabled = true,
@@ -363,38 +363,38 @@ class ConfigCLI(private val configManager: ConfigManager) {
                             if (raidInput.startsWith("Raid", ignoreCase = true)) {
                                 // Format: "Raid X"
                                 val number = raidInput.substring(4).trim().toIntOrNull()
-                                if (number != null && number in 1..4) {
+                                if (number != null && number in 1..11) {
                                     raidNumber = number
                                     tierNumber = RaidActionConfig.RaidTarget.raidToTier(number)
                                 } else {
-                                    println("Invalid raid number. Please enter a number between 1 and 4.")
+                                    println("Invalid raid number. Please enter a number between 1 and 11.")
                                     continue
                                 }
                             } else if (raidInput.startsWith("T", ignoreCase = true)) {
                                 // Format: "TX"
                                 val number = raidInput.substring(1).trim().toIntOrNull()
-                                if (number != null && number in 4..7) {
+                                if (number != null && (number in 4..13 || number == 15)) {
                                     tierNumber = number
                                     raidNumber = RaidActionConfig.RaidTarget.tierToRaid(number)
                                 } else {
-                                    println("Invalid tier number. Please enter a number between 4 and 7.")
+                                    println("Invalid tier number. Please enter a number between 4 and 15.")
                                     continue
                                 }
                             } else {
                                 // Try to parse as a direct number (raid number)
                                 val number = raidInput.toIntOrNull()
-                                if (number != null && number in 1..4) {
+                                if (number != null && number in 1..11) {
                                     raidNumber = number
                                     tierNumber = RaidActionConfig.RaidTarget.raidToTier(number)
                                 } else {
-                                    println("Invalid raid format. Please use 'Raid X', 'TX', or a number between 1 and 4.")
+                                    println("Invalid raid format. Please use 'Raid X', 'TX', or a number between 1 and 11.")
                                     continue
                                 }
                             }
 
-                            print("Enter difficulty (Normal, Hard, Heroic) [default: Normal]: ")
+                            print("Enter difficulty (Normal, Hard, Heroic) [default: Heroic]: ")
                             val difficulty = scanner.nextLine().trim().let { 
-                                if (it.isEmpty()) "Normal" 
+                                if (it.isEmpty()) "Heroic" 
                                 else it.replaceFirstChar { char -> char.uppercase() } 
                             }
 
@@ -411,8 +411,8 @@ class ConfigCLI(private val configManager: ConfigManager) {
                         }
                     }
 
-                    print("Enter run count [default: 3]: ")
-                    val runCount = scanner.nextLine().trim().toIntOrNull() ?: 3
+                    print("Enter run count (0 = infinite runs until out of resources) [default: 0]: ")
+                    val runCount = scanner.nextLine().trim().toIntOrNull() ?: 0
 
                     actionConfigs["Raid"] = RaidActionConfig(
                         enabled = true,
@@ -633,9 +633,9 @@ class ConfigCLI(private val configManager: ConfigManager) {
                             dungeonTargets.addAll(existingConfig.dungeonTargets)
                         }
 
-                        print("Enter repeat count [default: 1]: ")
+                        print("Enter repeat count (0 = infinite runs until out of resources) [default: 0]: ")
                         val repeatCount = scanner.nextLine().trim().toIntOrNull() ?: 
-                                          existingConfig?.repeatCount ?: 1
+                                          existingConfig?.repeatCount ?: 0
 
                         actionConfigs["Quest"] = QuestActionConfig(
                             enabled = true,
@@ -707,38 +707,38 @@ class ConfigCLI(private val configManager: ConfigManager) {
                                 if (raidInput.startsWith("Raid", ignoreCase = true)) {
                                     // Format: "Raid X"
                                     val number = raidInput.substring(4).trim().toIntOrNull()
-                                    if (number != null && number in 1..4) {
+                                    if (number != null && number in 1..11) {
                                         raidNumber = number
                                         tierNumber = RaidActionConfig.RaidTarget.raidToTier(number)
                                     } else {
-                                        println("Invalid raid number. Please enter a number between 1 and 4.")
+                                        println("Invalid raid number. Please enter a number between 1 and 11.")
                                         continue
                                     }
                                 } else if (raidInput.startsWith("T", ignoreCase = true)) {
                                     // Format: "TX"
                                     val number = raidInput.substring(1).trim().toIntOrNull()
-                                    if (number != null && number in 4..7) {
+                                    if (number != null && (number in 4..13 || number == 15)) {
                                         tierNumber = number
                                         raidNumber = RaidActionConfig.RaidTarget.tierToRaid(number)
                                     } else {
-                                        println("Invalid tier number. Please enter a number between 4 and 7.")
+                                        println("Invalid tier number. Please enter a number between 4 and 15.")
                                         continue
                                     }
                                 } else {
                                     // Try to parse as a direct number (raid number)
                                     val number = raidInput.toIntOrNull()
-                                    if (number != null && number in 1..4) {
+                                    if (number != null && number in 1..11) {
                                         raidNumber = number
                                         tierNumber = RaidActionConfig.RaidTarget.raidToTier(number)
                                     } else {
-                                        println("Invalid raid format. Please use 'Raid X', 'TX', or a number between 1 and 4.")
+                                        println("Invalid raid format. Please use 'Raid X', 'TX', or a number between 1 and 11.")
                                         continue
                                     }
                                 }
 
-                                print("Enter difficulty (Normal, Hard, Heroic) [default: Normal]: ")
+                                print("Enter difficulty (Normal, Hard, Heroic) [default: Heroic]: ")
                                 val difficulty = scanner.nextLine().trim().let { 
-                                    if (it.isEmpty()) "Normal" 
+                                    if (it.isEmpty()) "Heroic" 
                                     else it.replaceFirstChar { char -> char.uppercase() } 
                                 }
 
@@ -758,9 +758,9 @@ class ConfigCLI(private val configManager: ConfigManager) {
                             raidTargets.addAll(existingConfig.raidTargets)
                         }
 
-                        print("Enter run count [default: 3]: ")
+                        print("Enter run count (0 = infinite runs until out of resources) [default: 0]: ")
                         val runCount = scanner.nextLine().trim().toIntOrNull() ?: 
-                                       existingConfig?.runCount ?: 3
+                                       existingConfig?.runCount ?: 0
 
                         actionConfigs["Raid"] = RaidActionConfig(
                             enabled = true,

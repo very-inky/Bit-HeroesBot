@@ -332,7 +332,7 @@ class ConfigCLI(private val configManager: ConfigManager) {
                     val autoSelectResponse = scanner.nextLine().trim().lowercase()
                     val autoSelect = autoSelectResponse == "y" || autoSelectResponse == "yes"
 
-                    actionConfigs[action] = PvpActionConfig(
+                    actionConfigs[action.lowercase()] = PvpActionConfig(
                         enabled = true,
                         ticketsToUse = ticketsToUse ?: 5,
                         pvpOpponentChoice = opponentChoice ?: 2,

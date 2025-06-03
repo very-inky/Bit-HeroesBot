@@ -3,6 +3,7 @@ package orion
 import orion.utils.PathUtils
 import orion.utils.YamlUtils
 import java.io.File
+import com.fasterxml.jackson.annotation.JsonIgnore
 
 // Sealed class for action configurations
 sealed class ActionConfig {
@@ -48,8 +49,8 @@ data class PvpActionConfig(
     override val commonTemplateDirectories: List<String> = listOf(PathUtils.templatePath("ui")),
     override val specificTemplateDirectories: List<String> = listOf(PathUtils.templatePath("pvp")),
     override val useDirectoryBasedTemplates: Boolean = true,
-    val ticketsToUse: Int = 5, // Number of tickets to use (1-5)
-    val opponentRank: Int = 2, // Which opponent to fight (1-4)
+    val ticketsToUse: Int, // Number of tickets to use (1-5) - mandatory
+    val pvpOpponentChoice: Int = 2, // Which opponent to fight (1-4)
     val autoSelectOpponent: Boolean = false // Whether to automatically select opponents or use specified rank
 ) : ActionConfig()
 
@@ -61,7 +62,7 @@ data class GvgActionConfig(
     override val specificTemplateDirectories: List<String> = listOf(PathUtils.templatePath("gvg")),
     override val useDirectoryBasedTemplates: Boolean = true,
     val badgeChoice: Int = 5, // 1-5
-    val opponentChoice: Int = 3 // 1-4
+    val opponentChoice: Int = 1 // 1-4
 ) : ActionConfig()
 
 data class WorldBossActionConfig(
@@ -87,10 +88,73 @@ data class RaidActionConfig(
 ) : ActionConfig() {
     // Data class for specifying details about a raid target
     data class RaidTarget(
-        val raidName: String, // Corresponds to legacy Patterns.Raid.RaidName
-        val difficulty: String, // e.g., "Normal", "Hard", "Heroic"
+        val raidName: String = "", // Corresponds to legacy Patterns.Raid.RaidName
+        val raidNumber: Int? = null, // Raid number (e.g., 1, 2, 3, 4)
+        val tierNumber: Int? = null, // Tier number (e.g., 4, 5, 6, 7)
+        val difficulty: String = "Normal", // e.g., "Normal", "Hard", "Heroic"
         val enabled: Boolean = true
-    )
+    ) {
+        // Mapping between raid numbers and tier numbers
+        companion object {
+            private val RAID_TO_TIER_MAP = mapOf(
+                1 to 4, // Raid1 = Tier4
+                2 to 5, // Raid2 = Tier5
+                3 to 6, // Raid3 = Tier6
+                4 to 7  // Raid4 = Tier7
+            )
+
+            private val TIER_TO_RAID_MAP = mapOf(
+                4 to 1, // Tier4 = Raid1
+                5 to 2, // Tier5 = Raid2
+                6 to 3, // Tier6 = Raid3
+                7 to 4  // Tier7 = Raid4
+            )
+
+            /**
+             * Convert a raid number to a tier number
+             * @param raidNumber The raid number to convert
+             * @return The corresponding tier number, or null if the raid number is invalid
+             */
+            fun raidToTier(raidNumber: Int): Int? {
+                return RAID_TO_TIER_MAP[raidNumber]
+            }
+
+            /**
+             * Convert a tier number to a raid number
+             * @param tierNumber The tier number to convert
+             * @return The corresponding raid number, or null if the tier number is invalid
+             */
+            fun tierToRaid(tierNumber: Int): Int? {
+                return TIER_TO_RAID_MAP[tierNumber]
+            }
+        }
+
+        /**
+         * Get the effective raid number, converting from tier if necessary
+         * @return The raid number, or null if neither raid nor tier is specified
+         */
+        @JsonIgnore
+        fun getEffectiveRaidNumber(): Int? {
+            return when {
+                raidNumber != null -> raidNumber
+                tierNumber != null -> tierToRaid(tierNumber)
+                else -> null
+            }
+        }
+
+        /**
+         * Get the effective tier number, converting from raid if necessary
+         * @return The tier number, or null if neither raid nor tier is specified
+         */
+        @JsonIgnore
+        fun getEffectiveTierNumber(): Int? {
+            return when {
+                tierNumber != null -> tierNumber
+                raidNumber != null -> raidToTier(raidNumber)
+                else -> null
+            }
+        }
+    }
 }
 
 /**

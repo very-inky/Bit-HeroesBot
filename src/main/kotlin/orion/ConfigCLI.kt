@@ -1,6 +1,7 @@
 package orion
 
 import orion.utils.YamlUtils
+import orion.utils.PathUtils
 import java.io.File
 import java.util.Scanner
 import java.util.UUID
@@ -10,6 +11,30 @@ import java.util.UUID
  */
 class ConfigCLI(private val configManager: ConfigManager) {
     private val scanner = Scanner(System.`in`)
+
+    /**
+     * Generates a random ID consisting of a 3-digit number and 1 uppercase letter
+     * Format: "000A" to "999Z"
+     * @return A string in the format "NNNL" where N is a digit and L is an uppercase letter
+     */
+    private fun generateShortId(): String {
+        val number = (100..999).random()
+        val letter = ('A'..'Z').random()
+        return "$number$letter"
+    }
+
+    /**
+     * Generates a unique short ID that doesn't exist in the given set of IDs
+     * @param existingIds Set of existing IDs to avoid duplicates
+     * @return A unique short ID
+     */
+    private fun generateUniqueShortId(existingIds: Set<String>): String {
+        var id = generateShortId()
+        while (existingIds.contains(id)) {
+            id = generateShortId()
+        }
+        return id
+    }
 
     /**
      * Start the CLI interface
@@ -128,7 +153,7 @@ class ConfigCLI(private val configManager: ConfigManager) {
 
         characters.forEach { character ->
             val activeMarker = if (configManager.isCharacterActive(character.characterId)) "* " else "  "
-            println("║ $activeMarker${character.characterName.padEnd(30)} | ${character.characterId} ║")
+            println("║ $activeMarker${character.characterName.padEnd(25)} | ${character.accountId.padEnd(10)} | ${character.characterId} ║")
         }
 
         println("╚════════════════════════════════════════════════════════════════╝")
@@ -169,10 +194,12 @@ class ConfigCLI(private val configManager: ConfigManager) {
         print("Enter character name: ")
         val characterName = scanner.nextLine().trim()
 
-        print("Enter account ID (default = 'default'): ")
+        print("Enter account name (for multi-account support, default = 'default'): ")
         val accountId = scanner.nextLine().trim().let { if (it.isEmpty()) "default" else it }
 
-        val characterId = UUID.randomUUID().toString()
+        // Generate a short ID instead of UUID
+        val existingIds = configManager.getAllCharacters().map { it.characterId }.toSet()
+        val characterId = generateUniqueShortId(existingIds)
 
         val character = CharacterConfig(
             characterId = characterId,
@@ -184,8 +211,251 @@ class ConfigCLI(private val configManager: ConfigManager) {
         if (configManager.addCharacter(character)) {
             println("Character created with ID: $characterId")
             configManager.saveCharacter(character)
+
+            // Ask if the user wants to create a config for this character
+            print("Do you want to create a configuration for this character now? (y/n): ")
+            val createConfig = scanner.nextLine().trim().lowercase()
+            if (createConfig == "y" || createConfig == "yes") {
+                // Activate this character first
+                configManager.setActiveCharacter(characterId, true)
+                // Create a config for this character
+                createConfigForCharacter(character)
+            }
         } else {
             println("Failed to create character.")
+        }
+    }
+
+    /**
+     * Create a new configuration for a specific character
+     */
+    private fun createConfigForCharacter(character: CharacterConfig) {
+        println("Creating a new configuration for character: ${character.characterName}")
+
+        print("Enter configuration name: ")
+        val configName = scanner.nextLine().trim()
+
+        print("Enter description: ")
+        val description = scanner.nextLine().trim()
+
+        // Prompt for action sequence
+        println("Enter action sequence (comma-separated, e.g., 'Quest,Raid,PvP'): ")
+        val actionSequenceInput = scanner.nextLine().trim()
+        val actionSequence = if (actionSequenceInput.isEmpty()) {
+            listOf("Quest") // Default to Quest if no sequence provided
+        } else {
+            actionSequenceInput.split(",").map { it.trim() }
+        }
+
+        // Generate a short ID instead of UUID
+        val existingIds = configManager.getAllConfigs().map { it.configId }.toSet()
+        val configId = generateUniqueShortId(existingIds)
+
+        // Create action configs map with default values for each action in the sequence
+        val actionConfigs = mutableMapOf<String, ActionConfig>()
+
+        // Initialize action configs with default values
+        for (action in actionSequence) {
+            when (action) {
+                "Quest" -> {
+                    println("\nSetting up Quest configuration:")
+
+                    // Prompt for dungeon targets
+                    val dungeonTargets = mutableListOf<QuestActionConfig.DungeonTarget>()
+
+                    println("Do you want to add dungeon targets? (y/n): ")
+                    val addDungeons = scanner.nextLine().trim().lowercase()
+                    if (addDungeons == "y" || addDungeons == "yes") {
+                        var addMore = true
+                        while (addMore) {
+                            print("Enter zone number: ")
+                            val zoneNumber = scanner.nextLine().trim().toIntOrNull()
+                            if (zoneNumber == null || zoneNumber < 1) {
+                                println("Invalid zone number. Please enter a positive integer.")
+                                continue
+                            }
+
+                            print("Enter dungeon number: ")
+                            val dungeonNumber = scanner.nextLine().trim().toIntOrNull()
+                            if (dungeonNumber == null || dungeonNumber < 1) {
+                                println("Invalid dungeon number. Please enter a positive integer.")
+                                continue
+                            }
+
+                            print("Enter difficulty (heroic, hard, normal) [default: heroic]: ")
+                            val difficulty = scanner.nextLine().trim().let { 
+                                if (it.isEmpty()) "heroic" 
+                                else it.lowercase() 
+                            }
+
+                            dungeonTargets.add(QuestActionConfig.DungeonTarget(
+                                zoneNumber = zoneNumber,
+                                dungeonNumber = dungeonNumber,
+                                difficulty = difficulty,
+                                enabled = true
+                            ))
+
+                            print("Add another dungeon target? (y/n): ")
+                            val response = scanner.nextLine().trim().lowercase()
+                            addMore = response == "y" || response == "yes"
+                        }
+                    }
+
+                    print("Enter repeat count [default: 1]: ")
+                    val repeatCount = scanner.nextLine().trim().toIntOrNull() ?: 1
+
+                    actionConfigs["Quest"] = QuestActionConfig(
+                        enabled = true,
+                        dungeonTargets = dungeonTargets,
+                        repeatCount = repeatCount,
+                        commonTemplateDirectories = listOf(PathUtils.templatePath("ui")),
+                        specificTemplateDirectories = listOf(PathUtils.templatePath("quest")),
+                        useDirectoryBasedTemplates = true
+                    )
+                }
+                "PvP" -> {
+                    println("\nSetting up PvP configuration:")
+
+                    print("Enter number of tickets to use (1-5): ")
+                    val ticketsToUse = scanner.nextLine().trim().toIntOrNull()
+                    if (ticketsToUse == null || ticketsToUse < 1 || ticketsToUse > 5) {
+                        println("Invalid number of tickets. Using default (5).")
+                    }
+
+                    print("Enter opponent choice (1-4) [default: 2]: ")
+                    val opponentChoice = scanner.nextLine().trim().toIntOrNull()
+                    if (opponentChoice == null || opponentChoice < 1 || opponentChoice > 4) {
+                        println("Invalid opponent choice. Using default (2).")
+                    }
+
+                    print("Auto-select opponent? (y/n) [default: n]: ")
+                    val autoSelectResponse = scanner.nextLine().trim().lowercase()
+                    val autoSelect = autoSelectResponse == "y" || autoSelectResponse == "yes"
+
+                    actionConfigs["PvP"] = PvpActionConfig(
+                        enabled = true,
+                        ticketsToUse = ticketsToUse ?: 5,
+                        pvpOpponentChoice = opponentChoice ?: 2,
+                        autoSelectOpponent = autoSelect,
+                        commonTemplateDirectories = listOf(PathUtils.templatePath("ui")),
+                        specificTemplateDirectories = listOf(PathUtils.templatePath("pvp")),
+                        useDirectoryBasedTemplates = true
+                    )
+                }
+                "Raid" -> {
+                    println("\nSetting up Raid configuration:")
+
+                    // Prompt for raid targets
+                    val raidTargets = mutableListOf<RaidActionConfig.RaidTarget>()
+
+                    println("Do you want to add raid targets? (y/n): ")
+                    val addRaids = scanner.nextLine().trim().lowercase()
+                    if (addRaids == "y" || addRaids == "yes") {
+                        var addMore = true
+                        while (addMore) {
+                            println("Enter raid identifier (e.g., 'Raid 1' or 'T4'): ")
+                            val raidInput = scanner.nextLine().trim()
+
+                            // Parse raid input to determine raid number or tier number
+                            var raidNumber: Int? = null
+                            var tierNumber: Int? = null
+
+                            if (raidInput.startsWith("Raid", ignoreCase = true)) {
+                                // Format: "Raid X"
+                                val number = raidInput.substring(4).trim().toIntOrNull()
+                                if (number != null && number in 1..4) {
+                                    raidNumber = number
+                                    tierNumber = RaidActionConfig.RaidTarget.raidToTier(number)
+                                } else {
+                                    println("Invalid raid number. Please enter a number between 1 and 4.")
+                                    continue
+                                }
+                            } else if (raidInput.startsWith("T", ignoreCase = true)) {
+                                // Format: "TX"
+                                val number = raidInput.substring(1).trim().toIntOrNull()
+                                if (number != null && number in 4..7) {
+                                    tierNumber = number
+                                    raidNumber = RaidActionConfig.RaidTarget.tierToRaid(number)
+                                } else {
+                                    println("Invalid tier number. Please enter a number between 4 and 7.")
+                                    continue
+                                }
+                            } else {
+                                // Try to parse as a direct number (raid number)
+                                val number = raidInput.toIntOrNull()
+                                if (number != null && number in 1..4) {
+                                    raidNumber = number
+                                    tierNumber = RaidActionConfig.RaidTarget.raidToTier(number)
+                                } else {
+                                    println("Invalid raid format. Please use 'Raid X', 'TX', or a number between 1 and 4.")
+                                    continue
+                                }
+                            }
+
+                            print("Enter difficulty (Normal, Hard, Heroic) [default: Normal]: ")
+                            val difficulty = scanner.nextLine().trim().let { 
+                                if (it.isEmpty()) "Normal" 
+                                else it.replaceFirstChar { char -> char.uppercase() } 
+                            }
+
+                            raidTargets.add(RaidActionConfig.RaidTarget(
+                                raidNumber = raidNumber,
+                                tierNumber = tierNumber,
+                                difficulty = difficulty,
+                                enabled = true
+                            ))
+
+                            print("Add another raid target? (y/n): ")
+                            val raidResponse = scanner.nextLine().trim().lowercase()
+                            addMore = raidResponse == "y" || raidResponse == "yes"
+                        }
+                    }
+
+                    print("Enter run count [default: 3]: ")
+                    val runCount = scanner.nextLine().trim().toIntOrNull() ?: 3
+
+                    actionConfigs["Raid"] = RaidActionConfig(
+                        enabled = true,
+                        raidTargets = raidTargets,
+                        runCount = runCount,
+                        commonTemplateDirectories = listOf(PathUtils.templatePath("ui")),
+                        specificTemplateDirectories = listOf(PathUtils.templatePath("raid")),
+                        useDirectoryBasedTemplates = true
+                    )
+                }
+                // Add other action types as needed
+                else -> {
+                    println("\nSkipping configuration for unknown action type: $action")
+                }
+            }
+        }
+
+        // Create the configuration with the action sequence and action configs
+        val config = BotConfig(
+            configId = configId,
+            configName = configName,
+            characterId = character.characterId,
+            description = description,
+            actionSequence = actionSequence,
+            actionConfigs = actionConfigs
+        )
+
+        if (configManager.addConfig(config)) {
+            println("Configuration created with ID: $configId")
+            configManager.saveConfig(config)
+
+            // Automatically activate this config
+            configManager.setActiveConfig(configId, true)
+            println("Activated configuration: $configName")
+
+            // Ask if the user wants to edit the configuration further
+            print("Do you want to edit this configuration further? (y/n): ")
+            val editNow = scanner.nextLine().trim().lowercase()
+            if (editNow == "y" || editNow == "yes") {
+                editConfigDetails(config)
+            }
+        } else {
+            println("Failed to create configuration.")
         }
     }
 
@@ -193,6 +463,16 @@ class ConfigCLI(private val configManager: ConfigManager) {
      * Create a new configuration
      */
     private fun createConfig() {
+        // Check if there's an active character
+        val activeCharacter = configManager.getActiveCharacter()
+
+        if (activeCharacter != null) {
+            // Use the active character
+            createConfigForCharacter(activeCharacter)
+            return
+        }
+
+        // No active character, show list of characters
         val characters = configManager.getAllCharacters()
         if (characters.isEmpty()) {
             println("No characters found. Please create a character first.")
@@ -200,7 +480,6 @@ class ConfigCLI(private val configManager: ConfigManager) {
         }
 
         println("Creating a new configuration:")
-
         println("Available characters:")
         characters.forEachIndexed { index, character ->
             println("${index + 1}. ${character.characterName} (${character.characterId})")
@@ -215,38 +494,7 @@ class ConfigCLI(private val configManager: ConfigManager) {
         }
 
         val character = characters[characterIndex]
-
-        print("Enter configuration name: ")
-        val configName = scanner.nextLine().trim()
-
-        print("Enter description: ")
-        val description = scanner.nextLine().trim()
-
-        val configId = UUID.randomUUID().toString()
-
-        // Create a simple configuration with default values
-        val config = BotConfig(
-            configId = configId,
-            configName = configName,
-            characterId = character.characterId,
-            description = description,
-            actionSequence = emptyList(),
-            actionConfigs = emptyMap()
-        )
-
-        if (configManager.addConfig(config)) {
-            println("Configuration created with ID: $configId")
-            configManager.saveConfig(config)
-
-            // Ask if the user wants to edit the configuration now
-            print("Do you want to edit this configuration now? (y/n): ")
-            val editNow = scanner.nextLine().trim().lowercase()
-            if (editNow == "y" || editNow == "yes") {
-                editConfigDetails(config)
-            }
-        } else {
-            println("Failed to create configuration.")
-        }
+        createConfigForCharacter(character)
     }
 
     /**
@@ -271,7 +519,7 @@ class ConfigCLI(private val configManager: ConfigManager) {
         print("Enter new character name (current: ${character.characterName}): ")
         val characterName = scanner.nextLine().trim().let { if (it.isEmpty()) character.characterName else it }
 
-        print("Enter new account ID (current: ${character.accountId}): ")
+        print("Enter new account name (for multi-account support, current: ${character.accountId}): ")
         val accountId = scanner.nextLine().trim().let { if (it.isEmpty()) character.accountId else it }
 
         val updatedCharacter = character.copy(
@@ -327,15 +575,224 @@ class ConfigCLI(private val configManager: ConfigManager) {
             actionSequenceInput.split(",").map { it.trim() }
         }
 
+        // Create a mutable map of action configs that we'll update
+        val actionConfigs = config.actionConfigs.toMutableMap()
+
+        // Edit action-specific configurations
+        println("\nDo you want to edit action-specific configurations? (y/n): ")
+        val editActionConfigs = scanner.nextLine().trim().lowercase()
+        if (editActionConfigs == "y" || editActionConfigs == "yes") {
+            // For each action in the sequence, prompt for configuration
+            for (action in actionSequence) {
+                when (action) {
+                    "Quest" -> {
+                        println("\nEditing Quest configuration:")
+                        val existingConfig = actionConfigs["Quest"] as? QuestActionConfig
+
+                        // Prompt for dungeon targets
+                        val dungeonTargets = mutableListOf<QuestActionConfig.DungeonTarget>()
+
+                        println("Do you want to add dungeon targets? (y/n): ")
+                        val addDungeons = scanner.nextLine().trim().lowercase()
+                        if (addDungeons == "y" || addDungeons == "yes") {
+                            var addMore = true
+                            while (addMore) {
+                                print("Enter zone number: ")
+                                val zoneNumber = scanner.nextLine().trim().toIntOrNull()
+                                if (zoneNumber == null || zoneNumber < 1) {
+                                    println("Invalid zone number. Please enter a positive integer.")
+                                    continue
+                                }
+
+                                print("Enter dungeon number: ")
+                                val dungeonNumber = scanner.nextLine().trim().toIntOrNull()
+                                if (dungeonNumber == null || dungeonNumber < 1) {
+                                    println("Invalid dungeon number. Please enter a positive integer.")
+                                    continue
+                                }
+
+                                print("Enter difficulty (heroic, hard, normal) [default: heroic]: ")
+                                val difficulty = scanner.nextLine().trim().let { 
+                                    if (it.isEmpty()) "heroic" 
+                                    else it.lowercase() 
+                                }
+
+                                dungeonTargets.add(QuestActionConfig.DungeonTarget(
+                                    zoneNumber = zoneNumber,
+                                    dungeonNumber = dungeonNumber,
+                                    difficulty = difficulty,
+                                    enabled = true
+                                ))
+
+                                print("Add another dungeon target? (y/n): ")
+                                val response = scanner.nextLine().trim().lowercase()
+                                addMore = response == "y" || response == "yes"
+                            }
+                        } else if (existingConfig != null) {
+                            // Keep existing dungeon targets
+                            dungeonTargets.addAll(existingConfig.dungeonTargets)
+                        }
+
+                        print("Enter repeat count [default: 1]: ")
+                        val repeatCount = scanner.nextLine().trim().toIntOrNull() ?: 
+                                          existingConfig?.repeatCount ?: 1
+
+                        actionConfigs["Quest"] = QuestActionConfig(
+                            enabled = true,
+                            dungeonTargets = dungeonTargets,
+                            repeatCount = repeatCount,
+                            commonTemplateDirectories = existingConfig?.commonTemplateDirectories ?: 
+                                                       listOf(PathUtils.templatePath("ui")),
+                            specificTemplateDirectories = existingConfig?.specificTemplateDirectories ?: 
+                                                        listOf(PathUtils.templatePath("quest")),
+                            useDirectoryBasedTemplates = existingConfig?.useDirectoryBasedTemplates ?: true,
+                            commonActionTemplates = existingConfig?.commonActionTemplates ?: emptyList(),
+                            specificTemplates = existingConfig?.specificTemplates ?: emptyList(),
+                            cooldownDuration = existingConfig?.cooldownDuration ?: 20
+                        )
+                    }
+                    "PvP" -> {
+                        println("\nEditing PvP configuration:")
+                        val existingConfig = actionConfigs["PvP"] as? PvpActionConfig
+
+                        print("Enter number of tickets to use (1-5): ")
+                        val ticketsToUse = scanner.nextLine().trim().toIntOrNull()
+                        if (ticketsToUse == null || ticketsToUse < 1 || ticketsToUse > 5) {
+                            println("Invalid number of tickets. Using default (${existingConfig?.ticketsToUse ?: 5}).")
+                        }
+
+                        print("Enter opponent choice (1-4) [default: 2]: ")
+                        val opponentChoice = scanner.nextLine().trim().toIntOrNull()
+                        if (opponentChoice == null || opponentChoice < 1 || opponentChoice > 4) {
+                            println("Invalid opponent choice. Using default (${existingConfig?.pvpOpponentChoice ?: 2}).")
+                        }
+
+                        print("Auto-select opponent? (y/n) [default: n]: ")
+                        val autoSelectResponse = scanner.nextLine().trim().lowercase()
+                        val autoSelect = autoSelectResponse == "y" || autoSelectResponse == "yes"
+
+                        actionConfigs["PvP"] = PvpActionConfig(
+                            enabled = true,
+                            ticketsToUse = ticketsToUse ?: existingConfig?.ticketsToUse ?: 5,
+                            pvpOpponentChoice = opponentChoice ?: existingConfig?.pvpOpponentChoice ?: 2,
+                            autoSelectOpponent = autoSelect,
+                            commonTemplateDirectories = existingConfig?.commonTemplateDirectories ?: 
+                                                      listOf(PathUtils.templatePath("ui")),
+                            specificTemplateDirectories = existingConfig?.specificTemplateDirectories ?: 
+                                                        listOf(PathUtils.templatePath("pvp")),
+                            useDirectoryBasedTemplates = existingConfig?.useDirectoryBasedTemplates ?: true,
+                            commonActionTemplates = existingConfig?.commonActionTemplates ?: emptyList(),
+                            specificTemplates = existingConfig?.specificTemplates ?: emptyList()
+                        )
+                    }
+                    "Raid" -> {
+                        println("\nEditing Raid configuration:")
+                        val existingConfig = actionConfigs["Raid"] as? RaidActionConfig
+
+                        // Prompt for raid targets
+                        val raidTargets = mutableListOf<RaidActionConfig.RaidTarget>()
+
+                        println("Do you want to add raid targets? (y/n): ")
+                        val addRaids = scanner.nextLine().trim().lowercase()
+                        if (addRaids == "y" || addRaids == "yes") {
+                            var addMore = true
+                            while (addMore) {
+                                println("Enter raid identifier (e.g., 'Raid 1' or 'T4'): ")
+                                val raidInput = scanner.nextLine().trim()
+
+                                // Parse raid input to determine raid number or tier number
+                                var raidNumber: Int? = null
+                                var tierNumber: Int? = null
+
+                                if (raidInput.startsWith("Raid", ignoreCase = true)) {
+                                    // Format: "Raid X"
+                                    val number = raidInput.substring(4).trim().toIntOrNull()
+                                    if (number != null && number in 1..4) {
+                                        raidNumber = number
+                                        tierNumber = RaidActionConfig.RaidTarget.raidToTier(number)
+                                    } else {
+                                        println("Invalid raid number. Please enter a number between 1 and 4.")
+                                        continue
+                                    }
+                                } else if (raidInput.startsWith("T", ignoreCase = true)) {
+                                    // Format: "TX"
+                                    val number = raidInput.substring(1).trim().toIntOrNull()
+                                    if (number != null && number in 4..7) {
+                                        tierNumber = number
+                                        raidNumber = RaidActionConfig.RaidTarget.tierToRaid(number)
+                                    } else {
+                                        println("Invalid tier number. Please enter a number between 4 and 7.")
+                                        continue
+                                    }
+                                } else {
+                                    // Try to parse as a direct number (raid number)
+                                    val number = raidInput.toIntOrNull()
+                                    if (number != null && number in 1..4) {
+                                        raidNumber = number
+                                        tierNumber = RaidActionConfig.RaidTarget.raidToTier(number)
+                                    } else {
+                                        println("Invalid raid format. Please use 'Raid X', 'TX', or a number between 1 and 4.")
+                                        continue
+                                    }
+                                }
+
+                                print("Enter difficulty (Normal, Hard, Heroic) [default: Normal]: ")
+                                val difficulty = scanner.nextLine().trim().let { 
+                                    if (it.isEmpty()) "Normal" 
+                                    else it.replaceFirstChar { char -> char.uppercase() } 
+                                }
+
+                                raidTargets.add(RaidActionConfig.RaidTarget(
+                                    raidNumber = raidNumber,
+                                    tierNumber = tierNumber,
+                                    difficulty = difficulty,
+                                    enabled = true
+                                ))
+
+                                print("Add another raid target? (y/n): ")
+                                val raidResponse = scanner.nextLine().trim().lowercase()
+                                addMore = raidResponse == "y" || raidResponse == "yes"
+                            }
+                        } else if (existingConfig != null) {
+                            // Keep existing raid targets
+                            raidTargets.addAll(existingConfig.raidTargets)
+                        }
+
+                        print("Enter run count [default: 3]: ")
+                        val runCount = scanner.nextLine().trim().toIntOrNull() ?: 
+                                       existingConfig?.runCount ?: 3
+
+                        actionConfigs["Raid"] = RaidActionConfig(
+                            enabled = true,
+                            raidTargets = raidTargets,
+                            runCount = runCount,
+                            commonTemplateDirectories = existingConfig?.commonTemplateDirectories ?: 
+                                                       listOf(PathUtils.templatePath("ui")),
+                            specificTemplateDirectories = existingConfig?.specificTemplateDirectories ?: 
+                                                        listOf(PathUtils.templatePath("raid")),
+                            useDirectoryBasedTemplates = existingConfig?.useDirectoryBasedTemplates ?: true,
+                            commonActionTemplates = existingConfig?.commonActionTemplates ?: emptyList(),
+                            specificTemplates = existingConfig?.specificTemplates ?: emptyList(),
+                            cooldownDuration = existingConfig?.cooldownDuration ?: 20
+                        )
+                    }
+                    // Add other action types as needed
+                    else -> {
+                        println("\nSkipping configuration for unknown action type: $action")
+                    }
+                }
+            }
+        }
+
         // Create a copy of the configuration with the updated values
         val updatedConfig = config.copy(
+            configId = config.configId,
             configName = configName,
+            characterId = config.characterId,
             description = description,
-            actionSequence = actionSequence
+            actionSequence = actionSequence,
+            actionConfigs = actionConfigs
         )
-
-        // For simplicity, we're not editing the action configs here
-        // A real implementation would need a more complex UI to edit nested structures
 
         // Update the configuration
         configManager.addConfig(updatedConfig)
@@ -549,6 +1006,7 @@ class ConfigCLI(private val configManager: ConfigManager) {
 
         val character = configManager.getCharacter(config.characterId)
         val characterName = character?.characterName ?: "Unknown"
+        val accountId = character?.accountId ?: "Unknown"
 
         println("╔════════════════════════════════════════════════════════════════╗")
         println("║ Configuration Details:                                         ║")
@@ -556,6 +1014,7 @@ class ConfigCLI(private val configManager: ConfigManager) {
         println("║ ID:          ${config.configId}")
         println("║ Name:        ${config.configName}")
         println("║ Character:   $characterName (${config.characterId})")
+        println("║ Account:     $accountId")
         println("║ Description: ${config.description}")
         println("║ Actions:     ${config.actionSequence.joinToString(", ")}")
         println("╚════════════════════════════════════════════════════════════════╝")

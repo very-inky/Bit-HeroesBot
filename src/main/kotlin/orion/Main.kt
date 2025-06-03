@@ -29,11 +29,23 @@ import org.opencv.core.Core
 import java.io.File
 import java.nio.file.Paths
 import java.util.UUID
+import java.util.Random
 import java.util.Vector //unused
 import orion.utils.PathUtils
 import orion.utils.YamlUtils
 import java.awt.Robot
 import java.awt.event.InputEvent
+
+/**
+ * Generates a random ID consisting of a 3-digit number and 1 uppercase letter
+ * Format: "000A" to "999Z"
+ * @return A string in the format "NNNL" where N is a digit and L is an uppercase letter
+ */
+private fun generateShortId(): String {
+    val number = (100..999).random()
+    val letter = ('A'..'Z').random()
+    return "$number$letter"
+}
 
 fun main(args: Array<String>) {
     println("Starting OpenCV Bot...")
@@ -319,7 +331,7 @@ fun main(args: Array<String>) {
         println("No existing configurations found. Creating default configurations...")
 
         // Create a default character
-        val heroCharacterId = UUID.randomUUID().toString()
+        val heroCharacterId = generateShortId()
         val heroCharacter = CharacterConfig(
             characterId = heroCharacterId,
             characterName = "DefaultHero"
@@ -328,7 +340,7 @@ fun main(args: Array<String>) {
         println("Added default character: ${heroCharacter.characterName} (ID: ${heroCharacter.characterId})")
 
         // Create a default configuration for the character
-        val defaultConfigId = UUID.randomUUID().toString()
+        val defaultConfigId = generateShortId()
         val defaultConfig = BotConfig(
             configId = defaultConfigId,
             configName = "Default Configuration",

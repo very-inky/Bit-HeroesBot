@@ -1,0 +1,10 @@
+---
+configId: "134S"
+configName: "Daily"
+characterId: "648X"
+actionSequence: !<java.util.ArrayList>
+- "Quest"
+- "PVP"
+actionConfigs: !<kotlin.collections.EmptyMap> {}
+defaultAction: "Quest"
+description: "Daily farm"

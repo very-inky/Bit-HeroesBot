@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 import orion.actions.QuestAction
 import orion.actions.RaidAction
+import java.io.File
 
 /**
  * Test class for directory-based template loading functionality
@@ -12,6 +13,13 @@ import orion.actions.RaidAction
  * without testing the actual interaction with the Bot class.
  */
 class DirectoryBasedTemplateTest {
+
+    /**
+     * Normalize path separators to forward slashes for consistent testing across platforms
+     */
+    private fun normalizePath(path: String): String {
+        return path.replace(File.separator, "/")
+    }
 
     @Test
     fun testQuestConfigWithDirectoryBasedTemplates() {
@@ -101,9 +109,9 @@ class DirectoryBasedTemplateTest {
         // Verify the default values for directory-based template loading
         assertTrue(questConfig.enabled)
         assertEquals(1, questConfig.commonTemplateDirectories.size)
-        assertEquals("templates/ui", questConfig.commonTemplateDirectories[0])
+        assertEquals("templates/ui", normalizePath(questConfig.commonTemplateDirectories[0]))
         assertEquals(1, questConfig.specificTemplateDirectories.size)
-        assertEquals("templates/quest", questConfig.specificTemplateDirectories[0])
+        assertEquals("templates/quest", normalizePath(questConfig.specificTemplateDirectories[0]))
         assertTrue(questConfig.useDirectoryBasedTemplates)
         assertTrue(questConfig.commonActionTemplates.isEmpty())
         assertTrue(questConfig.specificTemplates.isEmpty())

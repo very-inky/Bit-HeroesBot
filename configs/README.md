@@ -13,8 +13,12 @@ This directory contains the YAML configuration files for the Orion Bot. The conf
 
 To launch the configuration CLI, run the bot with the `--config` flag:
 
-```
-java -jar orion.jar --config
+```bash
+# On Windows
+gradlew run --args="--config"
+
+# On Linux/macOS
+./gradlew run --args="--config"
 ```
 
 The CLI provides the following commands:
@@ -68,11 +72,13 @@ description: "Configuration for daily farming tasks"
 actionSequence:
 - "Quest"
 - "Raid"
+- "PvP"
+- "GvG"
+- "WorldBoss"
 actionConfigs:
   Quest:
     enabled: true
-    commonActionTemplates:
-    - "templates/quest/Untitled.png"
+    commonActionTemplates: []
     specificTemplates: []
     commonTemplateDirectories:
     - "templates/ui"
@@ -88,8 +94,8 @@ actionConfigs:
       dungeonNumber: 3
       difficulty: "heroic"
       enabled: true
-    repeatCount: 0
-    cooldownDuration: 1
+    repeatCount: 3
+    cooldownDuration: 20
   Raid:
     enabled: true
     commonActionTemplates: []
@@ -101,11 +107,71 @@ actionConfigs:
     useDirectoryBasedTemplates: true
     raidTargets:
     - raidName: "SomeRaidBoss"
+      raidNumber: 3
+      tierNumber: 6
       difficulty: "Heroic"
       enabled: true
-    runCount: 0
-    cooldownDuration: 1
+    runCount: 3
+    cooldownDuration: 20
+  PvP:
+    enabled: true
+    commonActionTemplates: []
+    specificTemplates: []
+    commonTemplateDirectories:
+    - "templates/ui"
+    specificTemplateDirectories:
+    - "templates/pvp"
+    useDirectoryBasedTemplates: true
+    ticketsToUse: 5
+    pvpOpponentChoice: 2
+    autoSelectOpponent: false
+  GvG:
+    enabled: true
+    commonActionTemplates: []
+    specificTemplates: []
+    commonTemplateDirectories:
+    - "templates/ui"
+    specificTemplateDirectories:
+    - "templates/gvg"
+    useDirectoryBasedTemplates: true
+    badgeChoice: 5
+    opponentChoice: 1
+  WorldBoss:
+    enabled: true
+    commonActionTemplates: []
+    specificTemplates: []
+    commonTemplateDirectories:
+    - "templates/ui"
+    specificTemplateDirectories:
+    - "templates/worldboss"
+    useDirectoryBasedTemplates: true
 ```
+
+## Template System
+
+The bot uses a directory-based template system for image recognition. Templates are organized in the `templates` directory with the following structure:
+
+```
+templates/
+├── ui/             # Common UI elements used across all actions
+├── quest/          # Quest-specific templates
+├── raid/           # Raid-specific templates
+├── pvp/            # PvP-specific templates
+├── gvg/            # GvG-specific templates
+├── worldboss/      # World Boss-specific templates
+├── invasion/       # Invasion-specific templates
+├── expedition/     # Expedition-specific templates
+└── blueprint/      # Blueprint-specific templates
+```
+
+Each action configuration can specify:
+- `commonTemplateDirectories`: Directories containing common UI templates (usually `templates/ui`)
+- `specificTemplateDirectories`: Directories containing action-specific templates (e.g., `templates/quest`)
+- `useDirectoryBasedTemplates`: Whether to load all templates from the specified directories
+- `commonActionTemplates`: Specific template files for common UI elements
+- `specificTemplates`: Specific template files for this action type
+
+When `useDirectoryBasedTemplates` is set to `true`, the bot will automatically load all template files from the specified directories. This is the recommended approach as it simplifies configuration and ensures all necessary templates are available.
 
 ## Editing YAML Files Directly
 

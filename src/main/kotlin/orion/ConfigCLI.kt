@@ -373,7 +373,7 @@ class ConfigCLI(private val configManager: ConfigManager) {
                             } else if (raidInput.startsWith("T", ignoreCase = true)) {
                                 // Format: "TX"
                                 val number = raidInput.substring(1).trim().toIntOrNull()
-                                if (number != null && (number in 4..13 || number == 15)) {
+                                if (number != null && number in 4..15) {
                                     tierNumber = number
                                     raidNumber = RaidActionConfig.RaidTarget.tierToRaid(number)
                                 } else {
@@ -717,7 +717,7 @@ class ConfigCLI(private val configManager: ConfigManager) {
                                 } else if (raidInput.startsWith("T", ignoreCase = true)) {
                                     // Format: "TX"
                                     val number = raidInput.substring(1).trim().toIntOrNull()
-                                    if (number != null && (number in 4..13 || number == 15)) {
+                                    if (number != null && number in 4..15) {
                                         tierNumber = number
                                         raidNumber = RaidActionConfig.RaidTarget.tierToRaid(number)
                                     } else {

@@ -96,33 +96,11 @@ data class RaidActionConfig(
     ) {
         // Mapping between raid numbers and tier numbers
         companion object {
-            private val RAID_TO_TIER_MAP = mapOf(
-                1 to 4,  // Raid1 = Tier4
-                2 to 5,  // Raid2 = Tier5
-                3 to 6,  // Raid3 = Tier6
-                4 to 7,  // Raid4 = Tier7
-                5 to 8,  // Raid5 = Tier8
-                6 to 9,  // Raid6 = Tier9
-                7 to 10, // Raid7 = Tier10
-                8 to 11, // Raid8 = Tier11
-                9 to 12, // Raid9 = Tier12
-                10 to 13, // Raid10 = Tier13
-                11 to 15  // Raid11 = Tier15
-            )
-
-            private val TIER_TO_RAID_MAP = mapOf(
-                4 to 1,  // Tier4 = Raid1
-                5 to 2,  // Tier5 = Raid2
-                6 to 3,  // Tier6 = Raid3
-                7 to 4,  // Tier7 = Raid4
-                8 to 5,  // Tier8 = Raid5
-                9 to 6,  // Tier9 = Raid6
-                10 to 7, // Tier10 = Raid7
-                11 to 8, // Tier11 = Raid8
-                12 to 9, // Tier12 = Raid9
-                13 to 10, // Tier13 = Raid10
-                15 to 11  // Tier15 = Raid11
-            )
+            // Constants for valid raid and tier ranges
+            private const val MIN_RAID_NUMBER = 1
+            private const val MAX_RAID_NUMBER = 11
+            private const val MIN_TIER_NUMBER = 4
+            private const val MAX_TIER_NUMBER = 15
 
             /**
              * Convert a raid number to a tier number
@@ -130,7 +108,11 @@ data class RaidActionConfig(
              * @return The corresponding tier number, or null if the raid number is invalid
              */
             fun raidToTier(raidNumber: Int): Int? {
-                return RAID_TO_TIER_MAP[raidNumber]
+                return when {
+                    raidNumber !in MIN_RAID_NUMBER..MAX_RAID_NUMBER -> null
+                    raidNumber == 11 -> 15  // Special case: Raid 11 maps to Tier 15
+                    else -> raidNumber + 3
+                }
             }
 
             /**
@@ -139,7 +121,12 @@ data class RaidActionConfig(
              * @return The corresponding raid number, or null if the tier number is invalid
              */
             fun tierToRaid(tierNumber: Int): Int? {
-                return TIER_TO_RAID_MAP[tierNumber]
+                return when {
+                    tierNumber !in MIN_TIER_NUMBER..MAX_TIER_NUMBER -> null
+                    tierNumber == 14 -> 10  // Special case: Tier 14 maps to Raid 10
+                    tierNumber == 15 -> 11  // Special case: Tier 15 maps to Raid 11
+                    else -> tierNumber - 3
+                }
             }
         }
 

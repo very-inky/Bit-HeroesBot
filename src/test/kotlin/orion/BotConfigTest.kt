@@ -143,7 +143,7 @@ class BotConfigTest {
         assertNull(RaidActionConfig.RaidTarget.raidToTier(0), "Raid 0 should not map to any tier")
         assertNull(RaidActionConfig.RaidTarget.raidToTier(12), "Raid 12 should not map to any tier")
         assertNull(RaidActionConfig.RaidTarget.tierToRaid(3), "Tier 3 should not map to any raid")
-        assertNull(RaidActionConfig.RaidTarget.tierToRaid(14), "Tier 14 should not map to any raid")
+        assertEquals(10, RaidActionConfig.RaidTarget.tierToRaid(14), "Tier 14 should map to Raid 10")
         assertNull(RaidActionConfig.RaidTarget.tierToRaid(16), "Tier 16 should not map to any raid")
     }
 }

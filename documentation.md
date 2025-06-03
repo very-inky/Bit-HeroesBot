@@ -184,8 +184,8 @@ The bot uses a YAML-based configuration system that allows users to create, edit
    - `configName`: Display name for this configuration
    - `characterId`: Reference to the character this config belongs to
    - `description`: Description of what this config is for
-   - `actionSequence`: List of action names to execute in order
-   - `actionConfigs`: Map of action names to their configurations
+   - `actionSequence`: List of action names to execute in order (case-insensitive)
+   - `actionConfigs`: Map of action names to their configurations (case-insensitive lookup)
    - `defaultAction`: Default action if none specified
 
 3. **ActionConfig**: A sealed class hierarchy that defines configurations for different types of game actions

@@ -30,7 +30,7 @@ data class QuestActionConfig(
     override val specificTemplateDirectories: List<String> = listOf(PathUtils.templatePath("quest")),
     override val useDirectoryBasedTemplates: Boolean = true,
     val dungeonTargets: List<DungeonTarget> = emptyList(), // Specify dungeons with zone and dungeon numbers
-    val repeatCount: Int = 1, // How many times to cycle through quests or a specific quest
+    val repeatCount: Int = 0, // How many times to cycle through quests or a specific quest (0 = infinite runs until out of resources)
     override val cooldownDuration: Int = 20 // Cooldown duration in minutes when resources are depleted
 ) : ActionConfig() {
     // Data class for specifying a dungeon with zone and dungeon number
@@ -49,7 +49,7 @@ data class PvpActionConfig(
     override val commonTemplateDirectories: List<String> = listOf(PathUtils.templatePath("ui")),
     override val specificTemplateDirectories: List<String> = listOf(PathUtils.templatePath("pvp")),
     override val useDirectoryBasedTemplates: Boolean = true,
-    val ticketsToUse: Int, // Number of tickets to use (1-5) - mandatory
+    val ticketsToUse: Int = 5, // Number of tickets to use (1-5)
     val pvpOpponentChoice: Int = 2, // Which opponent to fight (1-4)
     val autoSelectOpponent: Boolean = false // Whether to automatically select opponents or use specified rank
 ) : ActionConfig()
@@ -83,7 +83,7 @@ data class RaidActionConfig(
     override val specificTemplateDirectories: List<String> = listOf(PathUtils.templatePath("raid")),
     override val useDirectoryBasedTemplates: Boolean = true,
     val raidTargets: List<RaidTarget> = emptyList(), // Specific raids
-    val runCount: Int = 3, // Number of times to run each raid target
+    val runCount: Int = 0, // Number of times to run each raid target (0 = infinite runs until out of resources)
     override val cooldownDuration: Int = 20 // Cooldown duration in minutes when resources are depleted
 ) : ActionConfig() {
     // Data class for specifying details about a raid target
@@ -91,24 +91,16 @@ data class RaidActionConfig(
         val raidName: String = "", // Corresponds to legacy Patterns.Raid.RaidName
         val raidNumber: Int? = null, // Raid number (e.g., 1, 2, 3, 4)
         val tierNumber: Int? = null, // Tier number (e.g., 4, 5, 6, 7)
-        val difficulty: String = "Normal", // e.g., "Normal", "Hard", "Heroic"
+        val difficulty: String = "Heroic", // e.g., "Normal", "Hard", "Heroic"
         val enabled: Boolean = true
     ) {
         // Mapping between raid numbers and tier numbers
         companion object {
-            private val RAID_TO_TIER_MAP = mapOf(
-                1 to 4, // Raid1 = Tier4
-                2 to 5, // Raid2 = Tier5
-                3 to 6, // Raid3 = Tier6
-                4 to 7  // Raid4 = Tier7
-            )
-
-            private val TIER_TO_RAID_MAP = mapOf(
-                4 to 1, // Tier4 = Raid1
-                5 to 2, // Tier5 = Raid2
-                6 to 3, // Tier6 = Raid3
-                7 to 4  // Tier7 = Raid4
-            )
+            // Constants for valid raid and tier ranges
+            private const val MIN_RAID_NUMBER = 1
+            private const val MAX_RAID_NUMBER = 18
+            private const val MIN_TIER_NUMBER = 4
+            private const val MAX_TIER_NUMBER = 21
 
             /**
              * Convert a raid number to a tier number
@@ -116,7 +108,10 @@ data class RaidActionConfig(
              * @return The corresponding tier number, or null if the raid number is invalid
              */
             fun raidToTier(raidNumber: Int): Int? {
-                return RAID_TO_TIER_MAP[raidNumber]
+                return when {
+                    raidNumber !in MIN_RAID_NUMBER..MAX_RAID_NUMBER -> null
+                    else -> raidNumber + 3
+                }
             }
 
             /**
@@ -125,7 +120,13 @@ data class RaidActionConfig(
              * @return The corresponding raid number, or null if the tier number is invalid
              */
             fun tierToRaid(tierNumber: Int): Int? {
-                return TIER_TO_RAID_MAP[tierNumber]
+                return when {
+                    tierNumber !in MIN_TIER_NUMBER..MAX_TIER_NUMBER -> null
+                    else -> {
+                        val raidNumber = tierNumber - 3
+                        if (raidNumber !in MIN_RAID_NUMBER..MAX_RAID_NUMBER) null else raidNumber
+                    }
+                }
             }
         }
 

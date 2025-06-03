@@ -195,3 +195,5 @@ If you encounter issues with your configurations:
 ## Notes
 
 - **Action Names**: Action names in the `actionSequence` and `actionConfigs` are case-insensitive. For example, "pvp", "PvP", and "PVP" are all treated as the same action. However, for consistency, it's recommended to use the standard capitalization in your configurations (e.g., "Quest", "Raid", "PvP").
+- **Difficulty Levels**: Difficulty levels for Quest and Raid actions are also case-insensitive. For example, "heroic", "Heroic", and "HEROIC" are all treated as the same difficulty. Quest difficulty is stored in lowercase (e.g., "heroic"), while Raid difficulty is stored with the first letter capitalized (e.g., "Heroic").
+- **Other Inputs**: Most other inputs in the configuration system are also case-insensitive, including yes/no responses and action-specific inputs. The only things that are case-sensitive are IDs (e.g., character IDs, config IDs).

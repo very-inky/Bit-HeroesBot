@@ -304,7 +304,7 @@ class ConfigCLI(private val configManager: ConfigManager) {
                     print("Enter repeat count (0 = infinite runs until out of resources) [default: 0]: ")
                     val repeatCount = scanner.nextLine().trim().toIntOrNull() ?: 0
 
-                    actionConfigs["Quest"] = QuestActionConfig(
+                    actionConfigs[action] = QuestActionConfig(
                         enabled = true,
                         dungeonTargets = dungeonTargets,
                         repeatCount = repeatCount,
@@ -342,7 +342,7 @@ class ConfigCLI(private val configManager: ConfigManager) {
                         useDirectoryBasedTemplates = true
                     )
                 }
-                "Raid" -> {
+                "raid" -> {
                     println("\nSetting up Raid configuration:")
 
                     // Prompt for raid targets
@@ -414,7 +414,7 @@ class ConfigCLI(private val configManager: ConfigManager) {
                     print("Enter run count (0 = infinite runs until out of resources) [default: 0]: ")
                     val runCount = scanner.nextLine().trim().toIntOrNull() ?: 0
 
-                    actionConfigs["Raid"] = RaidActionConfig(
+                    actionConfigs[action] = RaidActionConfig(
                         enabled = true,
                         raidTargets = raidTargets,
                         runCount = runCount,
@@ -584,10 +584,10 @@ class ConfigCLI(private val configManager: ConfigManager) {
         if (editActionConfigs == "y" || editActionConfigs == "yes") {
             // For each action in the sequence, prompt for configuration
             for (action in actionSequence) {
-                when (action) {
-                    "Quest" -> {
+                when (action.lowercase()) {
+                    "quest" -> {
                         println("\nEditing Quest configuration:")
-                        val existingConfig = actionConfigs["Quest"] as? QuestActionConfig
+                        val existingConfig = actionConfigs.entries.find { it.key.equals(action, ignoreCase = true) }?.value as? QuestActionConfig
 
                         // Prompt for dungeon targets
                         val dungeonTargets = mutableListOf<QuestActionConfig.DungeonTarget>()
@@ -637,7 +637,9 @@ class ConfigCLI(private val configManager: ConfigManager) {
                         val repeatCount = scanner.nextLine().trim().toIntOrNull() ?: 
                                           existingConfig?.repeatCount ?: 0
 
-                        actionConfigs["Quest"] = QuestActionConfig(
+                        // Find the original key with case preserved
+                        val originalKey = actionConfigs.keys.find { it.equals(action, ignoreCase = true) } ?: action
+                        actionConfigs[originalKey] = QuestActionConfig(
                             enabled = true,
                             dungeonTargets = dungeonTargets,
                             repeatCount = repeatCount,
@@ -687,9 +689,9 @@ class ConfigCLI(private val configManager: ConfigManager) {
                             specificTemplates = existingConfig?.specificTemplates ?: emptyList()
                         )
                     }
-                    "Raid" -> {
+                    "raid" -> {
                         println("\nEditing Raid configuration:")
-                        val existingConfig = actionConfigs["Raid"] as? RaidActionConfig
+                        val existingConfig = actionConfigs.entries.find { it.key.equals(action, ignoreCase = true) }?.value as? RaidActionConfig
 
                         // Prompt for raid targets
                         val raidTargets = mutableListOf<RaidActionConfig.RaidTarget>()
@@ -764,7 +766,9 @@ class ConfigCLI(private val configManager: ConfigManager) {
                         val runCount = scanner.nextLine().trim().toIntOrNull() ?: 
                                        existingConfig?.runCount ?: 0
 
-                        actionConfigs["Raid"] = RaidActionConfig(
+                        // Find the original key with case preserved
+                        val originalKey = actionConfigs.keys.find { it.equals(action, ignoreCase = true) } ?: action
+                        actionConfigs[originalKey] = RaidActionConfig(
                             enabled = true,
                             raidTargets = raidTargets,
                             runCount = runCount,

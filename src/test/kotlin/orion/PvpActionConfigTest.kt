@@ -13,14 +13,14 @@ class PvpActionConfigTest {
     @Test
     fun testPvpConfigDefaults() {
         // Create a PvpActionConfig with default values
-        val pvpConfig = PvpActionConfig()
+        val pvpConfig = PvpActionConfig(ticketsToUse = 5)
 
         // Verify the default values
         assertTrue(pvpConfig.enabled)
         assertTrue(pvpConfig.commonActionTemplates.isEmpty())
         assertTrue(pvpConfig.specificTemplates.isEmpty())
         assertEquals(5, pvpConfig.ticketsToUse)
-        assertEquals(2, pvpConfig.opponentRank)
+        assertEquals(2, pvpConfig.pvpOpponentChoice)
         assertFalse(pvpConfig.autoSelectOpponent)
     }
 
@@ -32,7 +32,7 @@ class PvpActionConfigTest {
             commonActionTemplates = listOf("templates/ui/pvp_button.png"),
             specificTemplates = listOf("templates/ui/pvp_opponent_1.png"),
             ticketsToUse = 3,
-            opponentRank = 4,
+            pvpOpponentChoice = 4,
             autoSelectOpponent = true
         )
 
@@ -43,7 +43,7 @@ class PvpActionConfigTest {
         assertEquals(1, pvpConfig.specificTemplates.size)
         assertEquals("templates/ui/pvp_opponent_1.png", pvpConfig.specificTemplates[0])
         assertEquals(3, pvpConfig.ticketsToUse)
-        assertEquals(4, pvpConfig.opponentRank)
+        assertEquals(4, pvpConfig.pvpOpponentChoice)
         assertTrue(pvpConfig.autoSelectOpponent)
     }
 
@@ -53,13 +53,13 @@ class PvpActionConfigTest {
         val pvpConfig = PvpActionConfig(
             enabled = false,
             ticketsToUse = 1,
-            opponentRank = 1
+            pvpOpponentChoice = 1
         )
 
         // Verify the configuration
         assertFalse(pvpConfig.enabled)
         assertEquals(1, pvpConfig.ticketsToUse)
-        assertEquals(1, pvpConfig.opponentRank)
+        assertEquals(1, pvpConfig.pvpOpponentChoice)
     }
 
     @Test
@@ -74,7 +74,7 @@ class PvpActionConfigTest {
                 "PVP" to PvpActionConfig(
                     enabled = true,
                     ticketsToUse = 5,
-                    opponentRank = 2,
+                    pvpOpponentChoice = 2,
                     autoSelectOpponent = false
                 )
             )
@@ -92,7 +92,7 @@ class PvpActionConfigTest {
         val pvpConfig = botConfig.actionConfigs["PVP"] as PvpActionConfig
         assertTrue(pvpConfig.enabled)
         assertEquals(5, pvpConfig.ticketsToUse)
-        assertEquals(2, pvpConfig.opponentRank)
+        assertEquals(2, pvpConfig.pvpOpponentChoice)
         assertFalse(pvpConfig.autoSelectOpponent)
     }
 }

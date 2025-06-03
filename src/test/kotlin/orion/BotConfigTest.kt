@@ -35,14 +35,14 @@ class BotConfigTest {
         val pvpConfig = PvpActionConfig(
             enabled = true,
             ticketsToUse = 3,
-            opponentRank = 4,
+            pvpOpponentChoice = 4,
             autoSelectOpponent = false
         )
 
         // Verify the configuration
         assertTrue(pvpConfig.enabled)
         assertEquals(3, pvpConfig.ticketsToUse)
-        assertEquals(4, pvpConfig.opponentRank)
+        assertEquals(4, pvpConfig.pvpOpponentChoice)
         assertFalse(pvpConfig.autoSelectOpponent)
     }
 
@@ -64,7 +64,7 @@ class BotConfigTest {
                 "PVP" to PvpActionConfig(
                     enabled = true,
                     ticketsToUse = 5,
-                    opponentRank = 2
+                    pvpOpponentChoice = 2
                 )
             )
         )
@@ -89,6 +89,6 @@ class BotConfigTest {
         val pvpConfig = botConfig.actionConfigs["PVP"] as PvpActionConfig
         assertTrue(pvpConfig.enabled)
         assertEquals(5, pvpConfig.ticketsToUse)
-        assertEquals(2, pvpConfig.opponentRank)
+        assertEquals(2, pvpConfig.pvpOpponentChoice)
     }
 }

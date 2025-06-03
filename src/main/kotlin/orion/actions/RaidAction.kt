@@ -38,21 +38,65 @@ class RaidAction : BaseGameAction() {
             val target = config.raidTargets[i]
             if (!target.enabled) continue
 
-            println("\nTarget ${i + 1}: ${target.raidName} (${target.difficulty})")
+            // Determine the raid identifier based on available information
+            val raidIdentifier = when {
+                target.raidName.isNotBlank() -> target.raidName
+                target.raidNumber != null -> "Raid${target.raidNumber}"
+                target.tierNumber != null -> "Tier${target.tierNumber}"
+                else -> {
+                    println("Target ${i + 1}: No raid name, raid number, or tier number specified. Skipping.")
+                    continue
+                }
+            }
+
+            println("\nTarget ${i + 1}: $raidIdentifier (${target.difficulty})")
 
             // Step 2: Raid Selection - Create a target identifier
-            val targetRaidId = target.raidName.lowercase().replace(" ", "_")
+            val targetRaidId = when {
+                target.raidName.isNotBlank() -> target.raidName.lowercase().replace(" ", "_")
+                target.raidNumber != null -> "raid${target.raidNumber}"
+                target.tierNumber != null -> "tier${target.tierNumber}"
+                else -> ""
+            }
             println("Step 2: Raid Selection - Target: $targetRaidId")
 
             // Step 3: Find and verify the raid template
             println("Step 3: Raid Verification")
-            // Look for a specific raid template file like "raid_name.png"
-            val raidFileName = "${targetRaidId}.png"
 
-            // First check if the template exists
-            if (!File("${config.specificTemplateDirectories.first()}/${raidFileName}").exists() &&
-                !File("${config.commonTemplateDirectories.first()}/${raidFileName}").exists()) {
-                println("Could not find raid template file for ${target.raidName}, skipping this raid")
+            // Try different possible template filenames
+            val possibleTemplateNames = mutableListOf<String>()
+
+            // Add the primary template name based on the identifier
+            possibleTemplateNames.add("${targetRaidId}.png")
+
+            // Add alternative template names based on raid/tier conversion
+            if (target.raidNumber != null) {
+                val tierNumber = target.getEffectiveTierNumber()
+                if (tierNumber != null) {
+                    possibleTemplateNames.add("tier${tierNumber}.png")
+                }
+            } else if (target.tierNumber != null) {
+                val raidNumber = target.getEffectiveRaidNumber()
+                if (raidNumber != null) {
+                    possibleTemplateNames.add("raid${raidNumber}.png")
+                }
+            }
+
+            // Try each possible template
+            var templateFound = false
+            var raidFileName = ""
+
+            for (templateName in possibleTemplateNames) {
+                if (File("${config.specificTemplateDirectories.first()}/${templateName}").exists() ||
+                    File("${config.commonTemplateDirectories.first()}/${templateName}").exists()) {
+                    templateFound = true
+                    raidFileName = templateName
+                    break
+                }
+            }
+
+            if (!templateFound) {
+                println("Could not find raid template file for $raidIdentifier, skipping this raid")
                 continue
             }
 
@@ -60,11 +104,11 @@ class RaidAction : BaseGameAction() {
 
             // Step 4: Click on the raid to select it
             println("Step 4: Raid Selection")
-            if (!findAndClickSpecificTemplate(bot, config, raidFileName, "raid ${target.raidName} button", delayAfterClick = 1500)) {
-                println("Failed to find and click raid ${target.raidName}, skipping this raid")
+            if (!findAndClickSpecificTemplate(bot, config, raidFileName, "raid $raidIdentifier button", delayAfterClick = 1500)) {
+                println("Failed to find and click raid $raidIdentifier, skipping this raid")
                 continue
             }
-            println("Successfully selected raid: ${target.raidName}")
+            println("Successfully selected raid: $raidIdentifier")
 
             // Step 5: Difficulty Selection - Find and click on the difficulty button
             println("Step 5: Difficulty Selection")

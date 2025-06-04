@@ -328,51 +328,10 @@ fun main(args: Array<String>) {
             println("No active configuration.")
         }
     } else {
-        println("No existing configurations found. Creating default configurations...")
-
-        // Create a default character
-        val heroCharacterId = generateShortId()
-        val heroCharacter = CharacterConfig(
-            characterId = heroCharacterId,
-            characterName = "DefaultHero"
-        )
-        configManager.addCharacter(heroCharacter)
-        println("Added default character: ${heroCharacter.characterName} (ID: ${heroCharacter.characterId})")
-
-        // Create a default configuration for the character
-        val defaultConfigId = generateShortId()
-        val defaultConfig = BotConfig(
-            configId = defaultConfigId,
-            configName = "Default Configuration",
-            characterId = heroCharacterId,
-            description = "Default configuration created automatically",
-            actionSequence = listOf("Quest"),
-            actionConfigs = mapOf(
-                "Quest" to QuestActionConfig(
-                    enabled = true,
-                    commonActionTemplates = listOf(PathUtils.templatePath("quest", "Untitled.png")),
-                    dungeonTargets = listOf(
-                        QuestActionConfig.DungeonTarget(zoneNumber = 1, dungeonNumber = 1, enabled = true)
-                    ),
-                    repeatCount = 3
-                )
-            )
-        )
-        configManager.addConfig(defaultConfig)
-        println("Added default configuration: ${defaultConfig.configName} (ID: ${defaultConfig.configId})")
-
-        // Activate the default character and configuration
-        try {
-            configManager.setActiveCharacter(heroCharacterId)
-            configManager.setActiveConfig(defaultConfigId)
-            println("Activated default character and configuration.")
-
-            // Save the default configurations to YAML files
-            configManager.saveAllToFiles()
-            println("Saved default configurations to YAML files.")
-        } catch (e: IllegalStateException) {
-            println("Error activating default character or configuration: ${e.message}")
-        }
+        println("No existing configurations found.")
+        println("Please run the bot with the --config flag to set up a character and configuration, or create configuration files manually.")
+        println("Exiting.")
+        return // Exit main function
     }
 
     // Validate the configuration
@@ -424,6 +383,8 @@ fun main(args: Array<String>) {
         actionManager.runActionSequence()
     } else {
         println("No active configuration found. Cannot start the bot.")
+        println("Please ensure a character and configuration are active. You can set them using the --config CLI or by editing the configuration files.")
+        return // Exit main function
     }
 
     println("\nMain function finished.")

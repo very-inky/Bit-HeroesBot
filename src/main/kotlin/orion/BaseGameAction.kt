@@ -1,6 +1,7 @@
 package orion
 
 import java.io.File
+import orion.utils.PathUtils
 
 /**
  * Base implementation of GameAction that provides common functionality for all game actions.
@@ -28,7 +29,7 @@ abstract class BaseGameAction : GameAction {
         }
 
         // Check for out of resources message using the standardized template path
-        val outOfResourcesPath = "templates/ui/outofresourcepopup.png"
+        val outOfResourcesPath = PathUtils.buildPath("templates", "ui", "outofresourcepopup.png")
         if (bot.findTemplate(outOfResourcesPath) != null) {
             println("$logMessage")
             return true
@@ -311,7 +312,7 @@ abstract class BaseGameAction : GameAction {
 
         // First, check action-specific directories
         for (directory in config.specificTemplateDirectories) {
-            val specificPath = "$directory/$templateName"
+            val specificPath = PathUtils.buildPath(directory, templateName)
             println("Checking action-specific path: $specificPath")
 
             if (File(specificPath).exists()) {
@@ -325,7 +326,7 @@ abstract class BaseGameAction : GameAction {
 
         // If not found in action-specific directories, check common directories
         for (directory in config.commonTemplateDirectories) {
-            val commonPath = "$directory/$templateName"
+            val commonPath = PathUtils.buildPath(directory, templateName)
             println("Checking common path: $commonPath")
 
             if (File(commonPath).exists()) {

@@ -275,6 +275,7 @@ class ConfigManager {
         }
 
         activeConfigId = configId
+        saveActiveState() // Add this line
         return true
     }
 
@@ -302,6 +303,7 @@ class ConfigManager {
     fun deactivateActiveConfig(): Boolean {
         if (activeConfigId != null) {
             activeConfigId = null
+            saveActiveState() // Add this line
             return true
         }
         return false
@@ -379,7 +381,7 @@ class ConfigManager {
         val character = characters[characterId]!!
         characters[characterId] = character.copy(isActive = true)
         activeCharacterId = characterId
-
+        saveActiveState() // Add this line
         return true
     }
 
@@ -411,6 +413,7 @@ class ConfigManager {
                 characters[activeCharacterId!!] = character.copy(isActive = false)
             }
             activeCharacterId = null
+            saveActiveState() // Add this line
             return true
         }
         return false
@@ -478,6 +481,11 @@ class ConfigManager {
                 characters[id] = char.copy(isActive = false)
             }
         }
+        // Also clear current active config if the character is changing
+        if (activeCharacterId != (characterId ?: accountCharacters.first().characterId)) {
+            activeConfigId = null
+        }
+
 
         // Determine which character to activate
         val targetCharacterId = characterId ?: accountCharacters.first().characterId
@@ -494,12 +502,17 @@ class ConfigManager {
                 val targetConfigId = configId ?: characterConfigs.first().configId
                 if (configs.containsKey(targetConfigId)) {
                     activeConfigId = targetConfigId
+                } else {
+                    // If specified configId doesn't exist, clear activeConfigId or set to first available
+                    activeConfigId = if (characterConfigs.isNotEmpty()) characterConfigs.first().configId else null
                 }
+            } else {
+                activeConfigId = null // No configs for this character
             }
-
+            saveActiveState() // Add this line
             return true
         }
-
+        saveActiveState() // Also save state if character activation fails but changes were made (e.g. deactivations)
         return false
     }
 

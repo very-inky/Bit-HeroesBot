@@ -723,12 +723,12 @@ class QuestAction : BaseGameAction() {
 
         if (targetZone > currentZone) {
             // Need to go right
-            arrowTemplate = "${config.commonTemplateDirectories.first()}/arrowright.png"
+            arrowTemplate = "${config.specificTemplateDirectories.first()}/arrowright.png" // Changed to use specificTemplateDirectories
             clickCount = targetZone - currentZone
             println("Need to click right arrow $clickCount times")
         } else {
             // Need to go left
-            arrowTemplate = "${config.commonTemplateDirectories.first()}/arrowleft.png"
+            arrowTemplate = "${config.specificTemplateDirectories.first()}/arrowleft.png" // Changed to use specificTemplateDirectories
             clickCount = currentZone - targetZone
             println("Need to click left arrow $clickCount times")
         }
@@ -789,12 +789,12 @@ class QuestAction : BaseGameAction() {
                 // Recalculate clicks needed based on current detected zone
                 if (targetZone > currentDetectedZone) {
                     // Need to go right
-                    arrowTemplate = "${config.commonTemplateDirectories.first()}/arrowright.png"
+                    arrowTemplate = "${config.specificTemplateDirectories.first()}/arrowright.png"
                     clickCount = targetZone - currentDetectedZone
                     println("Retrying: Need to click right arrow $clickCount more times")
                 } else if (targetZone < currentDetectedZone) {
                     // Need to go left
-                    arrowTemplate = "${config.commonTemplateDirectories.first()}/arrowleft.png"
+                    arrowTemplate = "${config.specificTemplateDirectories.first()}/arrowleft.png"
                     clickCount = currentDetectedZone - targetZone
                     println("Retrying: Need to click left arrow $clickCount more times")
                 } else {

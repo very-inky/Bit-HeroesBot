@@ -499,8 +499,8 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
         }
 
         // Maximum monitoring time (5 minutes) to prevent infinite loops
-        val maxMonitoringTimeMs = 5 * 60 * 1000L
-        val startTime = System.currentTimeMillis()
+        var maxMonitoringTimeMs = 5 * 60 * 1000L
+        var startTime = System.currentTimeMillis()
 
         // One-time autopilot check at the beginning of monitoring
         try {
@@ -628,7 +628,7 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
 
                         // Reset the resource check count for this rerun
                         rerunResourceCheckCount = 0
-
+                        startTime = System.currentTimeMillis()
                         // Continue monitoring after clicking rerun
                         continue
                     } else {
@@ -642,6 +642,7 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
             // Check for town button (primary indicator of action completion)
             if (townButtonExists && actionData.bot.findTemplate(townButtonPath, verbose = false) != null) {
                 println("Town button detected - action is complete (win or lose)")
+                Thread.sleep(900)
 
                 // If we're in Rerunning state and the action still has runs left, check for rerun button
                 if (stateMachine.getCurrentState() == BotState.Rerunning && !actionData.hasReachedMaxRunCount()) {
@@ -671,7 +672,7 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
 
                                 // Reset the resource check count for this rerun
                                 rerunResourceCheckCount = 0
-
+                                startTime = System.currentTimeMillis()
                                 // Continue monitoring after clicking rerun
                                 continue
                             } else {
@@ -1008,7 +1009,7 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
 
         // Maximum monitoring time (5 minutes) to prevent infinite loops
         val maxMonitoringTimeMs = 5 * 60 * 1000L
-        val startTime = System.currentTimeMillis()
+        var startTime = System.currentTimeMillis()
 
         // One-time autopilot check at the beginning of monitoring
         try {
@@ -1170,6 +1171,9 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
                             // Increment run count
                             actionRunCounts[actionName] = (actionRunCounts[actionName] ?: 0) + 1
 
+                            // Reset the monitoring timer for this rerun
+                            startTime = System.currentTimeMillis()
+
                             // Continue monitoring after clicking rerun
                             continue
                         } else {
@@ -1220,6 +1224,9 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
 
                                     // Increment run count
                                     actionRunCounts[actionName] = (actionRunCounts[actionName] ?: 0) + 1
+
+                                    // Reset the monitoring timer for this rerun
+                                    startTime = System.currentTimeMillis()
 
                                     // Continue monitoring after clicking rerun
                                     continue

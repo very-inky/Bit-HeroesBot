@@ -672,7 +672,7 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
 
                                 // Reset the resource check count for this rerun
                                 rerunResourceCheckCount = 0
-                                var startTime = System.currentTimeMillis()
+                                startTime = System.currentTimeMillis()
                                 // Continue monitoring after clicking rerun
                                 continue
                             } else {

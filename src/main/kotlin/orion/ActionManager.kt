@@ -46,6 +46,7 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
             // From Starting state
             addTransition(BotState.Starting, "action_started", BotState.Running)
             addTransition(BotState.Starting, "start_failed", BotState.Failed)
+            addTransition(BotState.Starting, "out_of_resources", BotState.OutOfResources)
 
             // From Running state
             addTransition(BotState.Running, "rerun_detected", BotState.Rerunning)
@@ -474,8 +475,18 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
                         handleTownButton(actionData)
                     }
                 } else {
-                    // Transition to Failed state
-                    stateMachine.processEvent("start_failed", actionData)
+                    // Check if the out-of-resource popup is visible
+                    val outOfResourcesPath = PathUtils.buildPath("templates", "ui", "outofresourcepopup.png")
+                    if (File(outOfResourcesPath).exists() && actionData.bot.findTemplate(outOfResourcesPath, verbose = false) != null) {
+                        println("Out of resources detected after action execution failed")
+                        // Get the main screen anchor path
+                        val mainScreenAnchorPath = PathUtils.buildPath("templates", "ui", "mainscreenanchor.png")
+                        // Handle out-of-resources condition
+                        handleOutOfResources(actionData, mainScreenAnchorPath)
+                    } else {
+                        // Transition to Failed state for other failures
+                        stateMachine.processEvent("start_failed", actionData)
+                    }
                 }
             } else {
                 // We're no longer in Starting state, likely transitioned to Failed during game verification
@@ -622,15 +633,40 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
             if (inProgressDialogueExists && actionData.bot.findTemplate(inProgressDialoguePath, verbose = false) != null) {
                 println("In-progress dialogue detected during monitoring")
 
-                // Wait 800ms to ensure dialogue is clickable
-                println("Waiting 800ms to ensure in-progress dialogue is clickable...")
-                Thread.sleep(800) // 800 milliseconds
+                // Maximum number of space key presses to prevent infinite loops
+                val maxSpaceKeyPresses = 10
+                var spaceKeyPressCount = 0
+                var dialogueStillVisible = true
 
-                // Click on the dialogue to handle it
-                if (actionData.bot.clickOnTemplate(inProgressDialoguePath)) {
-                    println("Successfully clicked on in-progress dialogue")
-                } else {
-                    println("Failed to click on in-progress dialogue")
+                // Continue pressing space until dialogue is no longer visible or max attempts reached
+                while (dialogueStillVisible && spaceKeyPressCount < maxSpaceKeyPresses) {
+                    // Wait a moment to ensure dialogue is ready for input
+                    println("Waiting 500ms before pressing space key...")
+                    Thread.sleep(500)
+
+                    // Press space key to advance dialogue
+                    println("Pressing space key to advance dialogue (attempt ${spaceKeyPressCount + 1}/$maxSpaceKeyPresses)")
+                    actionData.bot.pressKey(KeyEvent.VK_SPACE)
+
+                    // Wait a moment for the UI to update
+                    Thread.sleep(500)
+
+                    // Check if dialogue is still visible
+                    dialogueStillVisible = actionData.bot.findTemplate(inProgressDialoguePath, verbose = false) != null
+
+                    // Increment counter
+                    spaceKeyPressCount++
+
+                    if (dialogueStillVisible) {
+                        println("Dialogue still visible after space key press, continuing...")
+                    } else {
+                        println("Dialogue no longer visible after $spaceKeyPressCount space key presses")
+                    }
+                }
+
+                // If we reached the maximum number of attempts and dialogue is still visible, log a warning
+                if (dialogueStillVisible && spaceKeyPressCount >= maxSpaceKeyPresses) {
+                    println("Warning: Reached maximum number of space key presses ($maxSpaceKeyPresses) but dialogue is still visible")
                 }
 
                 // Continue monitoring after handling the dialogue

@@ -7,8 +7,12 @@ import orion.QuestActionConfig
 import orion.BaseGameAction
 import java.io.File
 import kotlinx.coroutines.*
+import orion.utils.PathUtils
 
-class QuestAction : BaseGameAction() {
+class QuestAction(
+    // Initial value for lastProcessedDungeonIndex
+    private var lastProcessedDungeonIndex: Int = -1
+) : BaseGameAction() {
     // Track the number of consecutive resource checks
     private var resourceCheckCount = 0
 
@@ -69,7 +73,7 @@ class QuestAction : BaseGameAction() {
         Thread.sleep(600)
 
         // Look for zoneselector.png to verify we're in the quest screen
-        val zoneSelectorPath = "${config.specificTemplateDirectories.first()}/zonesselector.png"
+        val zoneSelectorPath = PathUtils.buildPath(config.specificTemplateDirectories.first(), "zonesselector.png")
         if (bot.findTemplate(zoneSelectorPath) == null) {
             println("Failed to verify quest map screen. Zoneselector not found. Aborting.")
             return false
@@ -79,187 +83,193 @@ class QuestAction : BaseGameAction() {
         // Process dungeon targets if available
         if (config.dungeonTargets.isNotEmpty()) {
             println("Processing specific dungeon targets...")
-            for (target in config.dungeonTargets.filter { it.enabled }) {
-                println("\nAttempting to run Zone ${target.zoneNumber}, Dungeon ${target.dungeonNumber}")
 
-                // Step 4: Determine current zone
-                println("Step 4: Determining current zone")
-                // If we already have a last detected zone, mention it in the logs
-                if (lastDetectedZone > 0) {
-                    println("Last detected zone was: $lastDetectedZone, attempting to verify or update")
-                }
+            // Get the list of enabled dungeon targets
+            val enabledTargets = config.dungeonTargets.filter { it.enabled }
 
-                val currentZone = determineCurrentZone(bot, config)
-                if (currentZone == -1) {
-                    println("Failed to determine current zone. Aborting.")
+            if (enabledTargets.isEmpty()) {
+                println("No enabled dungeon targets found.")
+                return false
+            }
+
+            // Determine which dungeon target to process next
+            val nextTargetIndex = if (lastProcessedDungeonIndex < 0 || lastProcessedDungeonIndex >= enabledTargets.size - 1) {
+                // If lastProcessedDungeonIndex is -1 or out of bounds, start with the first target
+                0
+            } else {
+                // Otherwise, process the next target after the last processed one
+                lastProcessedDungeonIndex + 1
+            }
+
+            // Get the next target to process
+            val target = enabledTargets[nextTargetIndex]
+            println("\nAttempting to run Zone ${target.zoneNumber}, Dungeon ${target.dungeonNumber}")
+
+            // Step 4: Determine current zone
+            println("Step 4: Determining current zone")
+            // If we already have a last detected zone, mention it in the logs
+            if (lastDetectedZone > 0) {
+                println("Last detected zone was: $lastDetectedZone, attempting to verify or update")
+            }
+
+            val currentZone = determineCurrentZone(bot, config)
+            if (currentZone == -1) {
+                println("Failed to determine current zone. Aborting.")
+                return false
+            }
+            println("Current zone: $currentZone")
+
+            // Step 5: Navigate to correct zone using arrow buttons
+            println("Step 5: Navigating to zone ${target.zoneNumber}")
+
+            // If multithreading is enabled, skip resetting to zone 1 and navigate directly
+            if (useCoroutines) {
+                println("Multithreading enabled. Navigating directly from zone $currentZone to zone ${target.zoneNumber}")
+                if (!navigateToZone(bot, config, currentZone, target.zoneNumber)) {
+                    println("Failed to navigate to zone ${target.zoneNumber}. Aborting.")
                     return false
                 }
-                println("Current zone: $currentZone")
-
-                // Step 5: Navigate to correct zone using arrow buttons
-                println("Step 5: Navigating to zone ${target.zoneNumber}")
-
-                // If multithreading is enabled, skip resetting to zone 1 and navigate directly
-                if (useCoroutines) {
-                    println("Multithreading enabled. Navigating directly from zone $currentZone to zone ${target.zoneNumber}")
+            } else {
+                // Without multithreading, always reset to zone 1 first for more reliable navigation
+                println("Multithreading disabled. Resetting to zone 1 for more reliable navigation.")
+                if (resetToZone1(bot, config)) {
+                    println("Successfully reset to zone 1")
+                    // After resetting, we need to navigate from zone 1
+                    if (!navigateToZone(bot, config, 1, target.zoneNumber)) {
+                        println("Failed to navigate to zone ${target.zoneNumber} from zone 1. Aborting.")
+                        return false
+                    }
+                } else {
+                    println("Failed to reset to zone 1. Will attempt direct navigation.")
                     if (!navigateToZone(bot, config, currentZone, target.zoneNumber)) {
-                        println("Failed to navigate to zone ${target.zoneNumber}. Skipping this dungeon.")
-                        continue
+                        println("Failed to navigate to zone ${target.zoneNumber}. Aborting.")
+                        return false
                     }
-                } else {
-                    // Without multithreading, always reset to zone 1 first for more reliable navigation
-                    println("Multithreading disabled. Resetting to zone 1 for more reliable navigation.")
-                    if (resetToZone1(bot, config)) {
-                        println("Successfully reset to zone 1")
-                        // After resetting, we need to navigate from zone 1
-                        if (!navigateToZone(bot, config, 1, target.zoneNumber)) {
-                            println("Failed to navigate to zone ${target.zoneNumber} from zone 1. Skipping this dungeon.")
-                            continue
-                        }
-                    } else {
-                        println("Failed to reset to zone 1. Will attempt direct navigation.")
-                        if (!navigateToZone(bot, config, currentZone, target.zoneNumber)) {
-                            println("Failed to navigate to zone ${target.zoneNumber}. Skipping this dungeon.")
-                            continue
-                        }
-                    }
-                }
-                println("Successfully navigated to zone ${target.zoneNumber}")
-
-                // Step 6: Select appropriate dungeon
-                println("Step 6: Selecting dungeon ${target.dungeonNumber}")
-                // First try with the new naming convention (zone1dungeon1.png)
-                val dungeonFileName = "zone${target.zoneNumber}dungeon${target.dungeonNumber}.png"
-                // Fallback to old naming convention (dungeon_1.png) if needed
-                val fallbackDungeonFileName = "dungeon_${target.dungeonNumber}.png"
-
-                if (findAndClickSpecificTemplate(bot, config, dungeonFileName, "dungeon ${target.dungeonNumber}")) {
-                    println("Successfully selected dungeon ${target.dungeonNumber}")
-                } else if (findAndClickSpecificTemplate(bot, config, fallbackDungeonFileName, "dungeon ${target.dungeonNumber} (fallback)")) {
-                    println("Successfully selected dungeon ${target.dungeonNumber} using fallback template")
-                } else {
-                    println("Failed to find and click dungeon ${target.dungeonNumber}. Skipping this dungeon.")
-                    continue
-                }
-
-                // Step 7: Select difficulty
-                println("Step 7: Selecting difficulty")
-                // Get the preferred difficulty from the target
-                val preferredDifficulty = target.difficulty.lowercase()
-                println("Preferred difficulty: $preferredDifficulty")
-
-                // Try to find and click the preferred difficulty first, then fall back to others
-                val difficultySelected = when (preferredDifficulty) {
-                    "heroic" -> {
-                        // Try heroic first, then fall back to hard, then normal
-                        if (findAndClickSpecificTemplate(bot, config, "heroic.png", "heroic difficulty")) {
-                            println("Successfully selected heroic difficulty (preferred)")
-                            true
-                        } else if (findAndClickSpecificTemplate(bot, config, "hard.png", "hard difficulty")) {
-                            println("Heroic not available, selected hard difficulty instead")
-                            true
-                        } else if (findAndClickSpecificTemplate(bot, config, "normal.png", "normal difficulty")) {
-                            println("Heroic and hard not available, selected normal difficulty instead")
-                            true
-                        } else {
-                            println("Failed to select any difficulty")
-                            false
-                        }
-                    }
-                    "hard" -> {
-                        // Try hard first, then fall back to heroic, then normal
-                        if (findAndClickSpecificTemplate(bot, config, "hard.png", "hard difficulty")) {
-                            println("Successfully selected hard difficulty (preferred)")
-                            true
-                        } else if (findAndClickSpecificTemplate(bot, config, "heroic.png", "heroic difficulty")) {
-                            println("Hard not available, selected heroic difficulty instead")
-                            true
-                        } else if (findAndClickSpecificTemplate(bot, config, "normal.png", "normal difficulty")) {
-                            println("Hard and heroic not available, selected normal difficulty instead")
-                            true
-                        } else {
-                            println("Failed to select any difficulty")
-                            false
-                        }
-                    }
-                    "normal" -> {
-                        // Try normal first, then fall back to hard, then heroic
-                        if (findAndClickSpecificTemplate(bot, config, "normal.png", "normal difficulty")) {
-                            println("Successfully selected normal difficulty (preferred)")
-                            true
-                        } else if (findAndClickSpecificTemplate(bot, config, "hard.png", "hard difficulty")) {
-                            println("Normal not available, selected hard difficulty instead")
-                            true
-                        } else if (findAndClickSpecificTemplate(bot, config, "heroic.png", "heroic difficulty")) {
-                            println("Normal and hard not available, selected heroic difficulty instead")
-                            true
-                        } else {
-                            println("Failed to select any difficulty")
-                            false
-                        }
-                    }
-                    else -> {
-                        // Unknown difficulty, try all options
-                        println("Unknown difficulty: $preferredDifficulty, trying all options")
-                        if (findAndClickSpecificTemplate(bot, config, "heroic.png", "heroic difficulty")) {
-                            println("Selected heroic difficulty")
-                            true
-                        } else if (findAndClickSpecificTemplate(bot, config, "hard.png", "hard difficulty")) {
-                            println("Selected hard difficulty")
-                            true
-                        } else if (findAndClickSpecificTemplate(bot, config, "normal.png", "normal difficulty")) {
-                            println("Selected normal difficulty")
-                            true
-                        } else {
-                            println("Failed to select any difficulty")
-                            false
-                        }
-                    }
-                }
-
-                // Skip this dungeon if no difficulty could be selected
-                if (!difficultySelected) {
-                    println("Failed to select any difficulty. Skipping this dungeon.")
-                    continue
-                }
-
-                // Step 8: Click accept
-                println("Step 8: Clicking accept button")
-                if (!findAndClickSpecificTemplate(bot, config, "accept.png", "accept button", delayAfterClick = 2000)) {
-                    println("Failed to find and click accept button. Skipping this dungeon.")
-                    continue
-                }
-                println("Successfully clicked accept button")
-
-                // Check for out of resources message after clicking accept button
-                if (checkForOutOfResources(bot, 2000, "Out of resources message detected, stopping quest action")) {
-                    return false // Return false to indicate failure due to resource depletion
-                }
-
-                println("Successfully processed dungeon ${target.dungeonNumber} in zone ${target.zoneNumber}")
-
-                // Check for rerun button and handle rerun functionality
-                println("Checking for rerun button...")
-                val rerunButtonPath = "${config.commonTemplateDirectories.first()}/rerun.png"
-                if (findAndClickSpecificTemplate(bot, config, "rerun.png", "rerun button", delayAfterClick = 2000)) {
-                    println("Found and clicked rerun button")
-
-                    // Check for out of resources message after clicking rerun button
-                    if (checkForOutOfResources(bot, 2000, "Out of resources message detected after clicking rerun, stopping quest action")) {
-                        return false // Return false to indicate failure due to resource depletion
-                    }
-
-                    println("Resources available for rerun, continuing...")
-                } else {
-                    println("No rerun button found or failed to click, continuing with next dungeon")
                 }
             }
+            println("Successfully navigated to zone ${target.zoneNumber}")
+
+            // Step 6: Select appropriate dungeon
+            println("Step 6: Selecting dungeon ${target.dungeonNumber}")
+            // First try with the new naming convention (zone1dungeon1.png)
+            val dungeonFileName = "zone${target.zoneNumber}dungeon${target.dungeonNumber}.png"
+            // Fallback to old naming convention (dungeon_1.png) if needed
+            val fallbackDungeonFileName = "dungeon_${target.dungeonNumber}.png"
+
+            if (findAndClickSpecificTemplate(bot, config, dungeonFileName, "dungeon ${target.dungeonNumber}")) {
+                println("Successfully selected dungeon ${target.dungeonNumber}")
+            } else if (findAndClickSpecificTemplate(bot, config, fallbackDungeonFileName, "dungeon ${target.dungeonNumber} (fallback)")) {
+                println("Successfully selected dungeon ${target.dungeonNumber} using fallback template")
+            } else {
+                println("Failed to find and click dungeon ${target.dungeonNumber}. Aborting.")
+                return false
+            }
+
+            // Step 7: Select difficulty
+            println("Step 7: Selecting difficulty")
+            // Get the preferred difficulty from the target
+            val preferredDifficulty = target.difficulty.lowercase()
+            println("Preferred difficulty: $preferredDifficulty")
+
+            // Try to find and click the preferred difficulty first, then fall back to others
+            val difficultySelected = when (preferredDifficulty) {
+                "heroic" -> {
+                    // Try heroic first, then fall back to hard, then normal
+                    if (findAndClickSpecificTemplate(bot, config, "heroic.png", "heroic difficulty")) {
+                        println("Successfully selected heroic difficulty (preferred)")
+                        true
+                    } else if (findAndClickSpecificTemplate(bot, config, "hard.png", "hard difficulty")) {
+                        println("Heroic not available, selected hard difficulty instead")
+                        true
+                    } else if (findAndClickSpecificTemplate(bot, config, "normal.png", "normal difficulty")) {
+                        println("Heroic and hard not available, selected normal difficulty instead")
+                        true
+                    } else {
+                        println("Failed to select any difficulty")
+                        false
+                    }
+                }
+                "hard" -> {
+                    // Try hard first, then fall back to heroic, then normal
+                    if (findAndClickSpecificTemplate(bot, config, "hard.png", "hard difficulty")) {
+                        println("Successfully selected hard difficulty (preferred)")
+                        true
+                    } else if (findAndClickSpecificTemplate(bot, config, "heroic.png", "heroic difficulty")) {
+                        println("Hard not available, selected heroic difficulty instead")
+                        true
+                    } else if (findAndClickSpecificTemplate(bot, config, "normal.png", "normal difficulty")) {
+                        println("Hard and heroic not available, selected normal difficulty instead")
+                        true
+                    } else {
+                        println("Failed to select any difficulty")
+                        false
+                    }
+                }
+                "normal" -> {
+                    // Try normal first, then fall back to hard, then heroic
+                    if (findAndClickSpecificTemplate(bot, config, "normal.png", "normal difficulty")) {
+                        println("Successfully selected normal difficulty (preferred)")
+                        true
+                    } else if (findAndClickSpecificTemplate(bot, config, "hard.png", "hard difficulty")) {
+                        println("Normal not available, selected hard difficulty instead")
+                        true
+                    } else if (findAndClickSpecificTemplate(bot, config, "heroic.png", "heroic difficulty")) {
+                        println("Normal and hard not available, selected heroic difficulty instead")
+                        true
+                    } else {
+                        println("Failed to select any difficulty")
+                        false
+                    }
+                }
+                else -> {
+                    // Unknown difficulty, try all options
+                    println("Unknown difficulty: $preferredDifficulty, trying all options")
+                    if (findAndClickSpecificTemplate(bot, config, "heroic.png", "heroic difficulty")) {
+                        println("Selected heroic difficulty")
+                        true
+                    } else if (findAndClickSpecificTemplate(bot, config, "hard.png", "hard difficulty")) {
+                        println("Selected hard difficulty")
+                        true
+                    } else if (findAndClickSpecificTemplate(bot, config, "normal.png", "normal difficulty")) {
+                        println("Selected normal difficulty")
+                        true
+                    } else {
+                        println("Failed to select any difficulty")
+                        false
+                    }
+                }
+            }
+
+            // Skip this dungeon if no difficulty could be selected
+            if (!difficultySelected) {
+                println("Failed to select any difficulty. Aborting.")
+                return false
+            }
+
+            // Step 8: Click accept
+            println("Step 8: Clicking accept button")
+            if (!findAndClickSpecificTemplate(bot, config, "accept.png", "accept button", delayAfterClick = 2000)) {
+                println("Failed to find and click accept button. Aborting.")
+                return false
+            }
+            println("Successfully clicked accept button")
+
+            // Check for out of resources message after clicking accept button
+            if (checkForOutOfResources(bot, 2000, "Out of resources message detected, stopping quest action")) {
+                return false // Return false to indicate failure due to resource depletion
+            }
+
+            println("Successfully processed dungeon ${target.dungeonNumber} in zone ${target.zoneNumber}")
+
+            // Update the last processed dungeon index
+            lastProcessedDungeonIndex = nextTargetIndex
+
+            // Return true to indicate success
+            return true
         } else {
             println("No dungeon targets specified. Nothing to do.")
+            return false
         }
-
-        println("--- Quest Action Finished ---")
-        return true
     }
 
     /**
@@ -279,7 +289,7 @@ class QuestAction : BaseGameAction() {
             println("Using last detected zone $zoneToCheck as a hint for faster detection")
 
             // Try to verify the last detected zone directly
-            val zoneDetPath = "${(config as? QuestActionConfig)?.specificTemplateDirectories?.firstOrNull()}/zone${zoneToCheck}det.png"
+            val zoneDetPath = PathUtils.buildPath((config as? QuestActionConfig)?.specificTemplateDirectories?.firstOrNull() ?: "", "zone${zoneToCheck}det.png")
             if (File(zoneDetPath).exists()) {
                 val checkStartTime = System.currentTimeMillis()
                 val result = bot.findTemplateDetailed(zoneDetPath)
@@ -335,7 +345,7 @@ class QuestAction : BaseGameAction() {
         // Load all zone detection templates at once
         val zoneDetPaths = mutableListOf<Pair<Int, String>>()
         for (zoneNumber in 1..20) {
-            val zoneDetPath = "${config.specificTemplateDirectories.first()}/zone${zoneNumber}det.png"
+            val zoneDetPath = PathUtils.buildPath(config.specificTemplateDirectories.first(), "zone${zoneNumber}det.png")
             if (File(zoneDetPath).exists()) {
                 zoneDetPaths.add(Pair(zoneNumber, zoneDetPath))
             }
@@ -401,7 +411,7 @@ class QuestAction : BaseGameAction() {
         // Load all zone detection templates at once
         val zoneDetPaths = mutableListOf<Pair<Int, String>>()
         for (zoneNumber in 1..20) {
-            val zoneDetPath = "${config.specificTemplateDirectories.first()}/zone${zoneNumber}det.png"
+            val zoneDetPath = PathUtils.buildPath(config.specificTemplateDirectories.first(), "zone${zoneNumber}det.png")
             if (File(zoneDetPath).exists()) {
                 zoneDetPaths.add(Pair(zoneNumber, zoneDetPath))
             }
@@ -507,7 +517,7 @@ class QuestAction : BaseGameAction() {
         // Load all zone detection templates at once
         val zoneDetPaths = mutableListOf<Pair<Int, String>>()
         for (zoneNumber in 1..20) {
-            val zoneDetPath = "${config.specificTemplateDirectories.first()}/zone${zoneNumber}det.png"
+            val zoneDetPath = PathUtils.buildPath(config.specificTemplateDirectories.first(), "zone${zoneNumber}det.png")
             if (File(zoneDetPath).exists()) {
                 zoneDetPaths.add(Pair(zoneNumber, zoneDetPath))
             }
@@ -647,7 +657,7 @@ class QuestAction : BaseGameAction() {
         println("Resetting to zone 1...")
 
         // Find the left arrow template once
-        val leftArrowTemplate = "${config.commonTemplateDirectories.first()}/arrowleft.png"
+        val leftArrowTemplate = PathUtils.buildPath(config.specificTemplateDirectories.first(), "arrowleft.png")
         val arrowLocation = bot.findTemplate(leftArrowTemplate)
 
         if (arrowLocation == null) {
@@ -669,7 +679,7 @@ class QuestAction : BaseGameAction() {
         Thread.sleep(1000)
 
         // Verify we're in zone 1
-        val zone1DetPath = "${config.specificTemplateDirectories.first()}/zone1det.png"
+        val zone1DetPath = PathUtils.buildPath(config.specificTemplateDirectories.first(), "zone1det.png")
         if (File(zone1DetPath).exists() && bot.findTemplate(zone1DetPath) != null) {
             println("Successfully reset to zone 1")
             return true
@@ -723,12 +733,12 @@ class QuestAction : BaseGameAction() {
 
         if (targetZone > currentZone) {
             // Need to go right
-            arrowTemplate = "${config.specificTemplateDirectories.first()}/arrowright.png" // Changed to use specificTemplateDirectories
+            arrowTemplate = PathUtils.buildPath(config.specificTemplateDirectories.first(), "arrowright.png")
             clickCount = targetZone - currentZone
             println("Need to click right arrow $clickCount times")
         } else {
             // Need to go left
-            arrowTemplate = "${config.specificTemplateDirectories.first()}/arrowleft.png" // Changed to use specificTemplateDirectories
+            arrowTemplate = PathUtils.buildPath(config.specificTemplateDirectories.first(), "arrowleft.png")
             clickCount = currentZone - targetZone
             println("Need to click left arrow $clickCount times")
         }
@@ -765,7 +775,7 @@ class QuestAction : BaseGameAction() {
             Thread.sleep(1000)
 
             // Verify we're in the target zone
-            val targetZoneDetPath = "${config.specificTemplateDirectories.first()}/zone${targetZone}det.png"
+            val targetZoneDetPath = PathUtils.buildPath(config.specificTemplateDirectories.first(), "zone${targetZone}det.png")
             if (File(targetZoneDetPath).exists() && bot.findTemplate(targetZoneDetPath) != null) {
                 println("Successfully navigated to zone $targetZone")
                 return true
@@ -789,12 +799,12 @@ class QuestAction : BaseGameAction() {
                 // Recalculate clicks needed based on current detected zone
                 if (targetZone > currentDetectedZone) {
                     // Need to go right
-                    arrowTemplate = "${config.specificTemplateDirectories.first()}/arrowright.png"
+                    arrowTemplate = PathUtils.buildPath(config.specificTemplateDirectories.first(), "arrowright.png")
                     clickCount = targetZone - currentDetectedZone
                     println("Retrying: Need to click right arrow $clickCount more times")
                 } else if (targetZone < currentDetectedZone) {
                     // Need to go left
-                    arrowTemplate = "${config.specificTemplateDirectories.first()}/arrowleft.png"
+                    arrowTemplate = PathUtils.buildPath(config.specificTemplateDirectories.first(), "arrowleft.png")
                     clickCount = currentDetectedZone - targetZone
                     println("Retrying: Need to click left arrow $clickCount more times")
                 } else {
@@ -844,5 +854,15 @@ class QuestAction : BaseGameAction() {
 
         println("QuestAction: Resources available. Check count: $resourceCheckCount")
         return true
+    }
+
+    /**
+     * Gets the last processed dungeon index.
+     * This is used by ActionManager to store the index between executions.
+     * 
+     * @return The last processed dungeon index
+     */
+    fun getLastProcessedDungeonIndex(): Int {
+        return lastProcessedDungeonIndex
     }
 }

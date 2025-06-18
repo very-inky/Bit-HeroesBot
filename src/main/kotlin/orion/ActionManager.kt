@@ -10,6 +10,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.delay
 import java.io.File
 import java.awt.event.KeyEvent
+import orion.utils.PathUtils
 
 // Imports for Bot, BotConfig, GameAction, ActionConfig from the 'orion' package are not needed
 // if ActionManager is correctly declared in 'package orion'.
@@ -19,6 +20,8 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
     private val actionCooldowns = mutableMapOf<String, Instant>()
     // Map to track run counts for actions
     private val actionRunCounts = mutableMapOf<String, Int>()
+    // Map to track the last processed dungeon index for quest actions
+    private val questDungeonIndices = mutableMapOf<String, Int>()
     // Flag to track if we're in a rerun state
     private var isRerunning = false
 
@@ -83,8 +86,8 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
                     println("Starting action: ${actionData.actionName}")
 
                     // Verify that the game is properly loaded before proceeding
-                    val mainScreenAnchorPath = "templates/ui/mainscreenanchor.png"
-                    val popupPath = "templates/ui/popup.png"
+                    val mainScreenAnchorPath = PathUtils.buildPath("templates", "ui", "mainscreenanchor.png")
+                    val popupPath = PathUtils.buildPath("templates", "ui", "popup.png")
 
                     // Check if template files exist
                     val mainScreenAnchorExists = File(mainScreenAnchorPath).exists()
@@ -294,7 +297,11 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
      */
     private fun createActionHandler(actionName: String): GameAction? {
         return when (actionName.lowercase()) {
-            "quest" -> QuestAction()
+            "quest" -> {
+                // Get the stored index or default to -1 if not found
+                val lastIndex = questDungeonIndices[actionName] ?: -1
+                QuestAction(lastIndex)
+            }
             "raid" -> RaidAction()
             // "pvp" -> PvpAction() // Placeholder for when PvpAction.kt is created
             // "gvg" -> GvgAction()
@@ -419,6 +426,12 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
             if (stateMachine.getCurrentState() == BotState.Starting) {
                 // Start the action
                 val success = actionHandler.execute(bot, actionConfig)
+
+                // Store the updated index if this is a QuestAction
+                if (success && actionHandler is QuestAction) {
+                    questDungeonIndices[actionName] = actionHandler.getLastProcessedDungeonIndex()
+                }
+
                 if (success) {
                     // Transition to Running state
                     stateMachine.processEvent("action_started", actionData)
@@ -462,13 +475,13 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
         println("Starting continuous monitoring for action: $actionName using state machine")
 
         // Define templates to check for various conditions
-        val playerDeadPath = "templates/ui/playerdead.png"
-        val townButtonPath = "templates/ui/town.png"
-        val rerunButtonPath = "templates/ui/rerun.png"
-        val inProgressDialoguePath = "templates/ui/handleinprogressdialogue.png"
-        val reconnectPath = "templates/ui/reconnect.png"
-        val mainScreenAnchorPath = "templates/ui/mainscreenanchor.png"
-        val outOfResourcesPath = "templates/ui/outofresourcepopup.png"
+        val playerDeadPath = PathUtils.buildPath("templates", "ui", "playerdead.png")
+        val townButtonPath = PathUtils.buildPath("templates", "ui", "town.png")
+        val rerunButtonPath = PathUtils.buildPath("templates", "ui", "rerun.png")
+        val inProgressDialoguePath = PathUtils.buildPath("templates", "ui", "handleinprogressdialogue.png")
+        val reconnectPath = PathUtils.buildPath("templates", "ui", "reconnect.png")
+        val mainScreenAnchorPath = PathUtils.buildPath("templates", "ui", "mainscreenanchor.png")
+        val outOfResourcesPath = PathUtils.buildPath("templates", "ui", "outofresourcepopup.png")
 
         // Check if template files exist
         val playerDeadExists = File(playerDeadPath).exists()
@@ -854,7 +867,8 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
         val actionConfig = actionData.actionConfig
 
         // Check if town button is available
-        if (File("templates/ui/town.png").exists() && bot.findTemplate("templates/ui/town.png", verbose = false) != null) {
+        val townButtonPath = PathUtils.buildPath("templates", "ui", "town.png")
+        if (File(townButtonPath).exists() && bot.findTemplate(townButtonPath, verbose = false) != null) {
             // Check if this is a Quest or Raid action that supports rerun
             val supportsRerun = actionConfig is QuestActionConfig || actionConfig is RaidActionConfig
 
@@ -866,7 +880,7 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
             }
 
             // Check if rerun button is available
-            val rerunButtonPath = "templates/ui/rerun.png"
+            val rerunButtonPath = PathUtils.buildPath("templates", "ui", "rerun.png")
             val rerunAvailable = File(rerunButtonPath).exists() && 
                                  bot.findTemplate(rerunButtonPath, verbose = false) != null
 
@@ -885,7 +899,7 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
                 Thread.sleep(800) // 800 milliseconds
 
                 // Click the town button
-                if (bot.clickOnTemplate("templates/ui/town.png")) {
+                if (bot.clickOnTemplate(townButtonPath)) {
                     println("Clicked town button. Action will need to go through setup for next run.")
 
                     if (actionData.hasReachedMaxRunCount()) {
@@ -967,13 +981,13 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
         println("Starting continuous monitoring for action: $actionName")
 
         // Define templates to check for various conditions
-        val playerDeadPath = "templates/ui/playerdead.png"
-        val townButtonPath = "templates/ui/town.png"
-        val rerunButtonPath = "templates/ui/rerun.png"
-        val inProgressDialoguePath = "templates/ui/handleinprogressdialogue.png"
-        val reconnectPath = "templates/ui/reconnect.png"
-        val mainScreenAnchorPath = "templates/ui/mainscreenanchor.png"
-        val outOfResourcesPath = "templates/ui/outofresourcepopup.png"
+        val playerDeadPath = PathUtils.buildPath("templates", "ui", "playerdead.png")
+        val townButtonPath = PathUtils.buildPath("templates", "ui", "town.png")
+        val rerunButtonPath = PathUtils.buildPath("templates", "ui", "rerun.png")
+        val inProgressDialoguePath = PathUtils.buildPath("templates", "ui", "handleinprogressdialogue.png")
+        val reconnectPath = PathUtils.buildPath("templates", "ui", "reconnect.png")
+        val mainScreenAnchorPath = PathUtils.buildPath("templates", "ui", "mainscreenanchor.png")
+        val outOfResourcesPath = PathUtils.buildPath("templates", "ui", "outofresourcepopup.png")
 
         // Check if template files exist
         val playerDeadExists = File(playerDeadPath).exists()

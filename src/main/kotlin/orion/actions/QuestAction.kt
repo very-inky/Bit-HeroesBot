@@ -844,8 +844,8 @@ class QuestAction(
         // Increment the resource check count
         resourceCheckCount++
 
-        // For repeatCount = 0, simulate resource depletion after 3 checks
-        if (config.repeatCount == 0 && resourceCheckCount >= 3) {
+        // Simulate resource depletion after 3 checks regardless of repeatCount
+        if (resourceCheckCount >= 3) {
             println("QuestAction: Resources depleted after $resourceCheckCount checks.")
             // Reset the counter for next time
             resourceCheckCount = 0

@@ -46,6 +46,7 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
             // From Starting state
             addTransition(BotState.Starting, "action_started", BotState.Running)
             addTransition(BotState.Starting, "start_failed", BotState.Failed)
+            addTransition(BotState.Starting, "out_of_resources", BotState.OutOfResources)
 
             // From Running state
             addTransition(BotState.Running, "rerun_detected", BotState.Rerunning)
@@ -179,6 +180,9 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
                     println("Action '${actionData.actionName}' is out of resources. Setting on cooldown.")
                     actionCooldowns[actionData.actionName] = Instant.now().plus(
                         actionData.actionConfig.cooldownDuration.toLong(), ChronoUnit.MINUTES)
+
+                    // Display updated cooldown status
+                    displayCooldownStatus()
                 }
             }
 
@@ -248,9 +252,11 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
         // Reset the state machine to Idle state
         stateMachine.reset(BotState.Idle)
 
-        // Continue running actions until all are completed or on cooldown
+        // Continue running actions until manually stopped
         var allActionsCompleted = false
-        while (!allActionsCompleted) {
+        var idleStartTime: Instant? = null
+
+        while (true) {
             allActionsCompleted = true // Assume all actions are completed until proven otherwise
 
             for (actionName in config.actionSequence) {
@@ -265,6 +271,7 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
 
                 // At this point, at least one action is still eligible to run
                 allActionsCompleted = false
+                idleStartTime = null // Reset idle time since we're executing actions
 
                 // Get the action config (case-insensitive lookup)
                 val actionConfigKey = config.actionConfigs.keys.find { it.equals(actionName, ignoreCase = true) }
@@ -279,14 +286,36 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
                 }
             }
 
-            // If all actions are completed or on cooldown, break the loop
+            // If all actions are completed or on cooldown, transition to idle state
             if (allActionsCompleted) {
-                println("All actions have been completed or are on cooldown.")
-                break
+                // If we just entered idle state, record the time
+                if (idleStartTime == null) {
+                    idleStartTime = Instant.now()
+                    println("All actions have been completed or are on cooldown.")
+                    println("Transitioning to idle state. Will check for available actions every minute.")
+
+                    // Explicitly transition to Idle state
+                    stateMachine.reset(BotState.Idle)
+
+                    // Display cooldown status when entering idle state
+                    displayCooldownStatus()
+                }
+
+                // Calculate how long we've been idle
+                val idleMinutes = ChronoUnit.MINUTES.between(idleStartTime, Instant.now())
+
+                // Log idle status periodically
+                if (idleMinutes % 5 == 0L && idleMinutes > 0) {
+                    println("Bot has been idle for $idleMinutes minutes, waiting for actions to become available.")
+
+                    // Display updated cooldown status
+                    displayCooldownStatus()
+                }
+
+                // Wait for a minute before checking again
+                Thread.sleep(60000) // 60 seconds
             }
         }
-
-        println("\nActionManager: Finished processing action sequence for $characterName.")
     }
 
     /**
@@ -370,9 +399,19 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
 
         // Check if action is on cooldown
         val cooldownEnd = actionCooldowns[actionName]
-        if (cooldownEnd != null && Instant.now().isBefore(cooldownEnd)) {
-            val remainingMinutes = ChronoUnit.MINUTES.between(Instant.now(), cooldownEnd)
-            return Pair(false, "Action '$actionName' is on cooldown for $remainingMinutes more minutes. Skipping.")
+        if (cooldownEnd != null) {
+            if (Instant.now().isBefore(cooldownEnd)) {
+                // Action is still on cooldown
+                val remainingMinutes = ChronoUnit.MINUTES.between(Instant.now(), cooldownEnd)
+                return Pair(false, "Action '$actionName' is on cooldown for $remainingMinutes more minutes. Skipping.")
+            } else {
+                // Action was on cooldown but has now come off cooldown
+                println("Action '$actionName' has come off cooldown and is now available.")
+                actionCooldowns.remove(actionName)
+
+                // Display updated cooldown status
+                displayCooldownStatus()
+            }
         }
 
         // Check if action has reached its run count limit
@@ -444,8 +483,18 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
                         handleTownButton(actionData)
                     }
                 } else {
-                    // Transition to Failed state
-                    stateMachine.processEvent("start_failed", actionData)
+                    // Check if the out-of-resource popup is visible
+                    val outOfResourcesPath = PathUtils.buildPath("templates", "ui", "outofresourcepopup.png")
+                    if (File(outOfResourcesPath).exists() && actionData.bot.findTemplate(outOfResourcesPath, verbose = false) != null) {
+                        println("Out of resources detected after action execution failed")
+                        // Get the main screen anchor path
+                        val mainScreenAnchorPath = PathUtils.buildPath("templates", "ui", "mainscreenanchor.png")
+                        // Handle out-of-resources condition
+                        handleOutOfResources(actionData, mainScreenAnchorPath)
+                    } else {
+                        // Transition to Failed state for other failures
+                        stateMachine.processEvent("start_failed", actionData)
+                    }
                 }
             } else {
                 // We're no longer in Starting state, likely transitioned to Failed during game verification
@@ -592,15 +641,40 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
             if (inProgressDialogueExists && actionData.bot.findTemplate(inProgressDialoguePath, verbose = false) != null) {
                 println("In-progress dialogue detected during monitoring")
 
-                // Wait 800ms to ensure dialogue is clickable
-                println("Waiting 800ms to ensure in-progress dialogue is clickable...")
-                Thread.sleep(800) // 800 milliseconds
+                // Maximum number of space key presses to prevent infinite loops
+                val maxSpaceKeyPresses = 10
+                var spaceKeyPressCount = 0
+                var dialogueStillVisible = true
 
-                // Click on the dialogue to handle it
-                if (actionData.bot.clickOnTemplate(inProgressDialoguePath)) {
-                    println("Successfully clicked on in-progress dialogue")
-                } else {
-                    println("Failed to click on in-progress dialogue")
+                // Continue pressing space until dialogue is no longer visible or max attempts reached
+                while (dialogueStillVisible && spaceKeyPressCount < maxSpaceKeyPresses) {
+                    // Wait a moment to ensure dialogue is ready for input
+                    println("Waiting 500ms before pressing space key...")
+                    Thread.sleep(500)
+
+                    // Press space key to advance dialogue
+                    println("Pressing space key to advance dialogue (attempt ${spaceKeyPressCount + 1}/$maxSpaceKeyPresses)")
+                    actionData.bot.pressKey(KeyEvent.VK_SPACE)
+
+                    // Wait a moment for the UI to update
+                    Thread.sleep(500)
+
+                    // Check if dialogue is still visible
+                    dialogueStillVisible = actionData.bot.findTemplate(inProgressDialoguePath, verbose = false) != null
+
+                    // Increment counter
+                    spaceKeyPressCount++
+
+                    if (dialogueStillVisible) {
+                        println("Dialogue still visible after space key press, continuing...")
+                    } else {
+                        println("Dialogue no longer visible after $spaceKeyPressCount space key presses")
+                    }
+                }
+
+                // If we reached the maximum number of attempts and dialogue is still visible, log a warning
+                if (dialogueStillVisible && spaceKeyPressCount >= maxSpaceKeyPresses) {
+                    println("Warning: Reached maximum number of space key presses ($maxSpaceKeyPresses) but dialogue is still visible")
                 }
 
                 // Continue monitoring after handling the dialogue
@@ -855,6 +929,66 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
         // Transition to OutOfResources state
         println("Transitioning to OutOfResources state...")
         stateMachine.processEvent("out_of_resources", actionData)
+    }
+
+    /**
+     * Displays the current cooldown status of all actions.
+     * This provides a clear overview of which actions are on cooldown and when they'll be available.
+     */
+    fun displayCooldownStatus() {
+        println("\n===== ACTION COOLDOWN STATUS =====")
+
+        var anyActionsOnCooldown = false
+
+        // Sort actions by remaining cooldown time (shortest first)
+        val sortedActions = config.actionSequence.sortedBy { actionName ->
+            val cooldownEnd = actionCooldowns[actionName]
+            if (cooldownEnd != null && Instant.now().isBefore(cooldownEnd)) {
+                ChronoUnit.SECONDS.between(Instant.now(), cooldownEnd)
+            } else {
+                -1L // Actions not on cooldown come first
+            }
+        }
+
+        for (actionName in sortedActions) {
+            val cooldownEnd = actionCooldowns[actionName]
+
+            if (cooldownEnd != null && Instant.now().isBefore(cooldownEnd)) {
+                val remainingMinutes = ChronoUnit.MINUTES.between(Instant.now(), cooldownEnd)
+                val remainingSeconds = ChronoUnit.SECONDS.between(Instant.now(), cooldownEnd) % 60
+
+                // Visual progress bar (10 segments)
+                val actionConfig = config.actionConfigs[actionName]
+                val totalCooldownMinutes = actionConfig?.cooldownDuration?.toLong() ?: 20L
+                val elapsedMinutes = totalCooldownMinutes - remainingMinutes
+                val progress = (elapsedMinutes.toDouble() / totalCooldownMinutes).coerceIn(0.0, 1.0)
+                val progressBar = createProgressBar(progress)
+
+                println("  - Action '$actionName': ON COOLDOWN $progressBar ${remainingMinutes}m ${remainingSeconds}s")
+                anyActionsOnCooldown = true
+            } else {
+                println("  - Action '$actionName': ✅ AVAILABLE")
+            }
+        }
+
+        if (!anyActionsOnCooldown) {
+            println("  No actions are currently on cooldown.")
+        }
+
+        println("==================================\n")
+    }
+
+    /**
+     * Creates a simple text-based progress bar.
+     * @param progress Value between 0.0 and 1.0
+     * @return A string representing the progress bar
+     */
+    private fun createProgressBar(progress: Double): String {
+        val width = 10
+        val filledWidth = (progress * width).toInt().coerceIn(0, width)
+        val emptyWidth = width - filledWidth
+
+        return "[" + "■".repeat(filledWidth) + "□".repeat(emptyWidth) + "]"
     }
 
     /**

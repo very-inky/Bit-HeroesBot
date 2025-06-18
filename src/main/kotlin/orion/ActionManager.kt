@@ -180,6 +180,9 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
                     println("Action '${actionData.actionName}' is out of resources. Setting on cooldown.")
                     actionCooldowns[actionData.actionName] = Instant.now().plus(
                         actionData.actionConfig.cooldownDuration.toLong(), ChronoUnit.MINUTES)
+
+                    // Display updated cooldown status
+                    displayCooldownStatus()
                 }
             }
 
@@ -293,6 +296,9 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
 
                     // Explicitly transition to Idle state
                     stateMachine.reset(BotState.Idle)
+
+                    // Display cooldown status when entering idle state
+                    displayCooldownStatus()
                 }
 
                 // Calculate how long we've been idle
@@ -302,16 +308,8 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
                 if (idleMinutes % 5 == 0L && idleMinutes > 0) {
                     println("Bot has been idle for $idleMinutes minutes, waiting for actions to become available.")
 
-                    // Print cooldown status for each action
-                    for (actionName in config.actionSequence) {
-                        val cooldownEnd = actionCooldowns[actionName]
-                        if (cooldownEnd != null && Instant.now().isBefore(cooldownEnd)) {
-                            val remainingMinutes = ChronoUnit.MINUTES.between(Instant.now(), cooldownEnd)
-                            println("  - Action '$actionName' will be available in $remainingMinutes minutes.")
-                        } else if (cooldownEnd != null) {
-                            println("  - Action '$actionName' cooldown has expired and should be available now.")
-                        }
-                    }
+                    // Display updated cooldown status
+                    displayCooldownStatus()
                 }
 
                 // Wait for a minute before checking again
@@ -401,9 +399,19 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
 
         // Check if action is on cooldown
         val cooldownEnd = actionCooldowns[actionName]
-        if (cooldownEnd != null && Instant.now().isBefore(cooldownEnd)) {
-            val remainingMinutes = ChronoUnit.MINUTES.between(Instant.now(), cooldownEnd)
-            return Pair(false, "Action '$actionName' is on cooldown for $remainingMinutes more minutes. Skipping.")
+        if (cooldownEnd != null) {
+            if (Instant.now().isBefore(cooldownEnd)) {
+                // Action is still on cooldown
+                val remainingMinutes = ChronoUnit.MINUTES.between(Instant.now(), cooldownEnd)
+                return Pair(false, "Action '$actionName' is on cooldown for $remainingMinutes more minutes. Skipping.")
+            } else {
+                // Action was on cooldown but has now come off cooldown
+                println("Action '$actionName' has come off cooldown and is now available.")
+                actionCooldowns.remove(actionName)
+
+                // Display updated cooldown status
+                displayCooldownStatus()
+            }
         }
 
         // Check if action has reached its run count limit
@@ -921,6 +929,66 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
         // Transition to OutOfResources state
         println("Transitioning to OutOfResources state...")
         stateMachine.processEvent("out_of_resources", actionData)
+    }
+
+    /**
+     * Displays the current cooldown status of all actions.
+     * This provides a clear overview of which actions are on cooldown and when they'll be available.
+     */
+    fun displayCooldownStatus() {
+        println("\n===== ACTION COOLDOWN STATUS =====")
+
+        var anyActionsOnCooldown = false
+
+        // Sort actions by remaining cooldown time (shortest first)
+        val sortedActions = config.actionSequence.sortedBy { actionName ->
+            val cooldownEnd = actionCooldowns[actionName]
+            if (cooldownEnd != null && Instant.now().isBefore(cooldownEnd)) {
+                ChronoUnit.SECONDS.between(Instant.now(), cooldownEnd)
+            } else {
+                -1L // Actions not on cooldown come first
+            }
+        }
+
+        for (actionName in sortedActions) {
+            val cooldownEnd = actionCooldowns[actionName]
+
+            if (cooldownEnd != null && Instant.now().isBefore(cooldownEnd)) {
+                val remainingMinutes = ChronoUnit.MINUTES.between(Instant.now(), cooldownEnd)
+                val remainingSeconds = ChronoUnit.SECONDS.between(Instant.now(), cooldownEnd) % 60
+
+                // Visual progress bar (10 segments)
+                val actionConfig = config.actionConfigs[actionName]
+                val totalCooldownMinutes = actionConfig?.cooldownDuration?.toLong() ?: 20L
+                val elapsedMinutes = totalCooldownMinutes - remainingMinutes
+                val progress = (elapsedMinutes.toDouble() / totalCooldownMinutes).coerceIn(0.0, 1.0)
+                val progressBar = createProgressBar(progress)
+
+                println("  - Action '$actionName': ON COOLDOWN $progressBar ${remainingMinutes}m ${remainingSeconds}s")
+                anyActionsOnCooldown = true
+            } else {
+                println("  - Action '$actionName': ✅ AVAILABLE")
+            }
+        }
+
+        if (!anyActionsOnCooldown) {
+            println("  No actions are currently on cooldown.")
+        }
+
+        println("==================================\n")
+    }
+
+    /**
+     * Creates a simple text-based progress bar.
+     * @param progress Value between 0.0 and 1.0
+     * @return A string representing the progress bar
+     */
+    private fun createProgressBar(progress: Double): String {
+        val width = 10
+        val filledWidth = (progress * width).toInt().coerceIn(0, width)
+        val emptyWidth = width - filledWidth
+
+        return "[" + "■".repeat(filledWidth) + "□".repeat(emptyWidth) + "]"
     }
 
     /**

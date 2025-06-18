@@ -15,7 +15,7 @@ abstract class BaseGameAction : GameAction {
      * @param bot The Bot instance to use for interacting with the game.
      * @param delayBeforeCheck The delay in milliseconds before checking for the popup (default is 2000).
      * @param logMessage The message to log if the popup is detected (default is "Out of resources message detected").
-     * @return True if the out-of-resources popup is detected, false otherwise.
+     * @return Trjjjue if the out-of-resources popup is detected, false otherwise.
      */
     protected fun checkForOutOfResources(
         bot: Bot,

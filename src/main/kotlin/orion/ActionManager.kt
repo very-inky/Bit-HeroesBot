@@ -248,9 +248,11 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
         // Reset the state machine to Idle state
         stateMachine.reset(BotState.Idle)
 
-        // Continue running actions until all are completed or on cooldown
+        // Continue running actions until manually stopped
         var allActionsCompleted = false
-        while (!allActionsCompleted) {
+        var idleStartTime: Instant? = null
+
+        while (true) {
             allActionsCompleted = true // Assume all actions are completed until proven otherwise
 
             for (actionName in config.actionSequence) {
@@ -265,6 +267,7 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
 
                 // At this point, at least one action is still eligible to run
                 allActionsCompleted = false
+                idleStartTime = null // Reset idle time since we're executing actions
 
                 // Get the action config (case-insensitive lookup)
                 val actionConfigKey = config.actionConfigs.keys.find { it.equals(actionName, ignoreCase = true) }
@@ -279,14 +282,41 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
                 }
             }
 
-            // If all actions are completed or on cooldown, break the loop
+            // If all actions are completed or on cooldown, transition to idle state
             if (allActionsCompleted) {
-                println("All actions have been completed or are on cooldown.")
-                break
+                // If we just entered idle state, record the time
+                if (idleStartTime == null) {
+                    idleStartTime = Instant.now()
+                    println("All actions have been completed or are on cooldown.")
+                    println("Transitioning to idle state. Will check for available actions every minute.")
+
+                    // Explicitly transition to Idle state
+                    stateMachine.reset(BotState.Idle)
+                }
+
+                // Calculate how long we've been idle
+                val idleMinutes = ChronoUnit.MINUTES.between(idleStartTime, Instant.now())
+
+                // Log idle status periodically
+                if (idleMinutes % 5 == 0L && idleMinutes > 0) {
+                    println("Bot has been idle for $idleMinutes minutes, waiting for actions to become available.")
+
+                    // Print cooldown status for each action
+                    for (actionName in config.actionSequence) {
+                        val cooldownEnd = actionCooldowns[actionName]
+                        if (cooldownEnd != null && Instant.now().isBefore(cooldownEnd)) {
+                            val remainingMinutes = ChronoUnit.MINUTES.between(Instant.now(), cooldownEnd)
+                            println("  - Action '$actionName' will be available in $remainingMinutes minutes.")
+                        } else if (cooldownEnd != null) {
+                            println("  - Action '$actionName' cooldown has expired and should be available now.")
+                        }
+                    }
+                }
+
+                // Wait for a minute before checking again
+                Thread.sleep(60000) // 60 seconds
             }
         }
-
-        println("\nActionManager: Finished processing action sequence for $characterName.")
     }
 
     /**

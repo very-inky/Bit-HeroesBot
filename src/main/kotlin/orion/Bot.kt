@@ -7,6 +7,7 @@ import java.awt.Rectangle
 import java.awt.Robot
 import java.awt.Toolkit
 import java.awt.image.BufferedImage
+import java.awt.image.DataBufferByte
 import java.io.File
 import javax.imageio.ImageIO
 import kotlinx.coroutines.*
@@ -128,7 +129,7 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
                 g.dispose()
                 bimg
             }
-            val mat = bufferedImageToMat(bufferedImage)
+            val mat = bufferedImageToBgrMat(bufferedImage)
             if (mat == null) {
                 throw UnsatisfiedLinkError("Failed to convert screen capture to Mat. OpenCV functionality may not be fully available.")
             }
@@ -181,7 +182,7 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
                 g.dispose()
                 bimg
             }
-            val mat = bufferedImageToMat(bufferedImage)
+            val mat = bufferedImageToBgrMat(bufferedImage)
             if (mat == null) {
                 throw UnsatisfiedLinkError("Failed to convert region capture to Mat. OpenCV functionality may not be fully available.")
             }
@@ -204,6 +205,7 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
      * @param image The BufferedImage to convert
      * @return The converted Mat object
      * @throws UnsatisfiedLinkError if OpenCV functionality is not available
+     * @deprecated Use bufferedImageToBgrMat instead for better color channel handling
      */
     private fun bufferedImageToMat(image: BufferedImage): Mat {
         try {
@@ -228,6 +230,43 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
         } catch (e: Exception) {
             println("Error converting image to Mat: ${e.message}")
             throw RuntimeException("Failed to convert image to Mat", e)
+        }
+    }
+
+    /**
+     * Converts a BufferedImage to an OpenCV Mat, ensuring the color format is BGR.
+     * This is crucial for consistency with templates loaded by Imgcodecs.imread().
+     *
+     * @param image The input BufferedImage (e.g., from a screenshot).
+     * @return A Mat object in 8-bit, 3-channel BGR format.
+     * @throws UnsatisfiedLinkError if OpenCV functionality is not available
+     * @throws RuntimeException if there's an error during conversion
+     */
+    private fun bufferedImageToBgrMat(image: BufferedImage): Mat {
+        try {
+            // Create a new BufferedImage with the 3-byte BGR type, which is native to OpenCV.
+            val bgrImage = BufferedImage(image.width, image.height, BufferedImage.TYPE_3BYTE_BGR)
+            val g = bgrImage.createGraphics()
+            try {
+                g.drawImage(image, 0, 0, null)
+            } finally {
+                g.dispose()
+            }
+
+            // Get the raw byte data from the converted image.
+            val pixels = (bgrImage.raster.dataBuffer as DataBufferByte).data
+
+            // Create a Mat and put the pixel data into it.
+            val mat = Mat(bgrImage.height, bgrImage.width, CvType.CV_8UC3)
+            mat.put(0, 0, pixels)
+
+            return mat
+        } catch (e: UnsatisfiedLinkError) {
+            println("Error: OpenCV functionality not fully available. Cannot convert image to BGR Mat: ${e.message}")
+            throw e
+        } catch (e: Exception) {
+            println("Error converting image to BGR Mat: ${e.message}")
+            throw RuntimeException("Failed to convert image to BGR Mat", e)
         }
     }
 
@@ -385,14 +424,26 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
                     println("Starting scale search from $minScale to $maxScale with step $scaleStep")
                 }
 
+                // Define epsilon for floating-point comparison
+                val epsilon = 1e-9
+
                 while (currentScale <= maxScale) {
                     scalesChecked++
                     val scaledTemplate = Mat()
                     val result = Mat()
                     try {
-                        // Resize the template according to the current scale
-                        val newSize = Size(template.width() * currentScale, template.height() * currentScale)
-                        Imgproc.resize(template, scaledTemplate, newSize, 0.0, 0.0, Imgproc.INTER_LINEAR)
+                        // Check if scale is effectively 1.0 to avoid resizing artifacts
+                        if (Math.abs(currentScale - 1.0) < epsilon) {
+                            // Use the original template directly without resizing
+                            template.copyTo(scaledTemplate)
+                            if (verbose || templateMatchingVerbosity) {
+                                println("Using original template at scale 1.0 without resizing")
+                            }
+                        } else {
+                            // Resize the template according to the current scale
+                            val newSize = Size(template.width() * currentScale, template.height() * currentScale)
+                            Imgproc.resize(template, scaledTemplate, newSize, 0.0, 0.0, Imgproc.INTER_LINEAR)
+                        }
 
                         // Skip if the scaled template is larger than the screen
                         if (scaledTemplate.width() > screen.width() || scaledTemplate.height() > screen.height()) {
@@ -606,14 +657,26 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
                 println("Starting sequential scale search from $minScale to $maxScale with step $scaleStep")
             }
 
+            // Define epsilon for floating-point comparison
+            val epsilon = 1e-9
+
             while (currentScale <= maxScale) {
                 scalesChecked++
                 val scaledTemplate = Mat()
                 val result = Mat()
                 try {
-                    // Resize the template according to the current scale
-                    val newSize = Size(template.width() * currentScale, template.height() * currentScale)
-                    Imgproc.resize(template, scaledTemplate, newSize, 0.0, 0.0, Imgproc.INTER_LINEAR)
+                    // Check if scale is effectively 1.0 to avoid resizing artifacts
+                    if (Math.abs(currentScale - 1.0) < epsilon) {
+                        // Use the original template directly without resizing
+                        template.copyTo(scaledTemplate)
+                        if (verbose || templateMatchingVerbosity) {
+                            println("Using original template at scale 1.0 without resizing")
+                        }
+                    } else {
+                        // Resize the template according to the current scale
+                        val newSize = Size(template.width() * currentScale, template.height() * currentScale)
+                        Imgproc.resize(template, scaledTemplate, newSize, 0.0, 0.0, Imgproc.INTER_LINEAR)
+                    }
 
                     // Skip if the scaled template is larger than the screen
                     if (scaledTemplate.width() > screen.width() || scaledTemplate.height() > screen.height()) {
@@ -786,9 +849,21 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
                         val scaledTemplate = Mat()
                         val result = Mat()
                         try {
-                            // Resize the template according to the current scale
-                            val newSize = Size(template.width() * scale, template.height() * scale)
-                            Imgproc.resize(template, scaledTemplate, newSize, 0.0, 0.0, Imgproc.INTER_LINEAR)
+                            // Define epsilon for floating-point comparison
+                            val epsilon = 1e-9
+
+                            // Check if scale is effectively 1.0 to avoid resizing artifacts
+                            if (Math.abs(scale - 1.0) < epsilon) {
+                                // Use the original template directly without resizing
+                                template.copyTo(scaledTemplate)
+                                if (verbose || templateMatchingVerbosity) {
+                                    println("Using original template at scale 1.0 without resizing (coroutine)")
+                                }
+                            } else {
+                                // Resize the template according to the current scale
+                                val newSize = Size(template.width() * scale, template.height() * scale)
+                                Imgproc.resize(template, scaledTemplate, newSize, 0.0, 0.0, Imgproc.INTER_LINEAR)
+                            }
 
                             // Skip if the scaled template is larger than the screen
                             if (scaledTemplate.width() > screen.width() || scaledTemplate.height() > screen.height()) {

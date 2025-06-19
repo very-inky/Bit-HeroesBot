@@ -399,7 +399,16 @@ See the [documentation](documentation.md) for detailed information on:
 ### Recent Improvements
 The following improvements have been implemented:
 
-1. **State Machine System**:
+1. **OpenCV Template Matching Enhancements**:
+   - **Color Channel Alignment Fix**: Implemented a new `bufferedImageToBgrMat` method that properly converts screen captures to the BGR format expected by OpenCV. This addresses the fundamental color channel mismatch that was limiting match confidence scores to around 0.81 even for perfect matches.
+   - **Scale Handling Optimization**: Added epsilon checks (using a small value of 1e-9) to prevent unnecessary resizing of templates when the scale is effectively 1.0. This eliminates resizing artifacts and improves matching accuracy for unscaled templates.
+   - **Implementation Consistency**: Applied these fixes consistently across all template matching methods:
+     - `findTemplateMultiScale`
+     - `findTemplateDetailedSequential`
+     - `findTemplateDetailedWithCoroutines`
+   - These improvements significantly increase template matching accuracy, with confidence scores potentially approaching 0.95-0.99 for perfect matches.
+
+2. **State Machine System**:
    - Implemented a state machine to manage bot states and transitions
    - Created a `StateMachine` class that handles state transitions and executes state handlers
    - Defined a `BotState` sealed class hierarchy with all possible bot states
@@ -407,7 +416,7 @@ The following improvements have been implemented:
    - Added state handlers for each state that perform actions specific to that state
    - This makes the code more maintainable, extensible, and easier to reason about
 
-2. **Game Verification**:
+3. **Game Verification**:
    - Added game verification in the Starting state handler
    - Verifies that the game is properly loaded before executing actions
    - Checks for the main screen anchor template to confirm the game is loaded
@@ -415,32 +424,32 @@ The following improvements have been implemented:
    - Retries verification multiple times before failing
    - This ensures that actions are only executed when the game is in a proper state
 
-3. **Disconnect Detection and Handling**:
+4. **Disconnect Detection and Handling**:
    - Added disconnect detection in the monitoring loop
    - Detects disconnections by looking for the reconnect button
    - Automatically attempts to reconnect when a disconnection is detected
    - Verifies successful reconnection by checking for the main screen anchor
    - This improves reliability by automatically recovering from disconnections
 
-4. **Action Monitoring System**: 
+5. **Action Monitoring System**: 
    - Added an `actionMonitor` function in ActionManager that centralizes monitoring logic
    - Checks for cooldowns, run counts, and resource availability
    - Provides a consistent interface for all actions
    - Makes it easier to add more checks in the future
 
-5. **Resource Management**:
+6. **Resource Management**:
    - Extracted resource availability check to a dedicated `isOutOfResources` function
    - Improved separation of concerns with single-responsibility functions
    - Enhanced testability with unit tests for resource logic
    - Allows resource checks to be called from anywhere in the codebase
 
-6. **Action Handler Refactoring**:
+7. **Action Handler Refactoring**:
    - Updated action handlers to use the new monitoring system
    - Removed duplicate code for checking if actions are enabled
    - Improved consistency across different action types
    - Enhanced maintainability by centralizing monitoring logic
 
-7. **Rerun Functionality**:
+8. **Rerun Functionality**:
    - Implemented the ability to rerun quests or raids without backing out to setup
    - Added detection for the "Rerun" button in the monitoring loop
    - Added logic to use the rerun button when appropriate instead of backing out to setup

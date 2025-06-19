@@ -67,6 +67,67 @@ This project is a game automation bot built in Kotlin using OpenCV for image rec
                                                                       └──────────┘
 ```
 
+### OpenCV Template Matching System
+
+The bot uses OpenCV for image recognition and template matching. This system is responsible for identifying game elements on the screen and is a critical component of the automation process.
+
+#### Template Matching Process
+
+1. **Screen Capture**: The bot captures the screen using Java's Robot class.
+2. **Color Space Conversion**: The screen capture is converted to the BGR color format expected by OpenCV.
+3. **Template Loading**: Template images are loaded from the file system.
+4. **Scale Checking**: The bot checks multiple scales to handle different screen resolutions.
+5. **Template Matching**: OpenCV's matchTemplate function is used to find the template in the screen capture.
+6. **Result Processing**: The best match is determined based on confidence scores.
+
+#### Recent Improvements
+
+1. **Color Channel Alignment Fix**:
+   - **Problem**: Screen captures from Java (in ARGB format) were being converted to OpenCV's Mat format without proper color channel alignment, resulting in lower confidence scores (around 0.81) even for perfect matches.
+   - **Solution**: Implemented a new `bufferedImageToBgrMat` method that properly converts screen captures to the BGR format expected by OpenCV.
+   - **Implementation**: The method creates a new BufferedImage specifically in the BGR format, transfers the image data, and then creates a Mat object with the correct format (CV_8UC3).
+   - **Result**: Significantly higher confidence scores for matching templates, potentially approaching 0.95-0.99 for perfect matches.
+
+2. **Scale Handling Optimization**:
+   - **Problem**: Due to floating-point arithmetic, a scale value that should be exactly 1.0 might be represented as 0.9999999 or 1.0000001, triggering unnecessary resizing that introduced artifacts.
+   - **Solution**: Added epsilon checks (using a small value of 1e-9) to prevent unnecessary resizing of templates when the scale is effectively 1.0.
+   - **Implementation**: Before resizing, the code checks if `Math.abs(currentScale - 1.0) < epsilon`. If true, it uses the original template directly without resizing.
+   - **Result**: Better accuracy at the original scale (1.0) without any resizing artifacts.
+
+3. **Implementation Consistency**:
+   - The fixes were applied consistently across all template matching methods:
+     - `findTemplateMultiScale`: The main method for finding templates with scale checking.
+     - `findTemplateDetailedSequential`: A sequential implementation that provides more detailed results.
+     - `findTemplateDetailedWithCoroutines`: A coroutine-based implementation that checks multiple scales in parallel.
+
+#### Template Matching Methods
+
+The bot provides several methods for template matching:
+
+1. **findTemplate**: A simple method that returns the location of a template if found.
+2. **findTemplateMultiScale**: Checks multiple scales to handle different screen resolutions.
+3. **findTemplateDetailed**: Returns comprehensive information about the match, including scale, confidence, and screen resolution.
+4. **clickOnTemplate**: Finds a template and clicks on it if found.
+
+#### Optimization Options
+
+The bot supports several optimization options for template matching:
+
+1. **Coroutine-based Parallel Processing** (`--opencvthreads` flag):
+   - Uses Kotlin coroutines to check multiple scales in parallel.
+   - Significantly faster than the sequential approach, especially with many scales.
+   - Thread pool size can be configured with JVM system properties.
+
+2. **Shape-based Matching** (`--shapematching` flag):
+   - Uses TM_CCORR_NORMED instead of TM_CCOEFF_NORMED for matching.
+   - Focuses more on shapes and contours rather than exact pixel values.
+   - More robust to lighting changes and slight variations.
+
+3. **Grayscale Matching** (`--grayscale` flag):
+   - Converts both screen capture and template images to grayscale before matching.
+   - Improves results when color variations might affect matching accuracy.
+   - More robust to lighting changes.
+
 ### Detailed Component Interactions
 
 #### Main Component Call Flow

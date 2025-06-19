@@ -11,12 +11,34 @@
 - Resource management system with cooldowns is implemented
 
 ### Recent Fixes
-- Fixed an oversight in Bot.kt that now allows ALL findtemplate checks to use coroutines if the user has `--opencvthreads` enabled
-- This improves performance for all template matching operations throughout the application
-- Added shape-based template matching option (`--shapematching` flag) that uses TM_CCORR_NORMED instead of TM_CCOEFF_NORMED
-- Added grayscale template matching option (`--grayscale` flag) that converts images to grayscale before matching
-- Added verbose template matching option (`--verbose` flag) that provides detailed information about template matching operations
-- Reverted from robot.createMultiResolutionScreenCapture to robot.createScreenCapture for better compatibility
+
+#### OpenCV Template Matching Improvements
+- **Color Channel Alignment Fix**:
+  - Implemented a new `bufferedImageToBgrMat` method in Bot.kt that properly converts screen captures to the BGR format expected by OpenCV
+  - This addresses a fundamental color channel mismatch that was limiting match confidence scores to around 0.81 even for perfect matches
+  - The new method creates a BufferedImage specifically in the BGR format (TYPE_3BYTE_BGR), transfers the image data, and creates a Mat with the correct format (CV_8UC3)
+  - Updated `captureScreen` and `captureRegion` methods to use the new conversion function
+  - Marked the old `bufferedImageToMat` method as deprecated
+  - This change significantly increases template matching accuracy, with confidence scores potentially approaching 0.95-0.99 for perfect matches
+
+- **Scale Handling Optimization**:
+  - Added epsilon checks (using a small value of 1e-9) to prevent unnecessary resizing of templates when the scale is effectively 1.0
+  - This eliminates resizing artifacts and improves matching accuracy for unscaled templates
+  - Implemented in all three template matching methods:
+    - `findTemplateMultiScale` (lines 427-442)
+    - `findTemplateDetailedSequential` (lines 660-674)
+    - `findTemplateDetailedWithCoroutines` (lines 852-862)
+  - The epsilon check ensures that when a scale is very close to 1.0, the original template is used directly without resizing
+
+- **Other Template Matching Improvements**:
+  - Fixed an oversight in Bot.kt that now allows ALL findtemplate checks to use coroutines if the user has `--opencvthreads` enabled
+  - This improves performance for all template matching operations throughout the application
+  - Added shape-based template matching option (`--shapematching` flag) that uses TM_CCORR_NORMED instead of TM_CCOEFF_NORMED
+  - Added grayscale template matching option (`--grayscale` flag) that converts images to grayscale before matching
+  - Added verbose template matching option (`--verbose` flag) that provides detailed information about template matching operations
+  - Reverted from robot.createMultiResolutionScreenCapture to robot.createScreenCapture for better compatibility
+
+#### Other Improvements
 - Made action name handling case-insensitive throughout the codebase, improving user experience by allowing any capitalization of action names (e.g., "pvp", "PvP", "PVP")
 
 ### Current Issues

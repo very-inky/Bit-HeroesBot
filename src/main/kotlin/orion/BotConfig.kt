@@ -90,6 +90,7 @@ data class RaidActionConfig(
     data class RaidTarget(
         val raidName: String = "", // Corresponds to legacy Patterns.Raid.RaidName
         val raidNumber: Int? = null, // Raid number (e.g., 1, 2, 3, 4)
+        @JsonIgnore
         val tierNumber: Int? = null, // Tier number (e.g., 4, 5, 6, 7)
         val difficulty: String = "Heroic", // e.g., "Normal", "Hard", "Heroic"
         val enabled: Boolean = true
@@ -168,7 +169,6 @@ data class BotConfig(
     val characterId: String, // Reference to the character this config belongs to
     val actionSequence: List<String>, // Sequence of actions to perform
     val actionConfigs: Map<String, ActionConfig>, // Configuration for each action
-    val defaultAction: String = "Quest", // Default action if none specified
     val description: String = "" // Optional description of what this config is for
 )
 

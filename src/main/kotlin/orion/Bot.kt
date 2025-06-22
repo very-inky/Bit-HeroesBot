@@ -1117,7 +1117,7 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
             config.configName
         }
 
-        println("Bot running for character: $characterName with default action: ${config.defaultAction}")
+        println("Bot running for character: $characterName ")
         println("Current system DPI scaling: ${getSystemDPIScaling()}")
         println("Screen resolution: ${screenSize.width}x${screenSize.height}")
 
@@ -1125,7 +1125,7 @@ class Bot(private val config: BotConfig, private val configManager: ConfigManage
         // or specific action classes based on BotConfig.
         // For example, an ActionHandler might take the bot and config,
         // and then call methods like:
-        // performAction(config.defaultAction, bot)
+        // performAction(config.actionSequence.firstOrNull() ?: "Quest", bot)
 
         // Example: If the config for "Quest" is enabled and has specific templates
         val questConfig = config.actionConfigs["Quest"]

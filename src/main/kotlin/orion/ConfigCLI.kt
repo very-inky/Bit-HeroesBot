@@ -801,7 +801,8 @@ class ConfigCLI(private val configManager: ConfigManager) {
         )
 
         // Update the configuration
-        configManager.addConfig(updatedConfig)
+        configManager.removeConfig(config.configId) // Remove the existing config first
+        configManager.addConfig(updatedConfig)      // Then add the updated config
         println("Configuration updated.")
         configManager.saveConfig(updatedConfig)
     }

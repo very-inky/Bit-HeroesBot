@@ -22,6 +22,9 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
     private val actionRunCounts = mutableMapOf<String, Int>()
     // Map to track the last processed dungeon index for quest actions
     private val questDungeonIndices = mutableMapOf<String, Int>()
+
+    // Map to track the last processed raid target index for raid actions
+    private val raidTargetIndices = mutableMapOf<String, Int>()
     // Flag to track if we're in a rerun state
     private var isRerunning = false
 
@@ -331,7 +334,11 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
                 val lastIndex = questDungeonIndices[actionName] ?: -1
                 QuestAction(lastIndex)
             }
-            "raid" -> RaidAction()
+            "raid" -> {
+                // Get the stored index or default to -1 if not found
+                val lastIndex = raidTargetIndices[actionName] ?: -1
+                RaidAction(lastIndex)
+            }
             // "pvp" -> PvpAction() // Placeholder for when PvpAction.kt is created
             // "gvg" -> GvgAction()
             // "worldboss" -> WorldBossAction()
@@ -466,9 +473,12 @@ class ActionManager(private val bot: Bot, private val config: BotConfig, private
                 // Start the action
                 val success = actionHandler.execute(bot, actionConfig)
 
-                // Store the updated index if this is a QuestAction
-                if (success && actionHandler is QuestAction) {
-                    questDungeonIndices[actionName] = actionHandler.getLastProcessedDungeonIndex()
+                // Store the updated index if this is a QuestAction or RaidAction
+                if (success) {
+                    when (actionHandler) {
+                        is QuestAction -> questDungeonIndices[actionName] = actionHandler.getLastProcessedDungeonIndex()
+                        is RaidAction -> raidTargetIndices[actionName] = actionHandler.getLastProcessedRaidIndex()
+                    }
                 }
 
                 if (success) {

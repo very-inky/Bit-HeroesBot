@@ -9,7 +9,10 @@ import java.io.File
 import orion.utils.PathUtils
 import java.awt.event.KeyEvent
 
-class RaidAction : BaseGameAction() {
+class RaidAction(
+    // Initial value for lastProcessedRaidIndex
+    private var lastProcessedRaidIndex: Int = -1
+) : BaseGameAction() {
     // Track the number of consecutive resource checks
     private var resourceCheckCount = 0
 
@@ -18,6 +21,14 @@ class RaidAction : BaseGameAction() {
 
     // Track which raids have already had their in-progress dialogues handled
     private val handledInProgressDialogueRaids = mutableSetOf<Int>()
+    
+    /**
+     * Get the last processed raid index
+     * @return The index of the last processed raid target
+     */
+    fun getLastProcessedRaidIndex(): Int {
+        return lastProcessedRaidIndex
+    }
 
     override fun execute(bot: Bot, config: ActionConfig): Boolean {
         if (config !is RaidActionConfig) {
@@ -41,137 +52,150 @@ class RaidAction : BaseGameAction() {
         }
         println("Successfully navigated to raid interface")
 
-        // Process raid targets using a regular for loop to support continue statements
-        for (i in config.raidTargets.indices) {
-            val target = config.raidTargets[i]
-            if (!target.enabled) continue
+        // Get the list of enabled raid targets
+        val enabledTargets = config.raidTargets.filter { it.enabled }
+        
+        if (enabledTargets.isEmpty()) {
+            println("No enabled raid targets found.")
+            return false
+        }
+        
+        // Determine which raid target to process next
+        val nextTargetIndex = if (lastProcessedRaidIndex < 0 || lastProcessedRaidIndex >= enabledTargets.size - 1) {
+            // If lastProcessedRaidIndex is -1 or out of bounds, start with the first target
+            0
+        } else {
+            // Otherwise, process the next target after the last processed one
+            lastProcessedRaidIndex + 1
+        }
+        
+        // Get the next target to process
+        val target = enabledTargets[nextTargetIndex]
+        val i = config.raidTargets.indexOf(target)
 
-            // Determine the raid identifier based on available information
-            val raidIdentifier = when {
-                target.raidName.isNotBlank() -> target.raidName
-                target.raidNumber != null -> "Raid${target.raidNumber}"
-                target.tierNumber != null -> "Tier${target.tierNumber}"
-                else -> {
-                    println("Target ${i + 1}: No raid name, raid number, or tier number specified. Skipping.")
-                    continue
-                }
+        // Determine the raid identifier based on available information
+        val raidIdentifier = when {
+            target.raidName.isNotBlank() -> target.raidName
+            target.raidNumber != null -> "Raid${target.raidNumber}"
+            target.tierNumber != null -> "Tier${target.tierNumber}"
+            else -> {
+                println("Target ${i + 1}: No raid name, raid number, or tier number specified. Skipping.")
+                return false
             }
+        }
 
-            println("\nTarget ${i + 1}: $raidIdentifier (${target.difficulty})")
+        println("\nTarget ${i + 1}: $raidIdentifier (${target.difficulty})")
 
-            // Step 2: Determine target raid number
-            val targetRaidNumber = target.getEffectiveRaidNumber()
-            if (targetRaidNumber == null) {
-                println("Could not determine raid number for $raidIdentifier, skipping this raid")
-                continue
+        // Step 2: Determine target raid number
+        val targetRaidNumber = target.getEffectiveRaidNumber()
+        if (targetRaidNumber == null) {
+            println("Could not determine raid number for $raidIdentifier, skipping this raid")
+            return false
+        }
+        println("Step 2: Raid Selection - Target Raid Number: $targetRaidNumber")
+
+        // Step 3: Determine current raid on screen
+        println("Step 3: Determining current raid on screen")
+        val currentRaid = determineCurrentRaid(bot, config)
+        if (currentRaid == -1) {
+            println("Failed to determine current raid on screen. Skipping this raid.")
+            return false
+        }
+        println("Current raid on screen: $currentRaid")
+
+        // Step 4: Navigate to target raid if needed
+        if (currentRaid != targetRaidNumber) {
+            println("Step 4: Navigating to target raid")
+            if (!navigateToRaid(bot, config, currentRaid, targetRaidNumber)) {
+                println("Failed to navigate to raid $targetRaidNumber. Skipping this raid.")
+                return false
             }
-            println("Step 2: Raid Selection - Target Raid Number: $targetRaidNumber")
+            println("Successfully navigated to raid $targetRaidNumber")
+        } else {
+            println("Step 4: Already on target raid $targetRaidNumber, no navigation needed")
+        }
 
-            // Step 3: Determine current raid on screen
-            println("Step 3: Determining current raid on screen")
-            val currentRaid = determineCurrentRaid(bot, config)
-            if (currentRaid == -1) {
-                println("Failed to determine current raid on screen. Skipping this raid.")
-                continue
-            }
-            println("Current raid on screen: $currentRaid")
+        // Step 5: Raid Initiation & Resource Check
+        println("Step 5: Raid Initiation")
+        // Look for raidsummon.png to start the raid
+        if (findAndClickSpecificTemplate(bot, config, "raidsummon.png", "raid summon button", delayAfterClick = 2000)) {
+            println("Found and clicked raid summon button")
+        } else {
+            println("Failed to find and click raid summon button, skipping this raid")
+            return false
+        }
 
-            // Step 4: Navigate to target raid if needed
-            if (currentRaid != targetRaidNumber) {
-                println("Step 4: Navigating to target raid")
-                if (!navigateToRaid(bot, config, currentRaid, targetRaidNumber)) {
-                    println("Failed to navigate to raid $targetRaidNumber. Skipping this raid.")
-                    continue
-                }
-                println("Successfully navigated to raid $targetRaidNumber")
+        // Step 5.5: Handle in-progress dialogue if present
+        println("Step 5.5: Handling In-Progress Dialogue")
+        if (!handleInProgressDialogue(bot, config, targetRaidNumber)) {
+            println("Failed to handle in-progress dialogue, but continuing anyway")
+            // We continue anyway since this is not a critical failure
+        }
+
+        // Step 6: Difficulty Selection - Find and click on the difficulty button
+        println("Step 6: Difficulty Selection")
+        val difficultyId = target.difficulty.lowercase().replace(" ", "_")
+        // Look for a specific difficulty template file like "heroic.png"
+        val difficultyFileName = "${difficultyId}.png"
+        if (findAndClickSpecificTemplate(bot, config, difficultyFileName, "${target.difficulty} difficulty button", delayAfterClick = 1500)) {
+            println("Successfully selected ${target.difficulty} difficulty")
+        } else {
+            println("Failed to select ${target.difficulty} difficulty, continuing with default")
+        }
+
+        // Step 7: Team Composition Check (Optional)
+        println("Step 7: Team Composition Check")
+        // Look for add.png to detect if team needs to be added, but don't click it
+        val addPath = "${config.commonTemplateDirectories.first()}/add.png"
+        if (File(addPath).exists() && bot.findTemplate(addPath) != null) {
+            println("Detected add.png - team needs to be added")
+            // If AutoTeam is configured, click autoteam.png
+            if (findAndClickSpecificTemplate(bot, config, "autoteam.png", "auto team button", delayAfterClick = 1500)) {
+                println("Successfully clicked auto team button")
             } else {
-                println("Step 4: Already on target raid $targetRaidNumber, no navigation needed")
+                println("No auto team button found or failed to click, continuing")
             }
+        } else {
+            println("No add button detected, continuing")
+        }
 
-            // Step 5: Raid Initiation & Resource Check
-            println("Step 5: Raid Initiation")
-            // Look for raidsummon.png to start the raid
-            if (findAndClickSpecificTemplate(bot, config, "raidsummon.png", "raid summon button", delayAfterClick = 2000)) {
-                println("Found and clicked raid summon button")
-            } else {
-                println("Failed to find and click raid summon button, skipping this raid")
-                continue
-            }
+        // Step 8: Click accept button
+        println("Step 8: Clicking accept button")
+        if (findAndClickSpecificTemplate(bot, config, "accept.png", "accept button", delayAfterClick = 2000)) {
+            println("Successfully clicked accept button")
+        } else {
+            println("No accept button found or failed to click, continuing")
+        }
 
-            // Step 5.5: Handle in-progress dialogue if present
-            println("Step 5.5: Handling In-Progress Dialogue")
-            if (!handleInProgressDialogue(bot, config, targetRaidNumber)) {
-                println("Failed to handle in-progress dialogue, but continuing anyway")
-                // We continue anyway since this is not a critical failure
-            }
+        // Check for out of resources message after clicking start raid button
+        if (checkForOutOfResources(bot, 2000, "Out of resources message detected, stopping raid action")) {
+            return false // Return false to indicate failure due to resource depletion
+        }
 
-            // Step 6: Difficulty Selection - Find and click on the difficulty button
-            println("Step 6: Difficulty Selection")
-            val difficultyId = target.difficulty.lowercase().replace(" ", "_")
-            // Look for a specific difficulty template file like "heroic.png"
-            val difficultyFileName = "${difficultyId}.png"
-            if (findAndClickSpecificTemplate(bot, config, difficultyFileName, "${target.difficulty} difficulty button", delayAfterClick = 1500)) {
-                println("Successfully selected ${target.difficulty} difficulty")
-            } else {
-                println("Failed to select ${target.difficulty} difficulty, continuing with default")
-            }
+        // Step 9: Post-Start Actions
+        println("Step 9: Post-Start Actions")
+        // Autopilot is handled by ActionManager, no need to handle it here
+        println("Autopilot will be handled by ActionManager if configured")
 
-            // Step 7: Team Composition Check (Optional)
-            println("Step 7: Team Composition Check")
-            // Look for add.png to detect if team needs to be added, but don't click it
-            val addPath = "${config.commonTemplateDirectories.first()}/add.png"
-            if (File(addPath).exists() && bot.findTemplate(addPath) != null) {
-                println("Detected add.png - team needs to be added")
-                // If AutoTeam is configured, click autoteam.png
-                if (findAndClickSpecificTemplate(bot, config, "autoteam.png", "auto team button", delayAfterClick = 1500)) {
-                    println("Successfully clicked auto team button")
-                } else {
-                    println("No auto team button found or failed to click, continuing")
-                }
-            } else {
-                println("No add button detected, continuing")
-            }
+        println("Successfully processed raid: ${target.raidName} with difficulty: ${target.difficulty}")
 
-            // Step 8: Click accept button
-            println("Step 8: Clicking accept button")
-            if (findAndClickSpecificTemplate(bot, config, "accept.png", "accept button", delayAfterClick = 2000)) {
-                println("Successfully clicked accept button")
-            } else {
-                println("No accept button found or failed to click, continuing")
-            }
+        // Check for rerun button and handle rerun functionality
+        println("Checking for rerun button...")
+        if (findAndClickSpecificTemplate(bot, config, "rerun.png", "rerun button", delayAfterClick = 2000)) {
+            println("Found and clicked rerun button")
 
-            // Check for out of resources message after clicking start raid button
-            if (checkForOutOfResources(bot, 2000, "Out of resources message detected, stopping raid action")) {
+            // Check for out of resources message after clicking rerun button
+            if (checkForOutOfResources(bot, 2000, "Out of resources message detected after clicking rerun, stopping raid action")) {
                 return false // Return false to indicate failure due to resource depletion
             }
 
-            // Step 9: Post-Start Actions
-            println("Step 9: Post-Start Actions")
-            // Autopilot is handled by ActionManager, no need to handle it here
-            println("Autopilot will be handled by ActionManager if configured")
-
-            println("Successfully processed raid: ${target.raidName} with difficulty: ${target.difficulty}")
-
-            // Check for rerun button and handle rerun functionality
-            println("Checking for rerun button...")
-            if (findAndClickSpecificTemplate(bot, config, "rerun.png", "rerun button", delayAfterClick = 2000)) {
-                println("Found and clicked rerun button")
-
-                // Check for out of resources message after clicking rerun button
-                if (checkForOutOfResources(bot, 2000, "Out of resources message detected after clicking rerun, stopping raid action")) {
-                    return false // Return false to indicate failure due to resource depletion
-                }
-
-                println("Resources available for rerun, continuing...")
-            } else {
-                println("No rerun button found or failed to click, continuing with next raid")
-            }
+            println("Resources available for rerun, continuing...")
+        } else {
+            println("No rerun button found or failed to click, continuing with next raid")
         }
 
-        // Check if no raid targets were specified
-        if (config.raidTargets.isEmpty()) {
-            println("No raid targets specified. Nothing to do.")
-        }
+        // Update the last processed raid index
+        lastProcessedRaidIndex = nextTargetIndex
 
         println("--- Raid Action Finished ---")
         return true
